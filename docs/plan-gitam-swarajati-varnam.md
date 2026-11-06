@@ -204,6 +204,10 @@ website guide updated.
 
 ## Open questions
 
+Tracked as GitHub issues: a second source #1, Analekara's variant note #2,
+Kamala Jadala's tala #3, varnam speeds #4, two-kalai counting #5, and the
+varnam engine work #6.
+
 1. **Second source (needed before G1, S2 and V3).**
    - Does *Sangeeta Bala Padam* Part 1 have Vara Veena, Analekara, Kamala
      Jadala and Re Re Sri Ramachandra, and the two swarajatis?
