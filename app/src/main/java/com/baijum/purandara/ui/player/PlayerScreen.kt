@@ -182,6 +182,7 @@ private fun SingAlongPanel(varisai: Varisai, state: PracticeUiState, micDenied: 
             pass = state.playback.position?.repetition,
             trace = sing.trace,
             live = sing.live,
+            countingIn = state.playback.countingIn,
         )
         if (sing.onSpeaker) {
             Text(stringResource(R.string.headphones_hint), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

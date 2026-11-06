@@ -100,4 +100,31 @@ class BleedModelTest {
         assertTrue(bleed.isVoice(0.02f, 0.5f))
         assertFalse(bleed.isVoice(0.005f, 0.5f)) // below the absolute floor
     }
+
+    @Test
+    fun roomNoiseBetweenCountInClicksIsNotLeakage() {
+        // Headphones, drone off: the count-in plays clicks (loud frames and nearly
+        // silent frames) and the mic hears only the room. Measured on an iPad.
+        val bleed = BleedModel()
+        repeat(120) { i ->
+            val output = if (i % 4 == 0) 0.05f else 0.0005f
+            bleed.calibrate(micRms = 0.006f + (i % 3) * 0.0003f, outputRms = output)
+        }
+        bleed.finishCalibration()
+        assertTrue(bleed.leakageRatio < 0.1, "leakage ${bleed.leakageRatio}")
+        assertEquals(0.0063, bleed.noiseFloor, 4e-4)
+        // Singing at 0.05–0.11 RMS over a 0.09 harmonium is a voice; the room is not.
+        assertTrue(bleed.isVoice(micRms = 0.05f, outputRms = 0.09f))
+        assertFalse(bleed.isVoice(micRms = 0.008f, outputRms = 0.09f))
+    }
+
+    @Test
+    fun noisyRoomRaisesTheBarAboveItsNoise() {
+        val bleed = BleedModel()
+        repeat(60) { bleed.calibrate(micRms = 0.02f, outputRms = 0.0f) }
+        bleed.finishCalibration()
+        assertEquals(0.0, bleed.leakageRatio, 1e-9)
+        assertFalse(bleed.isVoice(micRms = 0.03f, outputRms = 0.1f))
+        assertTrue(bleed.isVoice(micRms = 0.05f, outputRms = 0.1f))
+    }
 }

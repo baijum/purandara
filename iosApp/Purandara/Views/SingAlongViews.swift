@@ -84,7 +84,8 @@ struct SingAlongPanel: View {
                     avarta: viewModel.playback.avarta,
                     pass: viewModel.playback.repetition,
                     trace: sing.trace,
-                    live: sing.live)
+                    live: sing.live,
+                    countingIn: viewModel.playback.countingIn)
                 if sing.onSpeaker {
                     Text("Headphones give the most accurate results.")
                         .font(.caption)
@@ -118,6 +119,12 @@ struct PitchLane: View {
     let pass: Int?
     let trace: [TraceSample]
     let live: SwaraReading?
+    var countingIn = false
+
+    /// During the count-in the app measures the room and its own leakage.
+    private var reading: String {
+        countingIn ? String(localized: "Stay quiet until the harmonium starts: listening to the room") : SingAlongText.live(live)
+    }
 
     private static let lowCents = -150.0
     private static let highCents = 1350.0
@@ -132,12 +139,12 @@ struct PitchLane: View {
                 Canvas { context, size in draw(context, size) }
                     .frame(height: 120)
             }
-            Text(SingAlongText.live(live)).font(.callout.weight(.medium))
+            Text(reading).font(.callout.weight(.medium))
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Your pitch"))
-        .accessibilityValue(Text(SingAlongText.live(live)))
+        .accessibilityValue(Text(reading))
     }
 
     private func draw(_ context: GraphicsContext, _ size: CGSize) {

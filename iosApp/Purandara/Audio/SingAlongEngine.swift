@@ -31,6 +31,22 @@ final class SingAlongEngine: @unchecked Sendable {
     private var phase = 0.0
     private var stopped = false
 
+    #if DEBUG
+    /// Once-a-second console line for device checks: `devicectl device process launch --console`.
+    private var diag = (buffers: 0, windows: 0, noTime: 0, pitched: 0, voiced: 0, peakMic: Float(0), peakOut: Float(0), last: 0.0)
+    private func logDiagnostics() {
+        let now = CACurrentMediaTime()
+        guard now - diag.last >= 1 else { return }
+        let route = AVAudioSession.sharedInstance().currentRoute
+        print("[singalong] rate \(Int(micRate)) buffers \(diag.buffers) windows \(diag.windows) noTime \(diag.noTime) "
+            + "pitched \(diag.pitched) voiced \(diag.voiced) mic \(String(format: "%.4f", diag.peakMic)) "
+            + "out \(String(format: "%.4f", diag.peakOut)) leak \(String(format: "%.3f", session.leakageRatio)) "
+            + "calibrated \(session.bleedCalibrated) echoCancel \(player.micOnSpeaker) "
+            + "in \(route.inputs.map(\.portType.rawValue)) out \(route.outputs.map(\.portType.rawValue))")
+        diag = (0, 0, 0, 0, 0, 0, 0, now)
+    }
+    #endif
+
     private static let window = Int(PitchPipeline.companion.WINDOW_SIZE)
     private static let hop = Int(PitchPipeline.companion.HOP_SIZE)
 
@@ -96,6 +112,10 @@ final class SingAlongEngine: @unchecked Sendable {
 
     private func append(_ samples: [Float], rate: Double, hostTime: UInt64) {
         guard !stopped else { return }
+        #if DEBUG
+        diag.buffers += 1
+        logDiagnostics()
+        #endif
         if pipeline == nil || rate != micRate {
             micRate = rate
             pipeline = PitchPipeline(sampleRate: Int32(rate))
@@ -128,13 +148,28 @@ final class SingAlongEngine: @unchecked Sendable {
     }
 
     private func process(_ samples: [Float], captureHost: UInt64) {
-        guard let pipeline, let heard = player.outputFrame(atHostTime: captureHost) else { return }
+        #if DEBUG
+        diag.windows += 1
+        #endif
+        guard let pipeline, let heard = player.outputFrame(atHostTime: captureHost) else {
+            #if DEBUG
+            diag.noTime += 1
+            #endif
+            return
+        }
         let window = samples.withUnsafeBufferPointer {
             FloatBridge.shared.toFloatArray(source: UnsafeMutableRawPointer(mutating: $0.baseAddress!), count: Int32(samples.count))
         }
         if pipeline.beginFrame() { pipeline.onNeuralResult(result: supervisor?.estimate(window)) }
         let frame = pipeline.process(window: window, timeSeconds: Double(heard) / Double(renderer.sampleRate))
-        onOutcome(session.onFrame(frame: frame))
+        let outcome = session.onFrame(frame: frame)
+        #if DEBUG
+        diag.peakMic = max(diag.peakMic, frame.rms)
+        diag.peakOut = max(diag.peakOut, session.outputLevels.rmsAt(frame: heard))
+        if frame.frequencyHz != nil { diag.pitched += 1 }
+        if outcome.live.reading != nil { diag.voiced += 1 }
+        #endif
+        onOutcome(outcome)
     }
 
     // MARK: - Debug synthetic singer

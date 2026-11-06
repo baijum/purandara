@@ -54,6 +54,7 @@
     <string name="headphones_hint">Headphones give the most accurate results.</string>
     <string name="pitch_lane">Your pitch</string>
     <string name="silent">Not hearing you yet</string>
+    <string name="count_in_quiet">Stay quiet until the harmonium starts: listening to the room</string>
     <string name="zone_in_tune">in tune</string>
     <string name="zone_high">high</string>
     <string name="zone_low">low</string>

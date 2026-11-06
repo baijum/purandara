@@ -197,7 +197,10 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
             onRendered(startFrame, (sum / Float(frames)).squareRoot())
         }
         pending += 1
-        node.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack) { [weak self] _ in
+        // Refill as soon as the engine has taken a buffer. Waiting until it has
+        // been heard (.dataPlayedBack) includes the output latency, which over
+        // Bluetooth (150–250 ms) drains the queue and breaks the sound up.
+        node.scheduleBuffer(buffer, completionCallbackType: .dataConsumed) { [weak self] _ in
             guard let self else { return }
             self.queue.async {
                 guard gen == self.generation else { return }
@@ -213,7 +216,14 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         generation += 1
         renderer = nil
         onFinished = nil
-        DispatchQueue.main.async {
+        // The last buffer has been consumed but is still on its way to the
+        // speaker or headphones: finish once it has been heard.
+        let session = AVAudioSession.sharedInstance()
+        let tail = session.outputLatency + session.ioBufferDuration
+        let finishedGeneration = generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + tail) {
+            // A new play (or stopImmediately) since then owns the node now.
+            guard self.queue.sync(execute: { self.generation == finishedGeneration }) else { return }
             self.node.stop()
             self.isPlaying = false
             if self.micTapInstalled {

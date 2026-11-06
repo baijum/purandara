@@ -65,6 +65,10 @@ synthetic singer on iOS. On Android (debug builds),
 the microphone with a synthetic singer (the value is cents off target), so
 sing-along can be exercised on an emulator.
 
+Sing-along on an iOS device: debug builds print a once-a-second `[singalong]`
+line (mic and output levels, leakage, echo cancellation, route). Capture it with
+`xcrun devicectl device process launch --console --device <id> com.baijum.purandara.ios -- -open sarali-1 -singAlong YES`.
+
 Instrumented tests: if `connectedDebugAndroidTest` reports 0 tests or finishes
 in seconds, the emulator is probably out of storage (the app carries ONNX
 Runtime); check `app/build/reports/androidTests/connected/debug/index.html`
