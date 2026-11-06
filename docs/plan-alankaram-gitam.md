@@ -1,31 +1,304 @@
 # Plan: Alankarams and Gitams
 
-Status: **proposed** (2026-11-06). Nothing is built yet. The open questions at
-the end need answers first. Candidate source: karnatik.com, cross-checked against shivkumar.org (see
-*Source review* and *Cross-check*).
+Status: **approved** (2026-11-06). Milestones 1–4 below; none built yet.
 
-The next two stages of the traditional beginner path after the varisais are:
+The next two stages of the traditional beginner path after the varisais:
 
-- **Alankarams**: the seven *sapta tala alankarams*. Each is a swara pattern
-  that climbs to upper Sa and comes back down, one in each of the seven suladi
-  talas. This is the student's first meeting with talas other than Adi.
-- **Gitams**: the first real compositions, with words (*sahityam*). The
-  traditional first gitams are Purandara Dasa's *pillari gitams* in Malahari.
-  The app is named after him, so these fit well.
+- **the seven sapta tala alankarams**, the first talas other than Adi;
+- **the Malahari pillari gitams** of Purandara Dasa, the first pieces with words.
 
-Both use the existing player, sing-along, history and landing page. Everything
-lands on both apps.
+Source: karnatik.com, with the gitams cross-checked against shivkumar.org; the
+tala model comes from ThaaLam (the author's sibling app). The research is kept
+below the milestones.
 
-## What each one needs that the app lacks
+**Decided with the user:**
 
-| Need | Alankarams | Gitams | Today |
-|---|---|---|---|
-| Talas other than Adi | ✅ all seven suladi talas, with different laghu lengths (jatis) | ✅ mostly Rupaka and Triputa | Adi only (`Tala.ADI`); parser and `PerformanceSettings` assume it |
-| Anudrutam (a 1-beat anga) | ✅ Jhampa | n/a | Not modelled |
-| Ragas other than Mayamalavagowla | Optional (see Q2) | ✅ Malahari, later Mohanam and others | One raga, and every raga must define all seven letters |
-| Lower-octave notes | Rare | ✅ gitams dip below Sa | No mandra marker in the grammar (the display already has a dot below) |
-| Words under the swaras | n/a | ✅ | None |
-| Long pieces | n/a (2–4 lines) | ✅ 10–30 avartas | Auto-scroll to the current avarta already exists on both apps |
+- **Śrī Gaṇanātha refrain:** karnatik.com's `S R | M , G R`. shivkumar.org's
+  version is noted in the file header as a variant.
+- **Alankarams:** the traditional seven, in Mayamalavagowla only.
+- **Clicks:** a different click for a clap, a finger count and a wave, taken
+  from ThaaLam, as part of the tala step.
+- **Words:** simple Latin (`sri gananatha`). The same text is used on screen and
+  for screen readers.
+- **Gamakas:** the guide explains them and suggests Gentle strictness for
+  gitams; there are no gamaka marks in the notation.
+- **Rupaka:** drutam first (x v · x 1 2 3), as both sources write it.
+
+**Outcome:** 7 alankarams and 4 gitams, in both apps. They work with the player,
+sing-along, history, "next up", accessibility and the website guide.
+
+## Milestone 1: shared talas, clicks, and per-exercise tala and raga
+
+**Tala** (`shared/.../domain/Tala.kt`)
+
+- Add `Tala.suladi(name, shape: List<AngaKind>, jati)`, where `AngaKind` is
+  LAGHU, DRUTAM or ANUDRUTAM. It is ported from ThaaLam's
+  `~/baijum/ThaaLam/shared/.../domain/TalaLibrary.kt` (`saptaTalas`,
+  `angasFor`).
+- It produces the existing `TalaBeat` list:
+  - a laghu is `x 1 2 …` (CLAP, then COUNT);
+  - a drutam is `x v` (CLAP, WAVE);
+  - an anudrutam is `x` (CLAP).
+- **Dhruva is I O I I.** This corrects ThaaLam, which has I O I O. ThaaLam is
+  not touched by this plan.
+- New `Talas` catalog object, looked up by key:
+  - `adi` (the existing `Tala.ADI`, unchanged);
+  - `dhruva-4` (14 beats), `matya-4` (10), `rupaka-4` (6), `jhampa-7` (10),
+    `triputa-3` (7), `ata-5` (14), `eka-4` (4).
+  - Each has a display name such as "Dhruva" and a jati name.
+
+**Raga** (`Raga.kt`)
+
+- A raga may leave letters out. `swara(letter)` stays.
+- Add `uses(letter)`, plus `arohanam` and `avarohanam` lists for display only.
+- Add `Raga.MALAHARI`:
+  - letters: S R₁ G₃ M₁ P D₁, with no N;
+  - ascent: S R M P D S′;
+  - descent: S′ D P M G R S.
+- `Ragas.byKey("mayamalavagowla" | "malahari")`.
+
+**Exercise model** (`domain/varisai/Varisai.kt`)
+
+- `Varisai` gains:
+  - `tala: Tala = Tala.ADI`;
+  - `raga: Raga = Raga.MAYAMALAVAGOWLA`;
+  - `name: String? = null`, the display title for gitams.
+- `Avarta.spoken` reads the exercise's tala; this is already a parameter.
+- `WrittenSwara.toString()` writes mandra with a dot below (`Ḍ`).
+- `spoken` says "low D" for a mandra swara.
+
+**Parser** (`VarisaiParser.kt`)
+
+- The constructor drops the fixed tala.
+- Header lines are allowed after an exercise number:
+  - `tala: <key>` (default `adi`);
+  - `raga: <key>` (default `mayamalavagowla`);
+  - `title: <text>`.
+- Avarta length is checked against the exercise's tala.
+- The mandra mark is U+02CC after a letter (`Dˌ`), written as `Ḍ` on screen.
+- Letters the raga doesn't use are an error.
+
+**Schedule** (`domain/schedule/Schedule.kt`)
+
+- `PerformanceSettings` takes its raga and tala from the exercise.
+- New factory `PerformanceSettings.forExercise(varisai, saHz, tempo, kala,
+  tuning)` for Swift.
+- Callers to update:
+  - Android: `PracticePreferences.performance()` gets a `varisai` argument;
+    `PracticeViewModel.kt:307`.
+  - iOS: `PracticeSettings.swift:53-58`; `PracticeViewModel.swift:159`.
+  - The drone-only callers keep `catalog.first`.
+
+**Clicks** (`audio/SampleRenderer.kt:142-154, 307-320`)
+
+- Today there are two click waves (`accentClick`, `plainClick`). Replace them
+  with three, chosen by `Kriya`: CLAP, COUNT (finger) and WAVE.
+- Use ThaaLam's `ClickSynth.gestureTone` factors:
+  - pitch 1.0 / 1.22 / 0.68;
+  - decay 0.95 / 0.65 / 1.30;
+  - gain 1.0 / 0.82 / 0.78.
+- Any noise uses a fixed seed, so renders are repeatable.
+- The count-in uses the same waves.
+
+**Top of the harmonium range**
+
+- Some gitams reach upper Ri (Kunda Gaura, Śrī Gaṇanātha). At Sa = C4 that is
+  about MIDI 73, above the bank's C5 (72). `Schedule.noteEvent` would throw.
+- First choice: regenerate the bank with `MIDI_HIGH = 74` if the CC0 source has
+  those notes.
+  - Files: `tools/samples/prepare_harmonium.py`, `HarmoniumBank`,
+    `BundledSamplesTest`, ATTRIBUTION.md.
+- Fallback: `HarmoniumBank.playbackFor` lets only the top sample stretch up to
+  +2 semitones.
+
+**Tests** (`shared/src/commonTest`)
+
+- Tala table: beat counts and anga lengths for every key; labels for
+  `jhampa-7`; Adi exactly as before. Keep `RagaTalaTuningTest`'s Adi
+  assertions.
+- Raga: Malahari letters, and rejection of letters a raga doesn't use.
+- Parser: headers, mandra mark, wrong length for a non-Adi tala, unknown
+  tala or raga key.
+- Schedule: beats and contiguity for 7-, 10- and 14-beat talas at kala 1 to 4.
+  This generalises `beatsFollowAdiTala` and the contiguity property.
+- Renderer: each kriya gets its own wave.
+
+## Milestone 2: alankarams in both apps
+
+**Catalog**
+
+- New `catalog/Alankaram.kt`: the 7 alankarams copied from karnatik.com
+  lesson 6, each with its `tala:` header.
+  - Lowercase letters become plain swaras; uppercase `S` becomes `S′`.
+  - Each alankaram is 10 avartas.
+- New `VarisaiSet.ALANKARAM` after DHATTU, with a description.
+- Ids are `alankaram-1` to `alankaram-7`, in the order Dhruva, Matya, Rupaka,
+  Jhampa, Triputa, Ata, Eka.
+- Title: "Alankaram 1 · Dhruva tala".
+- History "next up" follows catalog order with no changes:
+  `PracticeHistory.nextUp`.
+
+**Catalog tests**
+
+- `everyAvartaIsOneAdiCycle` becomes "one cycle of its exercise's tala".
+- Range test per set: varisais and alankarams stay within S to S′.
+- Alankaram golden tests: first and last avarta of each.
+- `ScheduleTest` "playable across Sa 43–60" covers the new pieces
+  automatically.
+
+**Player, both platforms**
+
+- Pass the exercise's tala into the notation and the tala strip. Today both
+  fall back to Adi:
+  - Android `PlayerScreen.kt:103-116` → `TalaStrip` and `NotationView`
+    (`NotationView.kt:62, 216`).
+  - iOS `NotationView.swift:13` and `TalaStripView` `:174`, which also has a
+    literal `"Adi tala:"` at `:207`. Use `tala.name` instead.
+- **Long talas wrap.** When a tala has more than 8 beats, split each notation
+  row and the tala strip at the anga boundary nearest the middle:
+  - Dhruva: 4+2 | 4+4
+  - Matya: 4+2 | 4
+  - Jhampa: 7 | 1+2
+  - Ata: 5+5 | 2+2
+
+  A shared helper `Tala.rowBreaks()` gives both apps the same split.
+- The player heading shows the raga and tala ("Mayamalavagowla · Dhruva tala").
+- Sing-along pitch lane: `avartaSeconds` already uses `tala.aksharas`
+  (Android `SingAlongViews.kt:63`, iOS `:169`). Pass the right tala.
+
+**Landing page**
+
+- The ALANKARAM section appears with no changes to the code that builds
+  sections:
+  - Android `LibraryScreen.kt:105` groups by set;
+  - iOS `LibraryView.swift:13` maps over `VarisaiSet.entries`.
+- Each row adds the tala name.
+
+**Accessibility**
+
+- Android `AccessibilityTest`: a Dhruva strip with the label "Dhruva tala: clap
+  1 2 3, clap wave, …" and state "Beat n of 14".
+- iOS UI test: audit the Dhruva and Jhampa players. Keep the existing audit
+  exception for single swaras.
+
+## Milestone 3: shared gitam grammar and catalog
+
+**Grammar** (update `docs/plan.md` §3.2)
+
+- `[pallavi]`, `[charanam 1]` and similar start a named section.
+- `(pallavi)` on its own line repeats that section. Repeats are expanded when
+  the piece is parsed, so the schedule, the scoring and the display all follow
+  the sung order.
+- A line starting with `"` gives the words for the notation line above it:
+  - one token per akshara: a syllable, or `-` where the previous syllable
+    continues;
+  - two syllables joined with `·` when an akshara holds two swaras.
+- The word count must match the akshara count. Errors give the line and column.
+
+**Model**
+
+- `Avarta` gains `section: String?`, set on the first avarta of each section,
+  and `words: List<String>?`.
+- `Avarta.spoken` adds ". Words: sri gana natha".
+- `Contour` already handles mandra (negative degrees).
+
+**Catalog** (new `catalog/Gitam.kt`)
+
+- The four Malahari gitams, in karnatik.com's section order:
+  - Sri Gananatha, Rupaka;
+  - Kunda Gaura, Rupaka;
+  - Kereya Neeranu, `triputa-3`;
+  - Padumanabha, `triputa-3`.
+- `VarisaiSet.GITAM` comes after ALANKARAM. Ids are `gitam-1` to `gitam-4`.
+  Titles come from `title:`.
+- Words are split at syllable boundaries in simple Latin.
+- The file header lists:
+  - each transcription fix;
+  - each difference from shivkumar.org (the refrain variant, and holds written
+    `-` versus a repeated swara);
+  - the only mandra note (Padumanābha `R S Ḍ S`).
+- Cross-check script `tools/notation/crosscheck_gitams.py`:
+  - fetches both sites and compares the swaras of each avarta, like the
+    research script;
+  - is not part of the build;
+  - no copies of the source pages are committed.
+
+**Tests**
+
+- Every gitam parses; repeats are expanded; words align with aksharas.
+- Gitam range stays within lower Pa to upper Pa, and every note is playable for
+  Sa 43–60. This uses the existing `ScheduleTest` check.
+- Golden tests: the first avarta of each section, with its words.
+
+## Milestone 4: gitams in both apps, docs and site
+
+**Notation**
+
+- Each akshara cell shows the swara, the word under it, and the existing mark.
+- Section names appear as heading rows: `heading()` on Android,
+  `.isHeader` on iOS.
+- New choice **Swaras / Words / Both** (default Both):
+  - a practice setting on both apps;
+  - only shown for exercises with words.
+
+**Sing-along**
+
+- The pitch lane's range follows the piece. Today it is fixed at
+  −150..1350 cents (Android `SingAlongViews.kt:197`, iOS `:129`).
+- Below Sa, label the lines with mandra dots, as the Shruti screen does
+  (`ShrutiScreen.kt:195`, `ShrutiView.swift:190`).
+
+**Accessibility tests**
+
+- A gitam avarta label with words; section headings.
+- iOS audit of the gitam player at large text.
+
+**Docs**
+
+- `docs/plan-alankaram-gitam.md`: mark it final, then mark each milestone done
+  as it lands.
+- `docs/plan.md` §3.2 (grammar) and §3.4: Mandhra Sthayi stays excluded.
+- AGENTS.md: status and code map (`Talas`, `Ragas`, the new catalog files and
+  the grammar).
+- README: features.
+- ATTRIBUTION.md, a new **Notation** section:
+  - karnatik.com (Rani), lesson 6 and the four gitam pages;
+  - shivkumar.org (Shivkumar Kalyanaraman) as the cross-check;
+  - ThaaLam is the author's own code (mention it in the commit).
+- Before the store release, ask both site authors for permission. This is
+  noted in the docs; it does not block the work.
+
+**Website** (`site/`)
+
+- New guide pages `alankarams.html` and `gitams.html`. The gitams page covers
+  sections, words, gamakas and Gentle strictness.
+- Add both to the `GUIDE` list in `site/build.py`.
+- Landing page: update the exercise count and add a short line about
+  alankarams and gitams.
+- Credits page.
+
+## Verification
+
+- `./gradlew :shared:jvmTest testDebugUnitTest assembleDebug lintDebug detekt`
+- `./gradlew :app:connectedDebugAndroidTest` on the emulator (check storage
+  first, as AGENTS.md describes).
+- `cd iosApp && xcodegen generate` and `xcodebuild … test` on the
+  iPhone 17 Pro simulator, which includes the accessibility audits.
+- By hand, on the emulator and the iPad mini (install whenever it is
+  connected):
+  - play every alankaram and check the strip, wrapping and clicks;
+  - play every gitam with words in all three views;
+  - sing along with the synthetic singer (`-singAlong YES -singer 0`, Android
+    `--ef singer 0`);
+  - check "next up" after Dhattu 6 → Alankaram 1;
+  - use VoiceOver and TalkBack on a gitam line.
+- Listen to `RenderDemoTest` output for one alankaram and one gitam.
+- Site: run `python3 site/build.py` and check the new pages and the
+  unfilled-placeholder check.
+- Commit and push to main after each milestone; each milestone is reviewable
+  on its own.
+
+# Research
 
 ## The seven talas
 
@@ -44,116 +317,6 @@ These are the standard sapta tala alankaram talas and jatis:
 Here I is a laghu, O a drutam and U an anudrutam (a single clap). Adi tala is
 Chaturasra Triputa, so it becomes one case of the same model.
 
-## Shared changes (`shared/`)
-
-1. **`Tala` built from angas, ported from ThaaLam.**
-   - ThaaLam is the author's sibling app (`~/baijum/ThaaLam`, same KMP stack).
-     It already has this model in `shared/.../data/Tala.kt` and
-     `domain/TalaLibrary.kt`:
-     - `AngaType` (laghu, drutam, anudrutam, chapu);
-     - the jathis;
-     - all 35 suladi talas, plus Misra, Khanda and Tisra Chapu;
-     - a gesture for each beat (clap, finger, wave).
-   - Port the Carnatic part, not the Hindustani or metronome parts, and map the
-     gestures onto the existing `Kriya`.
-   - **Fix Dhruva on the way.** ThaaLam's shape is laghu, drutam, laghu, drutam
-     (I O I O), and its test expects 12 beats for Chaturasra. Dhruva is
-     I O I I, which is 14 beats. That also matches karnatik.com.
-   - The Chapu talas cover the Misra Chapu gitams for later.
-   - Optionally port ThaaLam's gesture-coloured clicks into `SampleRenderer`
-     (a different timbre for a clap, a finger count and a wave). Today
-     Purandara has only an accent click and a plain click, and a 7-beat Misra
-     laghu is hard to follow with a plain click.
-
-   The original plan for this step: Add `Anga.Laghu(jati)`, `Anga.Drutam` and
-   `Anga.Anudrutam`. `Tala.suladi(name, jati)` builds the beats and labels, and
-   `Tala.ADI` stays the same value. The seven talas live in a small catalog.
-   Tests check akshara counts, anga lengths and labels against the table above.
-2. **Each exercise carries its tala and raga.** `Varisai` gains `tala` and
-   `raga` (the existing sets default to Adi and Mayamalavagowla).
-   - The parser takes the tala per set, or per exercise through a header line.
-   - `PerformanceSettings` and the schedule take both from the exercise instead
-     of from defaults.
-   - The type keeps its name for now; renaming it to `Lesson` is churn across
-     both apps that buys nothing yet.
-3. **`Raga` with an ascent and a descent.**
-   - Letters a raga doesn't use (M and N in Mohanam) are absent.
-   - The parser rejects them, so a typo becomes an error instead of a wrong
-     pitch.
-   - Malahari: ascent S R₁ M₁ P D₁ S′, descent S′ D₁ P M₁ G₃ R₁ S. It is a
-     janya of Mayamalavagowla.
-   - The ascent and descent are shown on the player as reference text. The
-     notation is never checked against them, because gitams use phrases that
-     cross the pattern.
-4. **Mandra marker.** Write `Dˌ` (U+02CC after the letter), parsed to
-   `Octave.MANDRA` and displayed with the dot below that `Display` already
-   draws. This settles plan.md's "no mandra marker yet" for written pieces; the
-   unconfirmed Mandhra Sthayi varisais stay excluded.
-   - Pitch check: mandra Pa at the lowest Sa offered (G2) is D2. The harmonium
-     samples start at C2, so it is covered. Tests check every note of every
-     piece at every offered Sa.
-5. **Sahityam (gitams).**
-   - **Grammar:** a lyric line starts with `"` and follows the notation line it
-     belongs to.
-     - It has one token per akshara: a syllable, `-` where the previous
-       syllable continues, or two syllables joined by `·` when an akshara holds
-       two swaras.
-     - The parser checks that the lyric aksharas match the notation aksharas,
-       with errors that give the line and column, as today.
-   - **Display:** Latin transliteration with diacritics (*śrī gaṇanātha*).
-   - **Screen readers:** a plain ASCII form (*sri gananatha*), because diacritics
-     are read badly by TalkBack and VoiceOver voices.
-6. **Catalog and teaching order.**
-   - New sets: `ALANKARAM` (7 exercises) and `GITAM` (the first four or five,
-     see Q3), after Dhattu.
-   - Ids look like `alankaram-dhruva` and `gitam-sri-gananatha`.
-     `PracticeHistory` "next up" follows the catalog order, so it extends
-     without changes.
-   - Each notation file carries a header comment with the source and a
-     verbatim-copy note, like the varisai files.
-7. **Credits.**
-   - The compositions are traditional, and Purandara Dasa (1484–1564) is long
-     in the public domain.
-   - Each source of notation and words gets a line in ATTRIBUTION.md in the same
-     change, per the credit rule.
-
-## App changes (both platforms)
-
-- **Landing page:** two more set sections, each with its description and the
-  existing contour rows. A gitam row also shows its raga and tala.
-- **Player:**
-  - The heading shows the raga and tala ("Malahari · Rupaka").
-  - The tala strip takes any length. At large text it wraps by anga instead of
-    shrinking.
-  - The notation shows the words under the swaras.
-  - A **Swaras / Words / Both** choice is offered (default: Both).
-  - Speed (kala 1–4), count-in, repeat, sing-along and strictness all work
-    unchanged.
-- **Sing-along:**
-  - Scoring is per note, as today. Gitams have gamakas the harmonium doesn't
-    play, so a held, oscillated note can read as off.
-  - The guide will say this, and suggest Gentle strictness for gitams. Q5 asks
-    whether the app should do more.
-- **Accessibility:**
-  - Each avarta's label adds the words after the swaras, for example
-    "S R M P, hold, words: sri gana natha".
-  - Long-tala strips keep their per-beat labels.
-  - New AccessibilityTest cases on Android and audit tests on iOS cover a
-    14-beat tala and a gitam screen.
-- **Website guide:** new pages *Alankarams* and *Gitams*, a talas section, and
-  credits.
-
-## Milestones
-
-| # | Milestone | Done when |
-|---|---|---|
-| A1 | Shared: anga-based `Tala` and the seven talas; per-exercise tala and raga; `Raga` with optional letters, ascent and descent; mandra marker | jvmTest: tala table, Adi unchanged, schedules for 7/10/14-akshara talas at every kala, mandra parses and plays in sample range |
-| A2 | Alankarams: catalog, landing section, player heading, any-length tala strip, on both apps | Both apps play all seven in tala; a11y tests pass; iPad install |
-| G1 | Shared: sahitya grammar and parser checks, Malahari, gitam catalog | jvmTest: every gitam parses, lyric/notation alignment, ASCII spoken form |
-| G2 | Gitams in both apps: words under swaras, the Swaras / Words / Both choice, a11y labels; website guide pages; docs | Both apps play the gitams with words following; audits pass; site updated |
-
-A1 and A2 ship alankarams on their own. Gitams follow.
-
 ## Source review: karnatik.com (2026-11-06)
 
 **Alankarams** ([lesson 6](https://karnatik.com/lesson6.shtml))
@@ -169,7 +332,7 @@ A1 and A2 ship alankarams on their own. Gitams follow.
   - The only error is the page header, which says "taaLam: aadi". It is a
     template leftover and can be ignored.
 - **An eighth alankaram:** Sankeerna jati Eka (9 beats), in two versions.
-  It is optional (Q7).
+  Not included (decided: the traditional seven).
 
 **Gitams** ([index](https://karnatik.com/geetams.shtml))
 
@@ -181,8 +344,7 @@ A1 and A2 ship alankarams on their own. Gitams follow.
     gitam.
   - [Kereya Nīranu](https://karnatik.com/c1808.shtml): Tisra Triputa.
   - [Padumanābha](https://karnatik.com/c1809.shtml): Tisra Triputa.
-- **Talas:** Rupaka is written `2 | 4 ||` (drutam first) here too, so Q6 is
-  settled for this source.
+- **Talas:** Rupaka is written `2 | 4 ||` (drutam first) here too.
 - **Order:**
   - Śrī Gaṇanātha, Kunda Gaura and Kereya Nīranu start with *caraṇam 1*, then
     the *pallavi* (the refrain).
@@ -199,8 +361,7 @@ A1 and A2 ship alankarams on their own. Gitams follow.
   - Transcription splits these at syllable boundaries (`naa tha`), and the file
     header records that change.
   - The romanisation is the site's own (`shree`, `gaNanaatha`, capitals for
-    retroflex). The app would show the words in the transliteration chosen in
-    Q4.
+    retroflex). The app writes them in simple Latin (`sri gananatha`).
 
 ## Cross-check: shivkumar.org (2026-11-06)
 
@@ -241,7 +402,7 @@ has, for each of the four Malahari gitams:
   - In Śrī Gaṇanātha's refrain (*lambōdara*), karnatik.com has
     `s r | m , g r ||` (*lam· | bō , da ra*).
   - shivkumar.org has `S , | R M G R ||` (*lam - | bō - dha ra*).
-  - This is a real *pāṭhāntaram*. The recordings or your teacher decide (Q8).
+  - This is a real *pāṭhāntaram*. Decided: karnatik.com's version.
 - **Mistakes in shivkumar.org headers:**
   - Kereya Nīranu and Padumanābha are labelled "Chathurasra Jathi" Triputa,
     but the notation is 3 + 2 + 2 (Tisra). karnatik.com is right.
@@ -276,45 +437,3 @@ varisais that plan.md section 3.4 excludes.
 - Thara 5 reaches P′, which is above the C5 sample ceiling at the higher Sa
   choices.
 - So they stay excluded for now.
-
-## Open questions
-
-1. **Notation source (needed before A2 and G1).** The varisais were copied
-   verbatim from your workbook, which has no alankarams or gitams.
-   karnatik.com is the candidate (see *Source review*), cross-checked against
-   shivkumar.org for the gitams. Only Q8 is open.
-   - Which book or teacher's notes should be the reference?
-   - Gitams have regional variants (*pathantaram*), and the version should
-     match what you are taught.
-   - I won't transcribe from memory or from a random website.
-2. **Alankarams in other ragas?** The patterns are letter-only, so the same
-   seven work in any seven-note raga, such as Shankarabharanam, Kalyani or
-   Kharaharapriya. With the raga model above, the varisais could follow too.
-   - Recommendation: Mayamalavagowla only in A2, with a raga choice as a later,
-     separate plan.
-3. **Which gitams first?** Recommendation: the four Malahari pillari gitams
-   in teaching order:
-   - Śrī Gaṇanātha (Lambōdara is the same gitam)
-   - Kunda Gaura (Mandāra)
-   - Kereya Nīranu
-   - Padumanābha
-
-   Vara Vīṇā (Mohanam) and others later.
-4. **Script for the words.** Recommendation: Latin transliteration first.
-   Kannada script, the original language of most pillari gitams, could be a
-   later option. It needs a bundled font check on both platforms.
-5. **Gamakas.** Should the app only show the gamaka caveat and suggest Gentle,
-   as recommended? The alternative is a per-note "gamaka, judge loosely" flag
-   in the notation. The flag would need a source that marks gamakas.
-6. **Rupaka anga order.** Sapta tala Rupaka is drutam then laghu (x v · x 1 2 3).
-   Many gitam books write it laghu first, but karnatik.com uses drutam first
-   for both alankarams and gitams, so the strip follows that unless your
-   teacher counts it differently.
-7. **Sankeerna Eka alankaram.** Add karnatik.com's eighth alankaram (9 beats),
-   or keep to the traditional seven? Recommendation: the seven.
-8. **Śrī Gaṇanātha refrain.** Which version do you sing:
-   - `S R | M , G R` (karnatik.com)
-   - `S , | R M G R` (shivkumar.org)
-
-   Deepa Krishnamurthy's recording on shivkumar.org, or your teacher, decides.
-   The lower-octave question is settled: both sources agree.
