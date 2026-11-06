@@ -11,8 +11,9 @@ import shared
 /// Public methods are called from the main thread; renderer state is confined
 /// to `queue`.
 final class VarisaiAudioPlayer: @unchecked Sendable {
-    private let engine = AVAudioEngine()
-    private let node = AVAudioPlayerNode()
+    // Replaced (main thread, while stopped) when voice processing goes off.
+    private var engine = AVAudioEngine()
+    private var node = AVAudioPlayerNode()
     private let format: AVAudioFormat
     private let queue = DispatchQueue(label: "purandara.varisai-render", qos: .userInteractive)
 
@@ -34,14 +35,30 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     init() {
         format = AVAudioFormat(standardFormatWithSampleRate: HarmoniumSamples.sampleRate, channels: 1)!
         scratch = KotlinFloatArray(size: Int32(Self.chunkFrames))
-        engine.attach(node)
-        engine.connect(node, to: engine.mainMixerNode, format: format)
+        wireEngine()
         NotificationCenter.default.addObserver(
             self, selector: #selector(audioInterrupted), name: AVAudioSession.interruptionNotification, object: nil)
         NotificationCenter.default.addObserver(
-            self, selector: #selector(audioInterrupted), name: .AVAudioEngineConfigurationChange, object: engine)
-        NotificationCenter.default.addObserver(
             self, selector: #selector(routeChanged), name: AVAudioSession.routeChangeNotification, object: nil)
+    }
+
+    private func wireEngine() {
+        engine.attach(node)
+        engine.connect(node, to: engine.mainMixerNode, format: format)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(audioInterrupted), name: .AVAudioEngineConfigurationChange, object: engine)
+    }
+
+    /// A fresh engine and player node. Switching voice processing off on an
+    /// engine that had it leaves the output silent, so build a new one instead.
+    private func replaceEngine() {
+        engine.stop()
+        NotificationCenter.default.removeObserver(self, name: .AVAudioEngineConfigurationChange, object: engine)
+        engine = AVAudioEngine()
+        node = AVAudioPlayerNode()
+        wireEngine()
+        voiceProcessingOn = false
+        lastReconfigured = CACurrentMediaTime()
     }
 
     /// Starts `renderer` from the beginning. `onFinished` runs on the main
@@ -79,6 +96,9 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
 
     private var micTapInstalled = false
     private var reconfiguring = false
+    private var voiceProcessingOn = false
+    /// When `configure` last changed the session category or voice processing.
+    private var lastReconfigured: CFTimeInterval = 0
 
     private func configure(mic: MicRequest?) throws {
         reconfiguring = true
@@ -89,6 +109,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
             micTapInstalled = false
         }
         let wantRecord = mic != nil
+        if !wantRecord && voiceProcessingOn { replaceEngine() }
         if wantRecord != (session.category == .playAndRecord) {
             engine.stop()
             if wantRecord {
@@ -96,13 +117,17 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
             } else {
                 try session.setCategory(.playback, mode: .default)
             }
+            lastReconfigured = CACurrentMediaTime()
         }
         try session.setActive(true)
         let wantVoiceProcessing = wantRecord && Self.outputIsBuiltInSpeaker()
-        if engine.inputNode.isVoiceProcessingEnabled != wantVoiceProcessing {
+        if voiceProcessingOn && !wantVoiceProcessing { replaceEngine() }
+        if wantVoiceProcessing && !voiceProcessingOn {
             engine.stop()
-            try engine.inputNode.setVoiceProcessingEnabled(wantVoiceProcessing)
-            if wantVoiceProcessing { engine.inputNode.isVoiceProcessingAGCEnabled = false }
+            try engine.inputNode.setVoiceProcessingEnabled(true)
+            voiceProcessingOn = true
+            lastReconfigured = CACurrentMediaTime()
+            engine.inputNode.isVoiceProcessingAGCEnabled = false
         }
         micOnSpeaker = wantVoiceProcessing
         #if DEBUG
@@ -118,11 +143,11 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         }
     }
 
-    /// Called on the main thread when listening can't continue as configured:
-    /// the sound moved between speaker and headphones (echo cancellation no
-    /// longer matches), or iOS stopped the engine to rebuild its audio I/O
-    /// (it does so just after voice processing is first switched on). The
-    /// caller restarts playback, which configures everything afresh.
+    /// Called on the main thread when playback can't continue as configured:
+    /// while listening, the sound moved between speaker and headphones (echo
+    /// cancellation no longer matches); or iOS stopped the engine to rebuild
+    /// its audio I/O, which it does just after voice processing or the session
+    /// category changes. The caller restarts playback, configuring afresh.
     var onRestartNeeded: (@MainActor () -> Void)?
 
     /// True when the last `play` with a mic sent sound to the built-in speaker (echo cancellation on).
@@ -254,9 +279,13 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     @objc private func audioInterrupted(_ notification: Notification) {
         // Our own category / voice-processing changes post configuration changes too.
         if notification.name == .AVAudioEngineConfigurationChange && (reconfiguring || !isPlaying) { return }
-        if notification.name == .AVAudioEngineConfigurationChange && micTapInstalled {
+        // iOS rebuilds the engine's I/O shortly after our own category or voice
+        // processing changes (and the engine stops): restart rather than give up.
+        // Likewise while listening, where the route decides echo cancellation.
+        let ownChange = CACurrentMediaTime() - lastReconfigured < 2
+        if notification.name == .AVAudioEngineConfigurationChange && (micTapInstalled || ownChange) {
             #if DEBUG
-            print("[player] engine configuration changed while listening: restarting")
+            print("[player] engine configuration changed (listening \(micTapInstalled), own change \(ownChange)): restarting")
             #endif
             DispatchQueue.main.async { self.onRestartNeeded?() }
             return

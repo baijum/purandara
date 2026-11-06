@@ -86,7 +86,7 @@ final class PracticeViewModel: ObservableObject {
         syntheticSingerCents = nil
         #endif
         singAlong.micPermitted = Self.micAuthorized()
-        player.onRestartNeeded = { [weak self] in self?.restartListening() }
+        player.onRestartNeeded = { [weak self] in self?.restartPlayback() }
         guard loadSamples else { return }
         Task.detached(priority: .userInitiated) {
             do {
@@ -159,10 +159,10 @@ final class PracticeViewModel: ObservableObject {
         }
     }
 
-    /// The player can't keep listening as configured (route change, or iOS
-    /// rebuilt the audio engine): start again so echo cancellation and the
-    /// count-in leakage measurement match. At most a few times in quick succession.
-    private func restartListening() {
+    /// The player can't continue as configured (route change while listening,
+    /// or iOS rebuilt the audio engine): start again so echo cancellation and
+    /// the count-in leakage measurement match. At most a few times in quick succession.
+    private func restartPlayback() {
         guard let current, playback.playing else { return }
         let now = Date()
         recentRestarts = recentRestarts.filter { now.timeIntervalSince($0) < 10 } + [now]
