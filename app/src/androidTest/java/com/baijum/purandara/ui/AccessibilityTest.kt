@@ -228,7 +228,7 @@ class AccessibilityTest {
         showLibrary()
         val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
         compose.onNode(hasText("Plain scale", substring = true) and heading).assertExists()
-        compose.onNode(hasText("Your Sa") and heading).assertExists()
+        compose.onNode(hasText("Your Sa (Shruthi)") and heading).assertExists()
         compose.onNode(hasText("Start here") and heading).assertExists()
     }
 

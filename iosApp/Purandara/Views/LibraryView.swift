@@ -152,7 +152,7 @@ struct LibraryView: View {
             }
             .padding(.vertical, 2)
         } header: {
-            Text("Your Sa")
+            Text("Your Sa (Shruthi)")
                 .foregroundStyle(Color.subdued)
                 .accessibilityAddTraits(.isHeader)
         }
