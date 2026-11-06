@@ -61,6 +61,7 @@ features speculatively.
 | `iosApp/Purandara/Audio/PitchListener.swift` | Mic tap buffers (on the player's engine, for echo cancellation) → windows → pitch frames; debug synthetic singer. Used by `SingAlongEngine`, Shruti practice and Find my Sa |
 | `shared/.../singalong/Display.kt` | Swara labels (R₁, S′) and mark glyphs shared by both apps |
 | `shared/src/iosMain/.../audio/FloatBridge.kt` | Bulk float copies between Swift buffers and Kotlin arrays |
+| `site/` | The end-user website and guide (https://baijum.github.io/purandara/): `pages/` HTML fragments with front matter, `templates/`, `static/` (CSS, the hero script, self-hosted fonts, app screenshots), `build.py` (standard library only) → `site/_build`. Published to GitHub Pages by `.github/workflows/site.yml`. Keep the guide in step with the app when features change. |
 
 Swift interop notes: Kotlin default arguments are not visible from Swift (use the
 small factories such as `PerformanceSettings.create(...)`, `RenderOptions.practice(...)`);

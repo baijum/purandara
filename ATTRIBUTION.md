@@ -73,6 +73,24 @@ Thank you, Sankalp Gulati, for recording and sharing this tanpura.
 
 The iOS app uses Apple's SF Symbols from the system; none are bundled.
 
+## Website (`site/`)
+
+### Rozha One (`site/static/fonts/rozha-one-400.woff2`)
+
+- **Author:** Indian Type Foundry
+- **License:** [SIL Open Font License 1.1](site/static/fonts/OFL-RozhaOne.txt)
+- **Use:** display type on the website, served from the site itself. Latin
+  subset as distributed by Google Fonts, unchanged.
+
+### Mukta (`site/static/fonts/mukta-*.woff2`)
+
+- **Author:** Girish Dalvi, Ek Type
+- **License:** [SIL Open Font License 1.1](site/static/fonts/OFL-Mukta.txt)
+- **Use:** body text on the website (weights 400, 600, 700), served from the
+  site itself. Latin subset as distributed by Google Fonts, unchanged.
+
+The website's screenshots are of Purandara itself.
+
 ## Code
 
 Pitch detection (`shared/.../pitch/`), the neural supervisors and parts of

@@ -2,6 +2,8 @@
 
 A free, fully offline companion app for practising Carnatic music, for Android and iOS.
 
+**Website and user guide:** https://baijum.github.io/purandara/
+
 It's named after **Purandara Dasa** (1484–1564), who is revered as the *Pitamaha*
 (grandfather) of Carnatic music. He wrote the graded lessons that students
 still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *gitams*.
@@ -49,6 +51,7 @@ audio/          Bundled samples, shared by both apps (Android assets, iOS bundle
 models/         SwiftF0 pitch model (ONNX), shared by both apps
 tools/samples/  Offline scripts that prepare audio/ from source recordings
 docs/           Feature plans
+site/           The website and user guide (python3 site/build.py; published by .github/workflows/site.yml)
 ```
 
 ## Sound

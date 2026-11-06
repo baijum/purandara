@@ -21,3 +21,4 @@ iosApp/DerivedData/
 *.xcuserdata
 xcuserdata/
 iosApp/Frameworks/
+/site/_build/

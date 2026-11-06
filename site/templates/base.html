@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}}</title>
+<meta name="description" content="{{description}}">
+<meta property="og:title" content="{{title}}">
+<meta property="og:description" content="{{description}}">
+<meta name="theme-color" content="#6B1E2E">
+<link rel="icon" href="{{root}}favicon.svg" type="image/svg+xml">
+<link rel="preload" href="{{root}}fonts/rozha-one-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="{{root}}fonts/mukta-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="{{root}}style.css">
+</head>
+<body class="{{bodyclass}}">
+<a class="skip" href="#main">Skip to content</a>
+<header class="masthead">
+  <div class="wrap masthead-inner">
+    <a class="wordmark" href="{{root}}index.html">Purandara</a>
+    <nav aria-label="Site">
+      <ul>
+        <li><a href="{{root}}guide/index.html">Guide</a></li>
+        <li><a href="{{root}}index.html#get-the-app">Get the app</a></li>
+        <li><a href="https://github.com/baijum/purandara">Source code</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+{{body}}
+<footer class="colophon">
+  <div class="zari" aria-hidden="true"></div>
+  <div class="wrap colophon-inner">
+    <p class="dedication">Named after Purandara Dasa (1484–1564), revered as the <i>Pitamaha</i> of Carnatic music. He composed the graded lessons that students still begin with: sarali varisai, janta varisai, alankarams and gitams.</p>
+    <ul class="colophon-links">
+      <li><a href="{{root}}guide/index.html">Guide</a></li>
+      <li><a href="{{root}}guide/privacy.html">Privacy</a></li>
+      <li><a href="{{root}}guide/credits.html">Credits</a></li>
+      <li><a href="https://github.com/baijum/purandara">Source code (MIT)</a></li>
+    </ul>
+  </div>
+</footer>
+</body>
+</html>
