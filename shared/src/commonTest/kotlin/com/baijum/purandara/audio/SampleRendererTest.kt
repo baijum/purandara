@@ -319,6 +319,19 @@ class SampleRendererTest {
     }
 
     @Test
+    fun droneOnlyPlaysTheTanpuraAloneWithoutEnding() {
+        val s = Schedule.of(VarisaiCatalog.byId("plain-scale-1")!!, PerformanceSettings(saHz = Pitch.midiToHz(49)))
+        val r = SampleRenderer(tanpuraBank(), s, RenderOptions.droneOnly(droneLevel = 1f))
+        assertEquals(Long.MAX_VALUE, r.totalFrames, "loops until faded out")
+        // Well past one pass of the exercise: still the drone at Sa, and nothing else.
+        val out = renderFrames(r, r.performanceFrames + 10 * sr)
+        val from = r.performanceFrames
+        val hz = frequencyByZeroCrossings(out, from, from + 5 * sr)
+        assertTrue(abs(Pitch.cents(Pitch.midiToHz(49), hz)) < 1.0, "drone at $hz Hz")
+        assertTrue(rmsDb(out, from, from + 5 * sr) > -30.0)
+    }
+
+    @Test
     fun withoutTanpuraLoopsTheHarmoniumDronePlays() {
         val s = schedule("plain-scale-1")
         val r = SampleRenderer(sineBank, s, RenderOptions(harmoniumGain = 0f, drone = true, droneGain = 1f))

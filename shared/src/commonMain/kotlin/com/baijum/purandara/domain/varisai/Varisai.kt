@@ -45,14 +45,14 @@ data class Avarta(val aksharas: List<Akshara>) {
         }.joinToString("")
 }
 
-/** The graded exercise sets, in teaching order. */
-enum class VarisaiSet(val title: String) {
-    PLAIN_SCALE("Plain scale"),
-    SARALI("Sarali Varisai"),
-    MADHYA_STHAYI("Madhya Sthayi Varisai"),
-    JANTA("Janta Varisai"),
-    VAKRA_JANTA("Vakra Janta Varisai"),
-    DHATTU("Dhattu Varisai"),
+/** The graded exercise sets, in teaching order, with what each trains (from the workbook). */
+enum class VarisaiSet(val title: String, val description: String) {
+    PLAIN_SCALE("Plain scale", "The seven swaras up and down: settle each one against the tanpura."),
+    SARALI("Sarali Varisai", "A short figure set against the plain ascent and descent: steady pitch, even timing."),
+    MADHYA_STHAYI("Madhya Sthayi Varisai", "Longer figures across the octave: later, teacher-guided studies."),
+    JANTA("Janta Varisai", "Each swara sung as a pair: clean, even repeated notes."),
+    VAKRA_JANTA("Vakra Janta Varisai", "Paired notes in zigzags: find the next note without sliding."),
+    DHATTU("Dhattu Varisai", "Leaps over a note and back: reach a distant pitch without sliding."),
 }
 
 /** One numbered exercise. */

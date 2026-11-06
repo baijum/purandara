@@ -78,6 +78,17 @@ data class RenderOptions(
             loop = loop,
             countIn = countIn,
         )
+
+        /**
+         * The tanpura alone, looping until faded out, for tuning the voice
+         * before practice: render with any schedule at the student's Sa.
+         */
+        fun droneOnly(droneLevel: Float): RenderOptions = RenderOptions(
+            harmoniumGain = 0f,
+            drone = true,
+            droneGain = MAX_DRONE_GAIN * droneLevel.coerceIn(0f, 1f),
+            loop = true,
+        )
     }
 }
 
@@ -231,6 +242,8 @@ class SampleRenderer(
     }
 
     private fun buildVoices(): List<Voice> {
+        // A silent harmonium (guide off, drone only) needs no voices at all.
+        if (options.harmoniumGain == 0f) return emptyList()
         val legato = framesOf(options.legatoSeconds, sampleRate)
         val notes = schedule.notes
         return notes.mapIndexed { i, note ->
