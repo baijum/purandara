@@ -52,6 +52,9 @@ android {
 
     buildTypes {
         release {
+            // Phones only: x86/x86_64 ONNX Runtime libraries (~39 MB each) are
+            // for emulators, which run debug builds.
+            ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -77,13 +80,15 @@ android {
         getByName("main") {
             // Bundled samples live once at the repo root and are shared with iOS.
             assets.directories.add(rootProject.file("audio").path)
+            // SwiftF0 pitch model (approved exception, see AGENTS.md).
+            assets.directories.add(rootProject.file("models").path)
         }
     }
 
     androidResources {
         // FLAC is already compressed; storing it uncompressed lets SoundPool /
         // AssetManager.openFd() read samples directly from the APK.
-        noCompress += "flac"
+        noCompress += listOf("flac", "onnx")
     }
 
     packaging {
@@ -106,6 +111,7 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.core.ktx)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.onnxruntime.android)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

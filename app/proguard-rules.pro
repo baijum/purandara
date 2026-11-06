@@ -18,3 +18,7 @@
 -keepclasseswithmembers class com.baijum.purandara.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+# ONNX Runtime (JNI looks classes up by name)
+-keep class ai.onnxruntime.** { *; }
+-keepclassmembers class ai.onnxruntime.** { *; }

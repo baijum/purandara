@@ -108,3 +108,34 @@ final class PracticeViewModelTests: XCTestCase {
         XCTAssertEqual(vm.catalog.count, 37)
     }
 }
+
+final class NeuralPitchSupervisorTests: XCTestCase {
+    private func voice(_ f0: Double, rate: Double, count: Int = 4096) -> KotlinFloatArray {
+        var samples = [Float](repeating: 0, count: count)
+        for i in 0..<count {
+            var v = 0.0
+            for h in 1...8 { v += sin(2 * Double.pi * Double(h) * f0 * Double(i) / rate) / Double(h) }
+            samples[i] = Float(0.3 * v / 2.7)
+        }
+        return samples.withUnsafeMutableBufferPointer {
+            FloatBridge.shared.toFloatArray(source: UnsafeMutableRawPointer($0.baseAddress!), count: Int32(count))
+        }
+    }
+
+    func testRunsTheBundledModelAcrossTheRange() throws {
+        for rate in [44_100.0, 48_000.0] {
+            let supervisor = try XCTUnwrap(NeuralPitchSupervisor(captureSampleRate: Int32(rate)), "model failed to load")
+            for f0 in [98.0, 146.83, 220.0, 392.0, 659.26] {
+                let result = try XCTUnwrap(supervisor.estimate(voice(f0, rate: rate)), "\(f0) Hz at \(rate)")
+                let cents = 1200 * log2(result.frequencyHz / f0)
+                XCTAssertLessThan(abs(cents), 100, "\(f0) Hz read \(result.frequencyHz)")
+                XCTAssertGreaterThanOrEqual(result.confidence, NeuralPitchSupervisor.minConfidence)
+            }
+        }
+    }
+
+    func testSilenceGivesNoEstimate() throws {
+        let supervisor = try XCTUnwrap(NeuralPitchSupervisor(captureSampleRate: 44_100))
+        XCTAssertNil(supervisor.estimate(KotlinFloatArray(size: 4096)))
+    }
+}

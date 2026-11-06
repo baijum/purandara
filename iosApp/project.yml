@@ -31,6 +31,14 @@ targets:
       - path: ../audio
         type: folder
         buildPhase: resources
+      # SwiftF0 pitch model, shared with Android (models/swift_f0_model.onnx).
+      - path: ../models
+        type: folder
+        buildPhase: resources
+    dependencies:
+      # Static ONNX Runtime C framework; fetched by setup_onnxruntime.sh.
+      - framework: Frameworks/onnxruntime.xcframework
+        embed: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.baijum.purandara.ios

@@ -47,6 +47,7 @@ for the recordings' credits, and `tools/samples/prepare_harmonium.py` to rebuild
 ./gradlew lintDebug detekt
 
 # iOS (the Xcode build phase compiles the shared framework automatically)
+bash iosApp/setup_onnxruntime.sh # once: fetches the ONNX Runtime xcframework (checksummed)
 cd iosApp && xcodegen generate   # only needed after adding/removing files
 xcodebuild -project iosApp/Purandara.xcodeproj -scheme Purandara \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build test

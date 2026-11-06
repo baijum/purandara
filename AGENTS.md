@@ -81,6 +81,7 @@ Keep feature parity between Android and iOS. Every user-visible feature should l
 ./gradlew :shared:jvmTest          # shared logic tests
 ./gradlew testDebugUnitTest        # Android unit tests
 ./gradlew assembleDebug lintDebug detekt
+bash iosApp/setup_onnxruntime.sh   # once, before the first iOS build
 cd iosApp && xcodegen generate     # after adding/removing Swift files
 xcodebuild -project iosApp/Purandara.xcodeproj -scheme Purandara \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test

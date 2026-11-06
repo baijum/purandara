@@ -9,9 +9,12 @@
 /* Begin PBXBuildFile section */
 		0296579E3B2E308DB06B5A52 /* HarmoniumSamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */; };
 		124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27118B7E3E2165E03506755 /* LibraryView.swift */; };
+		1AF67FF2548AEBD63FC3668E /* NeuralPitchSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */; };
 		20652ABAADD16B8AEC84E47A /* VarisaiAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */; };
 		3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC4E97700204636916DBA862 /* PracticeViewModel.swift */; };
 		40BDEF4DD4F2AB7BFFA9A483 /* SharedFrameworkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */; };
+		517D5DDFB720C0F8694AA932 /* models in Resources */ = {isa = PBXBuildFile; fileRef = B293CC2A0F44DA8FA17324B2 /* models */; };
+		6E156FF71407AFDB27CB73C6 /* onnxruntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C4C4F762B6B0F60ADE2A6A72 /* onnxruntime.xcframework */; };
 		7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C9FF674A7F91662569737F /* PracticeSettings.swift */; };
 		7E5B9A9F2648990917F1D608 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE6BE56662F27C8F99F8397 /* PlayerView.swift */; };
 		80064C7F88A31F3EA3D5E83D /* audio in Resources */ = {isa = PBXBuildFile; fileRef = 88C8E5DD4E7C3B504D0222BD /* audio */; };
@@ -49,8 +52,11 @@
 		88C8E5DD4E7C3B504D0222BD /* audio */ = {isa = PBXFileReference; lastKnownFileType = folder; name = audio; path = ../audio; sourceTree = SOURCE_ROOT; };
 		8A18B2D52EAB6EBCA1269A1B /* PracticeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeTests.swift; sourceTree = "<group>"; };
 		8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedFrameworkTests.swift; sourceTree = "<group>"; };
+		95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeuralPitchSupervisor.swift; sourceTree = "<group>"; };
 		9DE6BE56662F27C8F99F8397 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
+		B293CC2A0F44DA8FA17324B2 /* models */ = {isa = PBXFileReference; lastKnownFileType = folder; name = models; path = ../models; sourceTree = SOURCE_ROOT; };
 		C27118B7E3E2165E03506755 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		C4C4F762B6B0F60ADE2A6A72 /* onnxruntime.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = onnxruntime.xcframework; path = Frameworks/onnxruntime.xcframework; sourceTree = "<group>"; };
 		C5FBDB9CFC6E06CA052AF937 /* PurandaraUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurandaraUITests.swift; sourceTree = "<group>"; };
 		DC4E97700204636916DBA862 /* PracticeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeViewModel.swift; sourceTree = "<group>"; };
 		DDFC0C5EDFBE869CD6F297C5 /* PurandaraUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PurandaraUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -59,6 +65,17 @@
 		F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarmoniumSamples.swift; sourceTree = "<group>"; };
 		FE49BD3C45C04B12B704AEB6 /* Purandara.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Purandara.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FDAF6D34D4887A89021D9B7B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6E156FF71407AFDB27CB73C6 /* onnxruntime.xcframework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		200899EE541578103020FB1F /* Purandara */ = {
@@ -78,6 +95,7 @@
 			isa = PBXGroup;
 			children = (
 				F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */,
+				95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */,
 				6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */,
 			);
 			path = Audio;
@@ -111,6 +129,14 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		6584C379CF43A65F9C6DCDB2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				C4C4F762B6B0F60ADE2A6A72 /* onnxruntime.xcframework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		6E0A2BAEE3829E604C2F7270 /* Models */ = {
 			isa = PBXGroup;
 			children = (
@@ -126,6 +152,7 @@
 				F932E3060006E76C24C70E79 /* purandara */,
 				56F2366A27BEA58DF2DA7A03 /* PurandaraTests */,
 				A2831EE11FBC0B4C83A9E3BC /* PurandaraUITests */,
+				6584C379CF43A65F9C6DCDB2 /* Frameworks */,
 				CE23137C8034E2553F8BE59E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -152,6 +179,7 @@
 			isa = PBXGroup;
 			children = (
 				88C8E5DD4E7C3B504D0222BD /* audio */,
+				B293CC2A0F44DA8FA17324B2 /* models */,
 			);
 			name = purandara;
 			path = ..;
@@ -203,6 +231,7 @@
 				2F0FA62C09B57D4E26277525 /* Compile Kotlin Framework */,
 				CD7AC8E2D19C071E54642D74 /* Sources */,
 				B092D17F51F95D3DC6DB5775 /* Resources */,
+				FDAF6D34D4887A89021D9B7B /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -260,6 +289,7 @@
 			files = (
 				AB6CC5F96BEB624359C2D520 /* Assets.xcassets in Resources */,
 				80064C7F88A31F3EA3D5E83D /* audio in Resources */,
+				517D5DDFB720C0F8694AA932 /* models in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -312,6 +342,7 @@
 				BF08A74FECBA0408C6B1285C /* Colors.swift in Sources */,
 				0296579E3B2E308DB06B5A52 /* HarmoniumSamples.swift in Sources */,
 				124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */,
+				1AF67FF2548AEBD63FC3668E /* NeuralPitchSupervisor.swift in Sources */,
 				FC3F796F00AA989D622B24F0 /* NotationView.swift in Sources */,
 				7E5B9A9F2648990917F1D608 /* PlayerView.swift in Sources */,
 				7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */,
@@ -438,6 +469,10 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Frameworks\"",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Purandara;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -572,6 +607,10 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Frameworks\"",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Purandara;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

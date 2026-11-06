@@ -36,3 +36,4 @@
 
 # Audio
 *.flac binary
+*.onnx binary

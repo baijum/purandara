@@ -20,3 +20,4 @@ iosApp/build/
 iosApp/DerivedData/
 *.xcuserdata
 xcuserdata/
+iosApp/Frameworks/

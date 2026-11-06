@@ -23,3 +23,32 @@ here, including public-domain (CC0) ones that do not legally require it.
   [`tools/samples/prepare_harmonium.py`](tools/samples/prepare_harmonium.py).
 
 Thank you, donyaquick and cabled_mess, for sharing these recordings.
+
+## Machine learning model
+
+### SwiftF0 (`models/swift_f0_model.onnx`)
+
+- **Author:** [lars76](https://github.com/lars76)
+- **Source:** [github.com/lars76/swift-f0](https://github.com/lars76/swift-f0);
+  paper: Nieradzik, "SwiftF0", [arXiv:2508.18440](https://arxiv.org/abs/2508.18440)
+- **License:** [MIT](https://opensource.org/licenses/MIT)
+- **Use:** monophonic pitch estimation that checks the YIN detector during
+  sing-along (mainly correcting octave errors). Bundled unchanged; runs
+  fully offline.
+
+## Runtime libraries
+
+### ONNX Runtime
+
+- **Author:** [Microsoft](https://github.com/microsoft/onnxruntime)
+- **License:** [MIT](https://opensource.org/licenses/MIT)
+- **Use:** runs the SwiftF0 model. Android: `com.microsoft.onnxruntime:onnxruntime-android`.
+  iOS: the ONNX Runtime C xcframework, downloaded at build time by
+  `iosApp/setup_onnxruntime.sh` (checksummed).
+
+## Code
+
+Pitch detection (`shared/.../pitch/`), the neural supervisors and parts of
+the audio capture are ported from the author's own
+[Ukulele Companion](https://github.com/baijum/ukulele-companion) (MIT).
+

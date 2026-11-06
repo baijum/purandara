@@ -29,6 +29,13 @@ jobs:
         with:
           path: ~/.konan
           key: konan-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+      - name: Cache ONNX Runtime xcframework
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: iosApp/Frameworks
+          key: onnxruntime-${{ hashFiles('iosApp/setup_onnxruntime.sh') }}
+      - name: Download ONNX Runtime (checksummed)
+        run: bash iosApp/setup_onnxruntime.sh
       - name: Build and test
         run: |
           SIM=$(xcrun simctl list devices available iPhone -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for r in d.values() for x in r))")
