@@ -13,9 +13,11 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
 
 ## Features
 
-- **Varisai player:** 37 graded exercises (plain scale, Sarali, Madhya Sthayi,
-  Janta, Vakra Janta and Dhattu varisai) played on a harmonium in tala over a
-  real tanpura, with the cursor following the notation and a tala strip.
+- **Varisai player:** 44 graded exercises (plain scale, Sarali, Madhya Sthayi,
+  Janta, Vakra Janta and Dhattu varisai in Adi tala, and the seven sapta tala
+  alankarams) played on a harmonium in tala over a real tanpura, with the
+  cursor following the notation and a tala strip whose clap, finger count and
+  wave each have their own click.
   Choose your Sa (kattai, fine-tune ±50 cents), tempo, speed (kala), tuning
   (just or equal), count-in, tala click and looping.
 - **Sing-along:** sing with an exercise and see your pitch as you go. Each

@@ -93,6 +93,7 @@
     <string name="karvai_spoken">hold</string>
     <string name="notation">Notation</string>
     <string name="tala_label">%1$s tala: %2$s</string>
+    <string name="raga_tala">%1$s · %2$s tala</string>
     <string name="clap">clap</string>
     <string name="wave">wave</string>
     <string name="practice_settings">Practice settings</string>

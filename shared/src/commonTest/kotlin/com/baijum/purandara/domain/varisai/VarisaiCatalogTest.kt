@@ -1,7 +1,9 @@
 package com.baijum.purandara.domain.varisai
 
 import com.baijum.purandara.domain.Octave
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.SwaraLetter
+import com.baijum.purandara.domain.Tala
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -24,9 +26,10 @@ class VarisaiCatalogTest {
             VarisaiSet.JANTA to 7,
             VarisaiSet.VAKRA_JANTA to 2,
             VarisaiSet.DHATTU to 6,
+            VarisaiSet.ALANKARAM to 7,
         )
         assertEquals(expected, VarisaiSet.entries.associateWith { VarisaiCatalog.inSet(it).size })
-        assertEquals(37, VarisaiCatalog.all.size)
+        assertEquals(44, VarisaiCatalog.all.size)
     }
 
     @Test
@@ -38,10 +41,42 @@ class VarisaiCatalogTest {
     }
 
     @Test
-    fun everyAvartaIsOneAdiCycle() {
+    fun everyAvartaIsOneCycleOfItsTala() {
         VarisaiCatalog.all.forEach { v ->
-            v.avartas.forEach { assertEquals(8, it.aksharas.size, "${v.id}: $it") }
+            v.avartas.forEach { assertEquals(v.tala.aksharas, it.aksharas.size, "${v.id}: $it") }
         }
+        // The varisais are all in Adi tala.
+        VarisaiCatalog.all.filter { it.set != VarisaiSet.ALANKARAM }.forEach { assertEquals(Tala.ADI, it.tala, it.id) }
+    }
+
+    @Test
+    fun alankaramsAreTheSevenSaptaTalasClimbingAndDescending() {
+        val alankarams = VarisaiCatalog.inSet(VarisaiSet.ALANKARAM)
+        assertEquals(
+            listOf("dhruva-4", "matya-4", "rupaka-4", "jhampa-7", "triputa-3", "ata-5", "eka-4"),
+            alankarams.map { it.tala.key },
+        )
+        assertEquals("Alankaram 1 · Dhruva tala", alankarams.first().title)
+        alankarams.forEach { v ->
+            assertEquals(Raga.MAYAMALAVAGOWLA, v.raga)
+            assertEquals(10, v.avartas.size, v.id)
+            // Each avarta starts one step higher for five avartas, then one lower from upper Sa.
+            val starts = v.avartas.map { (it.aksharas.first() as Akshara.Swaras).swaras.first().toString() }
+            assertEquals(listOf("S", "R", "G", "M", "P", "S′", "N", "D", "P", "M"), starts, v.id)
+            assertEquals("S", v.avartas.last().aksharas.last { it is Akshara.Swaras }.toString(), v.id)
+        }
+    }
+
+    @Test
+    fun alankaramGoldens() {
+        fun a(n: Int) = VarisaiCatalog.byId("alankaram-$n")!!.avartas
+        assertEquals("S R G M G R S R G R S R G M", a(1).first().toString())
+        assertEquals("M G R G M G M G R S", a(2).last().toString())
+        assertEquals("S R S R G M", a(3).first().toString())
+        assertEquals("S R G S R S R G M ,", a(4).first().toString())
+        assertEquals("M G R M G R S", a(5).last().toString())
+        assertEquals("S R , G , S , R G , M , M ,", a(6).first().toString())
+        assertEquals("M G R S", a(7).last().toString())
     }
 
     @Test

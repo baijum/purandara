@@ -144,7 +144,7 @@ class ScheduleTest {
             val last = s.notes.last()
             assertEquals(s.durationSeconds, last.startSeconds + last.durationSeconds, 1e-9)
             assertEquals(s.durationSeconds, s.beats.size * s.settings.talaAksharaSeconds, 1e-9)
-            assertEquals(0, s.beats.size % 8, "${v.id} kala $kala ends mid-avarta")
+            assertEquals(0, s.beats.size % v.tala.aksharas, "${v.id} kala $kala ends mid-avarta")
         }
     }
 

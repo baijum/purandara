@@ -103,6 +103,34 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
+    /// Long talas wrap onto two rows; the strip and each avarta still read as one element.
+    func testLongTalaPlayersPassAccessibilityAudit() throws {
+        let app = launch(["-open", "alankaram-1"])
+        XCTAssertTrue(app.navigationBars["Alankaram 1"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Mayamalavagowla · Dhruva tala"].exists)
+        XCTAssertTrue(app.otherElements["Dhruva tala: clap 1 2 3, clap wave, clap 1 2 3, clap 1 2 3"].exists)
+        XCTAssertTrue(app.otherElements["Avarta 1: S R G M, G R, S R G R, S R G M"].exists)
+        try audit(app, longNotation: true)
+        app.terminate()
+
+        let jhampa = launch(["-open", "alankaram-4"])
+        XCTAssertTrue(jhampa.navigationBars["Alankaram 4"].waitForExistence(timeout: 5))
+        XCTAssertTrue(jhampa.otherElements["Avarta 1: S R G S R S R, G, M hold"].exists)
+        try audit(jhampa, longNotation: true)
+    }
+
+    /// Exercises longer than the screen: rows pushed off screen by larger text
+    /// must still scale, and a long set name must fit the top bar.
+    func testLongExercisePlayersPassAccessibilityAudit() throws {
+        let app = launch(["-open", "vakra-janta-1"])
+        XCTAssertTrue(app.navigationBars["Vakra Janta 1"].waitForExistence(timeout: 5))
+        try audit(app, longNotation: true)
+        app.terminate()
+        let madhya = launch(["-open", "madhya-sthayi-1"])
+        XCTAssertTrue(madhya.navigationBars["Madhya Sthayi 1"].waitForExistence(timeout: 5))
+        try audit(madhya, longNotation: true)
+    }
+
     func testSettingsSheetPassesAccessibilityAudit() throws {
         let app = launch(["-open", "sarali-4"])
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
@@ -137,17 +165,37 @@ final class PurandaraUITests: XCTestCase {
 
     /// Runs the audit and names each offending element in the failure.
     ///
-    /// One deliberate exception: Dynamic Type warnings on single notation
-    /// swaras ("S", "R", "S′"…). Eight columns must fit across the screen, so a
-    /// swara grows with the text size until it fills its column, then shrinks
+    /// One deliberate exception: Dynamic Type warnings on notation cells
+    /// (a swara "S′", a pair "DD", a karvai ","). Up to nine columns must fit
+    /// across the screen, so a cell grows with the text size until it fills its column, then shrinks
     /// rather than being cut off (a design decision: clipped notation dropped
     /// swaras on Android). Verified by screenshot at the largest accessibility
     /// size. Everything else, including these cells' contrast, stays strict.
-    private func audit(_ app: XCUIApplication) throws {
+    ///
+    /// With [longNotation] (exercises taller than the notation area), issues
+    /// on rows outside the visible notation area are ignored: the list keeps
+    /// rows just past the fold loaded, clipped from view, and the audit samples
+    /// the controls drawn over them (false contrast failures) or loses rows
+    /// that larger text pushes below the fold (a Dynamic Type warning with no
+    /// element). Rows inside the visible area are checked as strictly as ever.
+    private func audit(_ app: XCUIApplication, longNotation: Bool = false) throws {
+        let visibleNotation = longNotation ? app.scrollViews["notation"].frame : .zero
         try app.performAccessibilityAudit { issue in
             if issue.auditType == .dynamicType, let label = issue.element?.label,
-               label.range(of: #"^[SRGMPDN]′?$"#, options: .regularExpression) != nil {
+               label.range(of: #"^(([SRGMPDN][′\x{0323}]?)+|,)$"#, options: .regularExpression) != nil {
                 return true // ignored, see above
+            }
+            if longNotation {
+                guard let element = issue.element else {
+                    if issue.auditType == .dynamicType { return true } // a row unloaded below the fold
+                    return false
+                }
+                if visibleNotation.intersects(element.frame) && !visibleNotation.contains(element.frame) {
+                    return true // a row cut by the edge of the notation area
+                }
+                if !visibleNotation.intersects(element.frame) && element.frame.minY > visibleNotation.maxY {
+                    return true // a loaded row below the fold, hidden behind the controls
+                }
             }
             let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)' at \($0.frame)" } ?? "?"
             print("AUDIT: \(issue.compactDescription) — \(element)")

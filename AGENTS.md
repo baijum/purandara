@@ -7,7 +7,8 @@ of Carnatic music.
 **Status:** in active development. Built so far (each planned in `docs/` first):
 the varisai player (`docs/plan.md`), sing-along with pitch feedback
 (`docs/plan-pitch-monitor.md`), the landing page (`docs/plan-landing.md`), and
-Shruti practice, strictness and choosing Sa (`docs/plan-shruti.md`).
+Shruti practice, strictness and choosing Sa (`docs/plan-shruti.md`), and
+the alankarams (`docs/plan-alankaram-gitam.md`, milestones 1–2; gitams next).
 New features are planned and discussed before they are built; do not add
 features speculatively.
 
@@ -140,6 +141,10 @@ off screen fail the Dynamic Type check (and a half-visible row at the bottom edg
 contrast), so keep a screen's first view to a few tall rows; buttons sharing a list row
 need their own button style, and navigation links in one row all open the first, so push
 through the path instead; at accessibility text sizes move secondary panels into the scrolling
-content. The audit helper ignores exactly one thing: Dynamic Type warnings on
-single notation swaras (they shrink to fit their column by design). UI tests
+content. The audit helper ignores two things: Dynamic Type warnings on notation
+cells (swaras, pairs, karvai: they shrink to fit their column by design), and,
+for exercises taller than the screen (`longNotation`), issues on rows outside
+the visible notation area (the lazy list keeps them loaded behind the
+controls). Top-bar titles don't scale, so long ones are cut off: use
+`Varisai.shortTitle` there. UI tests
 launch with `-resetSettings YES` because settings persist between launches.

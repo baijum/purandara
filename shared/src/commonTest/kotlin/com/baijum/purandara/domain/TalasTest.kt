@@ -52,4 +52,17 @@ class TalasTest {
         assertEquals(Talas.all.size, Talas.all.map { it.key }.toSet().size)
         assertNull(Talas.byKey("dhruva"))
     }
+
+    @Test
+    fun longTalasSplitIntoTwoRowsAtAnAngaBoundary() {
+        assertEquals(listOf(0), Tala.ADI.rowStarts)
+        assertEquals(8, Tala.ADI.rowAksharas)
+        assertEquals(listOf(0), Talas.TRIPUTA_TISRA.rowStarts)
+        assertEquals(listOf(0, 6), Talas.DHRUVA.rowStarts)
+        assertEquals(8, Talas.DHRUVA.rowAksharas)
+        assertEquals(listOf(0, 6), Talas.MATYA.rowStarts)
+        assertEquals(listOf(0, 7), Talas.JHAMPA.rowStarts)
+        assertEquals(listOf(0, 5), Talas.ATA.rowStarts)
+        assertEquals(9, Talas.ATA.rowAksharas)
+    }
 }

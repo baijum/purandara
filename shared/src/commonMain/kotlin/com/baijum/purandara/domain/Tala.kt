@@ -63,9 +63,31 @@ class Tala(
             return starts.zipWithNext { a, b -> b - a }
         }
 
+    /**
+     * Where the notation and tala strip start a new row, as akshara indices
+     * (always starting with 0). Talas of up to [ROW_AKSHARAS] beats fit one
+     * row; longer ones split once at the anga boundary that keeps the longer
+     * row shortest (on a tie, the first row is the longer): Dhruva 4+2 | 4+4,
+     * Matya 4+2 | 4, Jhampa 7 | 1+2, Ata 5 | 5+2+2. Both apps use this.
+     */
+    val rowStarts: List<Int>
+        get() {
+            if (aksharas <= ROW_AKSHARAS) return listOf(0)
+            val boundaries = beats.indices.filter { it > 0 && beats[it].startsAnga }
+            val best = boundaries.minWith(compareBy<Int> { maxOf(it, aksharas - it) }.thenByDescending { it })
+            return listOf(0, best)
+        }
+
+    /** Cells in the longest row: the column count both apps lay rows out on. */
+    val rowAksharas: Int
+        get() = (rowStarts + aksharas).zipWithNext { a, b -> b - a }.max()
+
     override fun toString(): String = name
 
     companion object {
+        /** The most aksharas shown in one row of notation. */
+        const val ROW_AKSHARAS: Int = 8
+
         /**
          * A suladi tala: [shape] in angas, with laghus as long as [jati].
          * A laghu is written `x 1 2 …`, a drutam `x v`, an anudrutam `x`.

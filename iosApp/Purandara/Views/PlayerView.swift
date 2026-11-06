@@ -11,7 +11,7 @@ struct PlayerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TalaStripView(beatInAvarta: viewModel.playback.beatInAvarta)
+            TalaStripView(beatInAvarta: viewModel.playback.beatInAvarta, tala: varisai.tala)
                 .padding(.horizontal, 12)
                 // Extra top space: the toolbar's glass shadow otherwise lowers the
                 // contrast of the right-most beat (flagged by the accessibility audit).
@@ -26,7 +26,14 @@ struct PlayerView: View {
                 varisai: varisai,
                 playback: viewModel.playback,
                 marks: viewModel.settings.singAlong ? viewModel.singAlong.marks : [:],
-                header: showPanel && typeSize.isAccessibilitySize ? AnyView(SingAlongPanel(varisai: varisai)) : nil)
+                header: AnyView(VStack(spacing: 8) {
+                    // Raga and tala scroll with the notation, so they never push rows off screen.
+                    Text("\(varisai.raga.name) · \(varisai.tala.name) tala")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.subdued)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if showPanel && typeSize.isAccessibilitySize { SingAlongPanel(varisai: varisai) }
+                }))
                 .frame(maxHeight: .infinity)
             if viewModel.playback.playing {
                 PlaybackStatus(playback: viewModel.playback, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents)
@@ -49,7 +56,9 @@ struct PlayerView: View {
             // Opaque: controls scrolling behind a translucent bar fail contrast checks.
             .background(Color(uiColor: .systemBackground))
         }
-        .navigationTitle(varisai.title)
+        // The short title fits between the back and toolbar buttons; the tala
+        // and raga are shown above the notation.
+        .navigationTitle(varisai.shortTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

@@ -1,16 +1,18 @@
 import SwiftUI
 import shared
 
-/// The exercise as a grid: one row per avarta, eight akshara cells in the
-/// same columns as the tala strip above. The sounding akshara and swara are
-/// highlighted, and the list follows playback. Mirrors Android's `NotationView`.
+/// The exercise as a grid: one block per avarta, its akshara cells in the
+/// same columns as the tala strip above. Talas longer than eight beats wrap
+/// onto two rows at an anga boundary (`Tala.rowStarts`). The sounding akshara
+/// and swara are highlighted, and the list follows playback. Mirrors
+/// Android's `NotationView`.
 struct NotationView: View {
     let varisai: Varisai
     let playback: PlaybackState
     var marks: [MarkKey: NoteResult] = [:]
     /// Optional content scrolled above the rows (the sing-along panel at accessibility text sizes).
     var header: AnyView?
-    private let tala = Tala.companion.ADI
+    private var tala: Tala { varisai.tala }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -34,6 +36,7 @@ struct NotationView: View {
                 }
                 .padding(.horizontal, 12)
             }
+            .accessibilityIdentifier("notation") // UI tests find the visible notation area by it
             .onChange(of: playback.avarta) { avarta in
                 guard let avarta else { return }
                 if reduceMotion {
@@ -56,7 +59,7 @@ extension NotationView {
             if let swaras = (akshara as? AksharaSwaras)?.swaras {
                 text = swaras.enumerated().map { slot, swara in
                     let word = SingAlongText.markWords(marks[MarkKey(avarta: index, akshara: i, slot: slot)])
-                    return word.map { "\(swara.description()) \($0)" } ?? swara.description()
+                    return word.map { "\(swara.spoken()) \($0)" } ?? swara.spoken()
                 }.joined(separator: " ")
             } else {
                 text = hold
@@ -75,21 +78,30 @@ private struct AvartaRow: View {
     let marks: [MarkKey: NoteResult]
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(avarta.aksharas.enumerated()), id: \.offset) { i, akshara in
-                let beat = tala.beats[i]
-                if i > 0 && beat.startsAnga { AngaBar() }
-                AksharaCell(
-                    akshara: akshara,
-                    active: i == activeAkshara,
-                    activeSlot: i == activeAkshara ? activeSlot : nil,
-                    marks: Dictionary(uniqueKeysWithValues: marks.filter { $0.key.akshara == i }.map { ($0.key.slot, $0.value) }))
+        let rows = TalaRows(tala: tala)
+        VStack(spacing: 4) {
+            ForEach(rows.ranges.indices, id: \.self) { row in
+                let range = rows.ranges[row]
+                HStack(spacing: 0) {
+                    ForEach(Array(range), id: \.self) { i in
+                        if i > range.lowerBound && tala.beats[i].startsAnga { AngaBar() }
+                        AksharaCell(
+                            akshara: avarta.aksharas[i],
+                            active: i == activeAkshara,
+                            activeSlot: i == activeAkshara ? activeSlot : nil,
+                            marks: Dictionary(uniqueKeysWithValues: marks.filter { $0.key.akshara == i }.map { ($0.key.slot, $0.value) }))
+                    }
+                    if row == rows.ranges.count - 1 { AngaBar(double: true) }
+                    // Keep a shorter row's columns in line with the longest.
+                    ForEach(0..<rows.missing(row), id: \.self) { _ in
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+                    }
+                }
+                .frame(minHeight: 48)
+                // Grow to fit the swaras plus their marks instead of shrinking the text.
+                .fixedSize(horizontal: false, vertical: true)
             }
-            AngaBar(double: true)
         }
-        .frame(minHeight: 48)
-        // Grow to fit the swaras plus their marks instead of shrinking the text.
-        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -167,11 +179,27 @@ private struct AngaBar: View {
     }
 }
 
+/// The rows a tala is laid out on (shared rule: `Tala.rowStarts`).
+struct TalaRows {
+    let ranges: [Range<Int>]
+    let columns: Int
+
+    init(tala: Tala) {
+        let starts = tala.rowStarts.map { $0.intValue }
+        let ends = Array(starts.dropFirst()) + [Int(tala.aksharas)]
+        ranges = zip(starts, ends).map { $0..<$1 }
+        columns = Int(tala.rowAksharas)
+    }
+
+    /// Empty columns after row [row], so its cells line up with the longest row.
+    func missing(_ row: Int) -> Int { columns - ranges[row].count }
+}
+
 /// The tala being kept, current beat filled. Separate from the notation
 /// because at higher kalas several written aksharas share one beat.
 struct TalaStripView: View {
     let beatInAvarta: Int?
-    private let tala = Tala.companion.ADI
+    let tala: Tala
 
     /// "clap 1 2 3, clap wave, clap wave": the marks as words.
     private var spokenBeats: String {
@@ -187,24 +215,34 @@ struct TalaStripView: View {
     }
 
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(Array(tala.beats.enumerated()), id: \.offset) { i, beat in
-                if i > 0 && beat.startsAnga { AngaBar() }
-                Text(beat.label)
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 36)
-                    .foregroundStyle(i == beatInAvarta ? Color.white : Color.primary)
-                    .background(
-                        i == beatInAvarta ? Color.accentColor : Color.secondary.opacity(0.15),
-                        in: Capsule())
+        let rows = TalaRows(tala: tala)
+        VStack(spacing: 6) {
+            ForEach(rows.ranges.indices, id: \.self) { row in
+                let range = rows.ranges[row]
+                HStack(spacing: 6) {
+                    ForEach(Array(range), id: \.self) { i in
+                        let beat = tala.beats[i]
+                        if i > range.lowerBound && beat.startsAnga { AngaBar() }
+                        Text(beat.label)
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 36)
+                            .foregroundStyle(i == beatInAvarta ? Color.white : Color.primary)
+                            .background(
+                                i == beatInAvarta ? Color.accentColor : Color.secondary.opacity(0.15),
+                                in: Capsule())
+                    }
+                    ForEach(0..<rows.missing(row), id: \.self) { _ in
+                        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+                    }
+                }
+                .frame(minHeight: 36)
+                .fixedSize(horizontal: false, vertical: true) // bars must not stretch the strip
             }
         }
-        .frame(minHeight: 36)
-        .fixedSize(horizontal: false, vertical: true) // bars must not stretch the strip
         // One element whose value is read only when focused: no announcements
         // during playback, but the beat is there for anyone who asks.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("Adi tala: \(spokenBeats)"))
+        .accessibilityLabel(Text("\(tala.name) tala: \(spokenBeats)"))
         .accessibilityValue(beatInAvarta.map { Text("Beat \($0 + 1) of \(tala.beats.count)") } ?? Text(""))
     }
 }

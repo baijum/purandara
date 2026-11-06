@@ -169,6 +169,17 @@ class AccessibilityTest {
     }
 
     @Test
+    fun longTalasWrapButReadAsOneTalaAndOneAvarta() {
+        showPlayer(PlaybackState(playing = true, beatInAvarta = 11), id = "alankaram-1")
+        compose.onNodeWithText("Mayamalavagowla · Dhruva tala").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Dhruva tala: clap 1 2 3, clap wave, clap 1 2 3, clap 1 2 3")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Beat 12 of 14"))
+        // The avarta wraps onto two rows but is still one sentence.
+        compose.onNodeWithContentDescription("Avarta 1: S R G M, G R, S R G R, S R G M").assertIsDisplayed()
+        compose.onAllNodesWithText("x").assertCountEquals(0)
+    }
+
+    @Test
     fun singAlongToggleIsLabelledWithItsState() {
         showPlayer()
         compose.onNodeWithContentDescription("Sing along")

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -48,10 +49,11 @@ import com.baijum.purandara.viewmodel.MarkKey
 import com.baijum.purandara.ui.LocalReduceMotion
 
 /**
- * The exercise as a grid: one row per avarta, eight akshara cells in the
+ * The exercise as a grid: one block per avarta, its akshara cells in the
  * same columns as the [TalaStrip] above (so the marks are not repeated on
- * every row). The sounding akshara and swara are highlighted, and the list
- * follows playback.
+ * every row). Talas longer than eight beats wrap onto two rows at an anga
+ * boundary ([Tala.rowStarts]). The sounding akshara and swara are
+ * highlighted, and the list follows playback.
  */
 @Composable
 fun NotationView(
@@ -59,8 +61,8 @@ fun NotationView(
     position: NotationPosition?,
     modifier: Modifier = Modifier,
     marks: Map<MarkKey, NoteResult> = emptyMap(),
-    tala: Tala = Tala.ADI,
 ) {
+    val tala = varisai.tala
     val listState = rememberLazyListState()
     val reduceMotion = LocalReduceMotion.current
     val currentAvarta = position?.avarta
@@ -106,18 +108,27 @@ private fun AvartaRow(
 ) {
     // Taller rows with larger system text, so swaras grow instead of shrinking to fit.
     val rowHeight = ROW_HEIGHT_DP.dp * (1f + (LocalDensity.current.fontScale - 1f).coerceAtLeast(0f) * ROW_GROWTH)
-    Row(modifier.fillMaxWidth().height(rowHeight), verticalAlignment = Alignment.CenterVertically) {
-        avarta.aksharas.forEachIndexed { i, akshara ->
-            if (i > 0 && tala.beats[i].startsAnga) AngaBar()
-            AksharaCell(
-                akshara = akshara,
-                active = i == activeAkshara,
-                activeSlot = activeSlot.takeIf { i == activeAkshara },
-                marks = rowMarks.filterKeys { it.akshara == i }.mapKeys { it.key.slot },
-                modifier = Modifier.weight(1f),
-            )
+    val starts = tala.rowStarts
+    val ends = starts.drop(1) + avarta.aksharas.size
+    Column(modifier.fillMaxWidth()) {
+        starts.zip(ends).forEachIndexed { row, (from, to) ->
+            Row(Modifier.fillMaxWidth().height(rowHeight), verticalAlignment = Alignment.CenterVertically) {
+                for (i in from until to) {
+                    if (i > from && tala.beats[i].startsAnga) AngaBar()
+                    AksharaCell(
+                        akshara = avarta.aksharas[i],
+                        active = i == activeAkshara,
+                        activeSlot = activeSlot.takeIf { i == activeAkshara },
+                        marks = rowMarks.filterKeys { it.akshara == i }.mapKeys { it.key.slot },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (row == starts.lastIndex) AngaBar(double = true)
+                // Keep the columns of a shorter row in line with the longest.
+                val missing = tala.rowAksharas - (to - from)
+                if (missing > 0) Spacer(Modifier.weight(missing.toFloat()))
+            }
         }
-        AngaBar(double = true)
     }
 }
 
@@ -186,7 +197,7 @@ private fun markedSpoken(avarta: Avarta, index: Int, marks: Map<MarkKey, NoteRes
             Akshara.Karvai -> karvaiWord
             is Akshara.Swaras -> akshara.swaras.mapIndexed { slot, swara ->
                 val mark = markWords(marks[MarkKey(index, i, slot)])
-                if (mark == null) swara.toString() else "$swara $mark"
+                if (mark == null) swara.spoken() else "${swara.spoken()} $mark"
             }.joinToString(" ")
         }
         if (i > 0 && tala.beats[i].startsAnga) ", $text" else if (i > 0) " $text" else text
@@ -213,35 +224,47 @@ private fun AngaBar(double: Boolean = false) {
  * whose state is read only when focused, so nothing is announced during playback.
  */
 @Composable
-fun TalaStrip(beatInAvarta: Int?, modifier: Modifier = Modifier, tala: Tala = Tala.ADI) {
+fun TalaStrip(beatInAvarta: Int?, tala: Tala, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val clap = stringResource(R.string.clap)
     val wave = stringResource(R.string.wave)
     val talaLabel = stringResource(R.string.tala_label, tala.name, spokenBeats(tala, clap, wave))
     val beatText = beatInAvarta?.let { stringResource(R.string.beat_of, it + 1, tala.aksharas) } ?: ""
-    Row(
-        modifier.fillMaxWidth().height(36.dp).clearAndSetSemantics {
+    val starts = tala.rowStarts
+    val ends = starts.drop(1) + tala.aksharas
+    Column(
+        modifier.fillMaxWidth().clearAndSetSemantics {
             contentDescription = talaLabel
             stateDescription = beatText
         },
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        tala.beats.forEachIndexed { i, beat ->
-            if (i > 0 && beat.startsAnga) AngaBar()
-            val current = i == beatInAvarta
-            Box(
-                Modifier
-                    .weight(1f)
-                    .height(36.dp)
-                    .background(if (current) colors.primary else colors.surfaceVariant, RoundedCornerShape(18.dp)),
-                contentAlignment = Alignment.Center,
+        starts.zip(ends).forEach { (from, to) ->
+            Row(
+                Modifier.fillMaxWidth().height(36.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    beat.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (current) colors.onPrimary else colors.onSurfaceVariant,
-                )
+                for (i in from until to) {
+                    val beat = tala.beats[i]
+                    if (i > from && beat.startsAnga) AngaBar()
+                    val current = i == beatInAvarta
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(36.dp)
+                            .background(if (current) colors.primary else colors.surfaceVariant, RoundedCornerShape(18.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            beat.label,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (current) colors.onPrimary else colors.onSurfaceVariant,
+                        )
+                    }
+                }
+                val missing = tala.rowAksharas - (to - from)
+                if (missing > 0) Spacer(Modifier.weight(missing.toFloat()))
             }
         }
     }

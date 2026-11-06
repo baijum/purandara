@@ -89,7 +89,7 @@ Copy the text verbatim so it can be compared line by line with the workbook.
 
 Each exercise's tests check:
 
-- Every avarta has exactly 8 aksharas (Adi tala).
+- Every avarta is one cycle of the exercise's tala (8 aksharas for the Adi varisais).
 - No exercise starts with a karvai.
 - All swaras are within S to S′.
 

@@ -90,7 +90,7 @@ fun PlayerScreen(
     Scaffold(
         topBar = {
             PlayerTopBar(
-                varisai.title,
+                varisai.shortTitle,
                 singAlong = settings.singAlong,
                 onBack = actions.onBack,
                 onSingAlong = actions.onToggleSingAlong,
@@ -100,8 +100,15 @@ fun PlayerScreen(
         bottomBar = { PlayButtonBar(playback.playing, canPlay, actions.onTogglePlay) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
+            Text(
+                stringResource(R.string.raga_tala, varisai.raga.name, varisai.tala.name),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 4.dp),
+            )
             TalaStrip(
                 beatInAvarta = playback.beatInAvarta,
+                tala = varisai.tala,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
             // Also shown after a refused permission, so the student learns why nothing happened.

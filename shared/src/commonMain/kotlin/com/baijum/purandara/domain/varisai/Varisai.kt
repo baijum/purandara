@@ -63,14 +63,15 @@ data class Avarta(val aksharas: List<Akshara>) {
         }.joinToString("")
 }
 
-/** The graded exercise sets, in teaching order, with what each trains (from the workbook). */
-enum class VarisaiSet(val title: String, val description: String) {
+/** The graded exercise sets, in teaching order, with what each trains (varisais: from the workbook). */
+enum class VarisaiSet(val title: String, val description: String, val shortTitle: String = title) {
     PLAIN_SCALE("Plain scale", "The seven swaras up and down: settle each one against the tanpura."),
     SARALI("Sarali Varisai", "A short figure set against the plain ascent and descent: steady pitch, even timing."),
-    MADHYA_STHAYI("Madhya Sthayi Varisai", "Longer figures across the octave: later, teacher-guided studies."),
+    MADHYA_STHAYI("Madhya Sthayi Varisai", "Longer figures across the octave: later, teacher-guided studies.", "Madhya Sthayi"),
     JANTA("Janta Varisai", "Each swara sung as a pair: clean, even repeated notes."),
-    VAKRA_JANTA("Vakra Janta Varisai", "Paired notes in zigzags: find the next note without sliding."),
+    VAKRA_JANTA("Vakra Janta Varisai", "Paired notes in zigzags: find the next note without sliding.", "Vakra Janta"),
     DHATTU("Dhattu Varisai", "Leaps over a note and back: reach a distant pitch without sliding."),
+    ALANKARAM("Alankaram", "One climbing figure in each of the seven suladi talas: keep the tala as you sing."),
 }
 
 /**
@@ -85,12 +86,26 @@ data class Varisai(
     val raga: Raga = Raga.MAYAMALAVAGOWLA,
     val name: String? = null,
 ) {
+    /**
+     * Title short enough for a phone's top bar, e.g. "Alankaram 1" or
+     * "Vakra Janta 2" (the screen shows the tala and raga separately).
+     */
+    val shortTitle: String
+        get() = name ?: when (set) {
+            VarisaiSet.PLAIN_SCALE -> set.title
+            else -> "${set.shortTitle} $number"
+        }
+
     /** Stable identifier, e.g. `sarali-4`. */
     val id: String get() = "${set.name.lowercase().replace('_', '-')}-$number"
 
     /** Display title, e.g. "Sarali Varisai 4". */
     val title: String
-        get() = name ?: if (set == VarisaiSet.PLAIN_SCALE) set.title else "${set.title} $number"
+        get() = name ?: when (set) {
+            VarisaiSet.PLAIN_SCALE -> set.title
+            VarisaiSet.ALANKARAM -> "${set.title} $number · ${tala.name} tala"
+            else -> "${set.title} $number"
+        }
 
     /** Written aksharas across all avartas. */
     val aksharaCount: Int get() = avartas.sumOf { it.aksharas.size }

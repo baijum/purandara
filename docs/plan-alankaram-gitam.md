@@ -1,6 +1,6 @@
 # Plan: Alankarams and Gitams
 
-Status: **approved** (2026-11-06). Milestone 1 done; 2–4 to come.
+Status: **approved** (2026-11-06). Milestones 1–2 done; 3–4 to come.
 
 The next two stages of the traditional beginner path after the varisais:
 
@@ -136,7 +136,23 @@ Done 2026-11-06. Differences from the plan below:
   This generalises `beatsFollowAdiTala` and the contiguity property.
 - Renderer: each kriya gets its own wave.
 
-## Milestone 2: alankarams in both apps
+## Milestone 2: alankarams in both apps ✅
+
+Done 2026-11-06. Differences from the plan below:
+
+- **Ata wraps 5 | 5+2+2**, not 5+5 | 2+2: the rule keeps the longer row
+  shortest (9 cells instead of 10).
+- **Short titles in the top bar** (`Varisai.shortTitle`: "Alankaram 1",
+  "Vakra Janta 1", "Madhya Sthayi 1"). Long titles were cut off between the back
+  and toolbar buttons on iPhone; the list rows keep the full title
+  ("Alankaram 1 · Dhruva tala").
+- The raga and tala line sits above the tala strip on Android, and scrolls
+  above the notation on iOS (a fixed line there pushed rows off screen at
+  large text in the accessibility audit).
+- The iOS audit now also covers exercises taller than the screen; see the
+  audit helper's comment for the two scoped exceptions (notation cells
+  shrinking to fit, and rows outside the visible notation area).
+
 
 **Catalog**
 
