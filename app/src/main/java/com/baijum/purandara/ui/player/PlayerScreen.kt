@@ -205,8 +205,9 @@ private fun PlaybackStatus(playback: PlaybackState, saMidi: Int) {
     val pass = playback.position?.repetition
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         StatusText(
-            stringResource(R.string.sa_playing, stringResource(R.string.sa_value, Shruti.noteName(saMidi), Shruti.kattai(saMidi))),
-            MaterialTheme.colorScheme.onSurfaceVariant,
+            emphasis = true,
+            text = stringResource(R.string.sa_playing, stringResource(R.string.sa_value, Shruti.noteName(saMidi), Shruti.kattai(saMidi))),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         when {
             playback.countingIn -> StatusText(stringResource(R.string.counting_in), MaterialTheme.colorScheme.primary)
@@ -219,10 +220,10 @@ private fun PlaybackStatus(playback: PlaybackState, saMidi: Int) {
 }
 
 @Composable
-private fun StatusText(text: String, color: Color) {
+private fun StatusText(text: String, color: Color, emphasis: Boolean = false) {
     Text(
         text,
-        style = MaterialTheme.typography.labelMedium,
+        style = if (emphasis) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge,
         color = color,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
     )

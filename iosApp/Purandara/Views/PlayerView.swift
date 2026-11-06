@@ -89,14 +89,14 @@ private struct PlaybackStatus: View {
             HStack { sa; Spacer(); status }
             VStack(alignment: .leading, spacing: 2) { sa; status }
         }
-        .font(.caption)
+        .font(.callout)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal)
         .padding(.vertical, 4)
     }
 
     private var sa: some View {
-        Text("Sa: \(PracticeSettingsView.saLabel(saMidi))").foregroundStyle(Color.subdued)
+        Text("Sa: \(PracticeSettingsView.saLabel(saMidi))").fontWeight(.medium).foregroundStyle(Color.subdued)
     }
 
     @ViewBuilder private var status: some View {
