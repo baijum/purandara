@@ -1,0 +1,41 @@
+package com.baijum.purandara.domain.varisai
+
+import com.baijum.purandara.domain.Raga
+import com.baijum.purandara.domain.varisai.catalog.DHATTU_VARISAI_NOTATION
+import com.baijum.purandara.domain.varisai.catalog.JANTA_VARISAI_NOTATION
+import com.baijum.purandara.domain.varisai.catalog.MADHYA_STHAYI_NOTATION
+import com.baijum.purandara.domain.varisai.catalog.SARALI_VARISAI_NOTATION
+import com.baijum.purandara.domain.varisai.catalog.VAKRA_JANTA_VARISAI_NOTATION
+
+/**
+ * All bundled exercises, in teaching order. Parsed once, on first use.
+ *
+ * Every exercise is in [raga]; the written letters are resolved to swaras
+ * with it when a schedule is built.
+ */
+object VarisaiCatalog {
+    val raga: Raga = Raga.MAYAMALAVAGOWLA
+
+    /** The plain ascent and descent (the workbook's Card G), one swara per akshara. */
+    private const val PLAIN_SCALE_NOTATION = """
+1
+S R G M P D N S′
+S′ N D P M G R S
+"""
+
+    val all: List<Varisai> by lazy {
+        val parser = VarisaiParser()
+        listOf(
+            VarisaiSet.PLAIN_SCALE to PLAIN_SCALE_NOTATION,
+            VarisaiSet.SARALI to SARALI_VARISAI_NOTATION,
+            VarisaiSet.MADHYA_STHAYI to MADHYA_STHAYI_NOTATION,
+            VarisaiSet.JANTA to JANTA_VARISAI_NOTATION,
+            VarisaiSet.VAKRA_JANTA to VAKRA_JANTA_VARISAI_NOTATION,
+            VarisaiSet.DHATTU to DHATTU_VARISAI_NOTATION,
+        ).flatMap { (set, text) -> parser.parse(text, set) }
+    }
+
+    fun inSet(set: VarisaiSet): List<Varisai> = all.filter { it.set == set }
+
+    fun byId(id: String): Varisai? = all.firstOrNull { it.id == id }
+}

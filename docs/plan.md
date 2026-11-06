@@ -252,7 +252,7 @@ and Xcode, and is reviewable on its own.
 
 | # | Milestone | Done when |
 |---|---|---|
-| M1 | `Raga`, `Tala`, parser, catalog, `Schedule` (shared) | All in-scope exercises parse and validate; timing tests pass |
+| M1 ✅ | `Raga`, `Tala`, parser, catalog, `Schedule` (shared) | All in-scope exercises parse and validate; timing tests pass |
 | M2 | `SampleRenderer` (shared) | Rendered WAV of Sarali 1 has every note within ±1 cent and onsets within ±1 ms of the schedule (JVM test) |
 | M3 | Android: decode, `AudioTrack` output, Library and Player screens | Plays every exercise in sync; TalkBack pass |
 | M4 | iOS: decode, `AVAudioEngine` output, Library and Player screens | Same as M3; VoiceOver pass |

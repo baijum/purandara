@@ -1,0 +1,130 @@
+package com.baijum.purandara.domain.varisai
+
+import com.baijum.purandara.domain.Octave
+import com.baijum.purandara.domain.SwaraLetter
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
+
+class VarisaiParserTest {
+    private val parser = VarisaiParser()
+
+    private fun parseOne(text: String): Varisai = parser.parse(text.trimIndent(), VarisaiSet.SARALI).single()
+
+    @Test
+    fun parsesSingleSwaraAksharasAcrossAvartas() {
+        val v = parseOne(
+            """
+            4
+            S R G M | P , | S R || S R G M | P D | N S′
+            """,
+        )
+        assertEquals(4, v.number)
+        assertEquals("sarali-4", v.id)
+        assertEquals("Sarali Varisai 4", v.title)
+        assertEquals(2, v.avartas.size)
+        assertEquals("S R G M P , S R", v.avartas[0].toString())
+        assertEquals("S R G M P D N S′", v.avartas[1].toString())
+        assertEquals(Akshara.Karvai, v.avartas[0].aksharas[5])
+    }
+
+    @Test
+    fun taraMarkAppliesToThePrecedingSwara() {
+        val v = parseOne(
+            """
+            1
+            S′S′ NN DD PP | MM GG | RR SS
+            """,
+        )
+        val first = assertIs<Akshara.Swaras>(v.avartas[0].aksharas[0])
+        assertEquals(listOf(WrittenSwara(SwaraLetter.S, Octave.TARA), WrittenSwara(SwaraLetter.S, Octave.TARA)), first.swaras)
+        val last = assertIs<Akshara.Swaras>(v.avartas[0].aksharas[7])
+        assertEquals(listOf(WrittenSwara(SwaraLetter.S), WrittenSwara(SwaraLetter.S)), last.swaras)
+    }
+
+    @Test
+    fun multiSwaraTokenIsOneAkshara() {
+        val v = parseOne(
+            """
+            1
+            SRGM PDNS′ S′NDP MGRS SRGM PDNS′ S′NDP MGRS
+            """,
+        )
+        assertEquals(8, v.aksharaCount)
+        assertEquals(4, assertIs<Akshara.Swaras>(v.avartas[0].aksharas[1]).swaras.size)
+    }
+
+    @Test
+    fun parsesSeveralExercisesAndIgnoresBlankLines() {
+        val all = parser.parse(
+            "1\nS R G M P D N S′\n\n\n2\nS′ N D P M G R S\nS R G M P D N S′\n",
+            VarisaiSet.DHATTU,
+        )
+        assertEquals(listOf(1, 2), all.map { it.number })
+        assertEquals(listOf(1, 2), all.map { it.avartas.size })
+        assertTrue(all.all { it.set == VarisaiSet.DHATTU })
+    }
+
+    @Test
+    fun barsAreLayoutOnly() {
+        val a = parseOne("1\nS R G M | P D | N S′")
+        val b = parseOne("1\nS R G M P D N S′")
+        val c = parseOne("1\nS R G M|P D|N S′")
+        assertEquals(a.avartas, b.avartas)
+        assertEquals(a.avartas, c.avartas)
+    }
+
+    @Test
+    fun wrongAksharaCountReportsLine() {
+        val e = assertFailsWith<VarisaiParseException> {
+            parser.parse("1\nS R G M | P D | N S′\nSS , RR , GG | SS RR | GG MM", VarisaiSet.JANTA)
+        }
+        assertEquals(3, e.line)
+        assertTrue("9 aksharas" in e.message!!, e.message)
+    }
+
+    @Test
+    fun unknownCharacterReportsLineAndColumn() {
+        val e = assertFailsWith<VarisaiParseException> { parser.parse("1\nS R G X P D N S′", VarisaiSet.SARALI) }
+        assertEquals(2, e.line)
+        assertEquals(7, e.column)
+        assertTrue("'X'" in e.message!!, e.message)
+    }
+
+    @Test
+    fun rejectsLeadingKarvai() {
+        assertFailsWith<VarisaiParseException> { parser.parse("1\n, R G M P D N S′", VarisaiSet.SARALI) }
+    }
+
+    @Test
+    fun karvaiMayOpenALaterLine() {
+        // Janta 7 style: a later line may start an avarta after a held note... but
+        // never the first akshara of an exercise. Within a line a karvai after a swara is fine.
+        val v = parseOne("1\nS , S R , R G G || S S R R G G M M")
+        assertEquals(Akshara.Karvai, v.avartas[0].aksharas[1])
+    }
+
+    @Test
+    fun rejectsNotationBeforeANumber() {
+        val e = assertFailsWith<VarisaiParseException> { parser.parse("S R G M P D N S′", VarisaiSet.SARALI) }
+        assertEquals(1, e.line)
+    }
+
+    @Test
+    fun rejectsExerciseWithoutNotation() {
+        assertFailsWith<VarisaiParseException> { parser.parse("1\n2\nS R G M P D N S′", VarisaiSet.SARALI) }
+    }
+
+    @Test
+    fun rejectsStrayOrRepeatedOctaveMarks() {
+        assertFailsWith<VarisaiParseException> { parser.parse("1\n′S R G M P D N S", VarisaiSet.SARALI) }
+        assertFailsWith<VarisaiParseException> { parser.parse("1\nS′′ R G M P D N S", VarisaiSet.SARALI) }
+    }
+
+    @Test
+    fun rejectsAsciiApostropheInsteadOfPrime() {
+        assertFailsWith<VarisaiParseException> { parser.parse("1\nS R G M P D N S'", VarisaiSet.SARALI) }
+    }
+}
