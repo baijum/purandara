@@ -43,5 +43,35 @@
     <string name="clap">clap</string>
     <string name="wave">wave</string>
     <string name="practice_settings">Practice settings</string>
+
+    <!-- Sing along -->
+    <string name="sing_along">Sing along</string>
+    <string name="sing_along_on">On</string>
+    <string name="sing_along_off">Off</string>
+    <string name="mic_reason">Sing along listens to your voice to show how close each swara is. Audio stays on this device and is never recorded.</string>
+    <string name="mic_denied">Microphone access is off, so sing-along can\'t hear you. You can allow it in Settings.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="headphones_hint">Headphones give the most accurate results.</string>
+    <string name="pitch_lane">Your pitch</string>
+    <string name="silent">Not hearing you yet</string>
+    <string name="zone_in_tune">in tune</string>
+    <string name="zone_high">high</string>
+    <string name="zone_low">low</string>
+    <string name="zone_slightly_high">slightly high</string>
+    <string name="zone_slightly_low">slightly low</string>
+    <string name="mark_no_voice">not heard</string>
+    <string name="mark_octave_low">an octave low</string>
+    <string name="mark_octave_high">an octave high</string>
+    <string name="mark_sang">sang %1$s</string>
+    <string name="pass_summary">Pass %1$d: %2$d of %3$d notes in tune or close</string>
+    <string name="attention_high">%1$s high (%2$d of %3$d)</string>
+    <string name="attention_low">%1$s low (%2$d of %3$d)</string>
+    <string name="attention_octave_low">%1$s an octave low (%2$d of %3$d)</string>
+    <string name="attention_octave_high">%1$s an octave high (%2$d of %3$d)</string>
+    <string name="attention_wrong">%1$s: a different swara (%2$d of %3$d)</string>
+    <string name="needs_attention">Needs attention: %1$s</string>
+    <string name="harmonium_guide">Harmonium guide</string>
+    <string name="guide_all">All notes</string>
+    <string name="guide_off">Off (drone and click)</string>
     <string name="beat_of">Beat %1$d of %2$d</string>
 </resources>

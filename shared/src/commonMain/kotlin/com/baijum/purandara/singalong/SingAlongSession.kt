@@ -54,8 +54,15 @@ class OutputLevels(private val capacity: Int = DEFAULT_CAPACITY) {
 data class LiveReading(val reading: SwaraReading?, val pass: Int?, val secondsInPass: Double?)
 
 /**
+ * Result of one mic frame: the live reading, notes whose marks are now
+ * known (judged as soon as each note has ended), and a pass that this
+ * frame completed, if any.
+ */
+data class FrameOutcome(val live: LiveReading, val newMarks: List<NoteMark>, val completedPass: PassResult?)
+
+/**
  * Ties the sing-along pieces together for one playback: bleed calibration
- * during the count-in, voice detection, per-pass scoring and the live
+ * during the count-in, voice detection, note-by-note scoring and the live
  * reading. Platforms feed it [PitchFrame]s (mic thread) and output levels
  * (playback thread, via [outputLevels]).
  *
@@ -71,6 +78,8 @@ class SingAlongSession(
     private val scorer = NoteScorer(schedule, mapper)
     private val bleed = BleedModel()
     private val frames = mutableListOf<ScoredFrame>()
+    private val marks = mutableListOf<NoteMark>()
+    private var nextNote = 0
     private var currentPass = -1
     private val results = mutableListOf<PassResult>()
 
@@ -83,39 +92,63 @@ class SingAlongSession(
     /** Mic level per unit of output level measured in the count-in (near 0 with headphones or echo cancellation). */
     val leakageRatio: Double get() = bleed.leakageRatio
 
-    /**
-     * Handle one analysed mic frame. Returns the live reading, plus any pass
-     * that this frame completed (scored), or null.
-     */
-    fun onFrame(frame: PitchFrame): Pair<LiveReading, PassResult?> {
+    private val silent = LiveReading(null, null, null)
+
+    fun onFrame(frame: PitchFrame): FrameOutcome {
         val heardFrame = (clock.heardSeconds(frame.timeSeconds) * sampleRate).toLong()
         val outputRms = outputLevels.rmsAt(heardFrame)
 
         if (clock.inCountIn(frame.timeSeconds)) {
             bleed.calibrate(frame.rms, outputRms)
-            return LiveReading(null, null, null) to null
+            return FrameOutcome(silent, emptyList(), null)
         }
-        val position = clock.locate(frame.timeSeconds) ?: return LiveReading(null, null, null) to null
+        val position = clock.locate(frame.timeSeconds) ?: return FrameOutcome(silent, emptyList(), null)
         if (!bleed.isCalibrated) bleed.finishCalibration()
 
         var completed: PassResult? = null
+        val newMarks = mutableListOf<NoteMark>()
         if (position.pass != currentPass) {
-            if (currentPass >= 0) completed = scoreCurrent()
+            if (currentPass >= 0) {
+                val (rest, result) = completePass()
+                newMarks += rest
+                completed = result
+            }
             currentPass = position.pass
         }
         val voice = frame.frequencyHz != null && bleed.isVoice(frame.rms, outputRms)
         frames += ScoredFrame(position.secondsInPass, frame.frequencyHz, voice)
+        newMarks += judgeEndedNotes(position.secondsInPass)
         val reading = if (voice) mapper.read(frame.frequencyHz) else null
-        return LiveReading(reading, position.pass, position.secondsInPass) to completed
+        return FrameOutcome(LiveReading(reading, position.pass, position.secondsInPass), newMarks, completed)
     }
 
-    /** Score the pass in progress (call when playback stops). Null if nothing was sung into a pass. */
-    fun finish(): PassResult? = if (currentPass >= 0 && frames.isNotEmpty()) scoreCurrent() else null
+    /** Score the pass in progress (call when playback stops). Null if no pass was reached. */
+    fun finish(): PassResult? = if (currentPass >= 0) completePass().second else null
 
-    private fun scoreCurrent(): PassResult {
-        val result = scorer.score(currentPass, frames.toList())
+    private fun judgeEndedNotes(now: Double): List<NoteMark> {
+        val out = mutableListOf<NoteMark>()
+        val notes = schedule.notes
+        while (nextNote < notes.size) {
+            val e = notes[nextNote]
+            if (e.startSeconds + e.durationSeconds + JUDGE_DELAY_SECONDS > now) break
+            out += NoteMark(e, scorer.judge(e, frames)).also { marks += it }
+            nextNote++
+        }
+        return out
+    }
+
+    private fun completePass(): Pair<List<NoteMark>, PassResult> {
+        val rest = judgeEndedNotes(Double.MAX_VALUE)
+        val result = PassResult(currentPass, marks.toList(), scorer.summarise(marks))
         results += result
         frames.clear()
-        return result
+        marks.clear()
+        nextNote = 0
+        return rest to result
+    }
+
+    private companion object {
+        /** Wait this long after a note ends before judging it (smoothing and timing slack). */
+        const val JUDGE_DELAY_SECONDS = 0.06
     }
 }

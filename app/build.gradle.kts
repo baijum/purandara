@@ -51,6 +51,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Emulator ABIs only: ONNX Runtime's per-ABI libraries are 23-39 MB,
+            // and the full set no longer fits comfortably on an emulator.
+            ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+        }
         release {
             // Phones only: x86/x86_64 ONNX Runtime libraries (~39 MB each) are
             // for emulators, which run debug builds.
@@ -74,6 +79,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true // BuildConfig.DEBUG gates the debug-only synthetic singer
     }
 
     sourceSets {

@@ -36,7 +36,7 @@ class SingAlongEndToEndTest {
         },
     )
 
-    private class Run(val session: SingAlongSession, val result: PassResult)
+    private class Run(val session: SingAlongSession, val result: PassResult, val liveMarks: List<NoteMark>)
 
     private fun run(leakage: Float, singer: ((Double) -> Double?)?): Run {
         val schedule = Schedule.of(VarisaiCatalog.byId("plain-scale-1")!!, PerformanceSettings(saHz = sa, tempo = 90))
@@ -63,15 +63,17 @@ class SingAlongEndToEndTest {
         val clock = SingAlongClock(countIn, renderer.performanceFrames.toDouble() / sr, loop = false, 0.0, 0.0)
         val session = SingAlongSession(schedule, clock, sr, levels)
         val pipeline = PitchPipeline(sr)
+        val liveMarks = mutableListOf<NoteMark>()
         var start = 0
         while (start + PitchPipeline.WINDOW_SIZE <= mic.size) {
             pipeline.beginFrame() // no neural model in this test
             val window = mic.copyOfRange(start, start + PitchPipeline.WINDOW_SIZE)
             // Time the window by its centre.
-            session.onFrame(pipeline.process(window, (start + PitchPipeline.WINDOW_SIZE / 2).toDouble() / sr))
+            liveMarks += session.onFrame(pipeline.process(window, (start + PitchPipeline.WINDOW_SIZE / 2).toDouble() / sr)).newMarks
             start += PitchPipeline.HOP_SIZE
         }
-        return Run(session, session.finish()!!)
+        val result = session.finish()!!
+        return Run(session, result, liveMarks)
     }
 
     private fun singsSchedule(centsOff: Double): (Double) -> Double? {
@@ -105,6 +107,15 @@ class SingAlongEndToEndTest {
             assertEquals(0, summary.inTuneOrClose, "leakage $leakage scored as singing: ${run.result.marks.map { it.result }}")
             assertEquals(16, summary.noVoice, "leakage $leakage")
         }
+    }
+
+    @Test
+    fun notesAreMarkedLiveAsTheyEndAndMatchThePassResult() {
+        val run = run(leakage = 0.1f, singer = singsSchedule(0.0))
+        // All but the final note(s) are judged while still playing; finish() adds the rest.
+        assertTrue(run.liveMarks.size >= 15, "live marks ${run.liveMarks.size}")
+        assertEquals(run.result.marks.take(run.liveMarks.size), run.liveMarks)
+        assertEquals(16, run.result.marks.size)
     }
 
     @Test

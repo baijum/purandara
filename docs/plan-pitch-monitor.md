@@ -164,6 +164,14 @@ the student would look perfect while silent. Defences, in order:
 
 ## 6. Latency
 
+**As built on Android (S4):** each mic window's capture time comes from
+`AudioRecord.getTimestamp`, and `AudioTrack.getTimestamp` maps that moment to
+the output frame then leaving the speaker. Both are hardware timestamps on the
+same monotonic clock, so input and output latency are accounted for directly and
+the shared clock runs with zero extra latency. The estimates below remain the
+fallback when timestamps are unavailable.
+
+
 - **Output latency:** Android `AudioTrack` timestamps; iOS
   `AVAudioSession.outputLatency + ioBufferDuration`. Already used for the highlight.
 - **Input latency:** iOS `AVAudioSession.inputLatency`; Android estimate from
@@ -218,7 +226,7 @@ In the player (both platforms):
 | S1 ✅ | Port YIN, `AudioResampler`, `NeuralArbitrator` to `shared/`; voice-range tuning; synthetic detector tests | Done: all 67 ported tests plus 8 voice tests pass on JVM, Android host and iOS; within ±2 cents 60 Hz–1 kHz, no octave errors. Found and fixed a sign error in the ported parabolic interpolation (up to ~32 cents) |
 | S2 ✅ | `PitchTracker` + `NoteScorer` + pass summary (shared) | Done as `PitchPipeline`, `SwaraMapper`, `SingAlongClock`, `BleedModel`, `NoteScorer`, `SingAlongSession`: 21 unit + 4 end-to-end audio tests pass; a silent student with harmonium leakage scores "no voice" |
 | S3 ✅ | Neural runtime on both platforms: bundle SwiftF0, ONNX Runtime AAR and iOS xcframework script, supervisors, CI | Done: model runs on emulator and simulator (within a semitone, 98–659 Hz, 44.1/48 kHz); release APK limited to ARM ABIs (60.7 MB universal, 31.5 MB AAB, was ~5 MB before ONNX Runtime) |
-| S4 | Android sing-along: permission, capture with echo cancellation, pitch lane, cell marks, summary, guide setting | Emulator run with an injected WAV "singer"; on-device bleed check with and without headphones |
+| S4 ✅ | Android sing-along: permission, capture with echo cancellation, pitch lane, cell marks, summary, guide setting | Done: verified on the Pixel 9 emulator with the debug synthetic singer (in tune → ✓ marks; +35 cents → all ↑ and the right summary); permission refusal flow; 14 instrumented tests. **Pending: on-device check with a real voice and the speaker vs headphones** |
 | S5 | iOS sing-along: same | Same, plus accessibility audit passes |
 | S6 | Accessibility and latency polish; device testing | TalkBack/VoiceOver pass; scoring windows verified on at least one physical device per platform |
 

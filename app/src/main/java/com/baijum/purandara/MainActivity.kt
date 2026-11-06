@@ -25,6 +25,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Debug builds: `adb shell am start -n com.baijum.purandara/.MainActivity --ef singer 0`
+        // replaces the microphone with a synthetic singer (cents off target).
+        if (BuildConfig.DEBUG && intent.hasExtra(EXTRA_SINGER)) {
+            practiceViewModel.debugSyntheticSingerCents = intent.getFloatExtra(EXTRA_SINGER, 0f).toDouble()
+        }
         setContent {
             CompositionLocalProvider(LocalReduceMotion provides rememberReduceMotion()) {
                 PurandaraTheme {
@@ -32,6 +37,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private companion object {
+        const val EXTRA_SINGER = "singer"
     }
 
     /** Practice audio stops when the app leaves the screen. */

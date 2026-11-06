@@ -65,7 +65,8 @@ class NoteScorer(private val schedule: Schedule, private val mapper: SwaraMapper
         return PassResult(pass, marks, summarise(marks))
     }
 
-    private fun judge(event: NoteEvent, frames: List<ScoredFrame>): NoteResult {
+    /** Judge one note from the frames of its pass (any order). */
+    fun judge(event: NoteEvent, frames: List<ScoredFrame>): NoteResult {
         if (event.durationSeconds < MIN_JUDGED_SECONDS) return NoteResult.TooShort
         val skip = maxOf(SKIP_MIN_SECONDS, event.durationSeconds * SKIP_FRACTION)
         val from = event.startSeconds + skip
@@ -86,7 +87,8 @@ class NoteScorer(private val schedule: Schedule, private val mapper: SwaraMapper
         }
     }
 
-    private fun summarise(marks: List<NoteMark>): PassSummary {
+    /** Summary for a pass's marks. */
+    fun summarise(marks: List<NoteMark>): PassSummary {
         val judged = marks.filter { it.result is NoteResult.Judged || it.result == NoteResult.NoVoice }
         val results = marks.mapNotNull { it.result as? NoteResult.Judged }
         val byNote = marks.filter { it.result is NoteResult.Judged }.groupBy { it.event.note }

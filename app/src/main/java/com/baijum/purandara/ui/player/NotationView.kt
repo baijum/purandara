@@ -43,6 +43,8 @@ import com.baijum.purandara.domain.schedule.NotationPosition
 import com.baijum.purandara.domain.varisai.Akshara
 import com.baijum.purandara.domain.varisai.Avarta
 import com.baijum.purandara.domain.varisai.Varisai
+import com.baijum.purandara.singalong.NoteResult
+import com.baijum.purandara.viewmodel.MarkKey
 import com.baijum.purandara.ui.LocalReduceMotion
 
 /**
@@ -56,6 +58,7 @@ fun NotationView(
     varisai: Varisai,
     position: NotationPosition?,
     modifier: Modifier = Modifier,
+    marks: Map<MarkKey, NoteResult> = emptyMap(),
     tala: Tala = Tala.ADI,
 ) {
     val listState = rememberLazyListState()
@@ -75,12 +78,15 @@ fun NotationView(
     val karvaiWord = stringResource(R.string.karvai_spoken)
     LazyColumn(state = listState, modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         itemsIndexed(varisai.avartas) { index, avarta ->
-            val description = stringResource(R.string.avarta_description, index + 1, avarta.spoken(tala, karvaiWord))
+            val rowMarks = marks.filterKeys { it.avarta == index }
+            val spoken = if (rowMarks.isEmpty()) avarta.spoken(tala, karvaiWord) else markedSpoken(avarta, index, rowMarks, tala, karvaiWord)
+            val description = stringResource(R.string.avarta_description, index + 1, spoken)
             AvartaRow(
                 avarta = avarta,
                 tala = tala,
                 activeAkshara = position?.takeIf { it.avarta == index }?.akshara,
                 activeSlot = position?.takeIf { it.avarta == index }?.slot,
+                rowMarks = rowMarks,
                 modifier = Modifier
                     .padding(horizontal = 12.dp)
                     .clearAndSetSemantics { contentDescription = description },
@@ -95,6 +101,7 @@ private fun AvartaRow(
     tala: Tala,
     activeAkshara: Int?,
     activeSlot: Int?,
+    rowMarks: Map<MarkKey, NoteResult>,
     modifier: Modifier = Modifier,
 ) {
     // Taller rows with larger system text, so swaras grow instead of shrinking to fit.
@@ -106,6 +113,7 @@ private fun AvartaRow(
                 akshara = akshara,
                 active = i == activeAkshara,
                 activeSlot = activeSlot.takeIf { i == activeAkshara },
+                marks = rowMarks.filterKeys { it.akshara == i }.mapKeys { it.key.slot },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -118,6 +126,7 @@ private fun AksharaCell(
     akshara: Akshara,
     active: Boolean,
     activeSlot: Int?,
+    marks: Map<Int, NoteResult>,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -156,7 +165,33 @@ private fun AksharaCell(
             autoSize = TextAutoSize.StepBased(minFontSize = MIN_SWARA_SP.sp, maxFontSize = baseSize),
             modifier = Modifier.fillMaxWidth(),
         )
+        if (marks.isNotEmpty() && akshara is Akshara.Swaras) {
+            // One glyph per swara slot: ✓ in tune, ↑/↓ high/low, ⇣/⇡ octave, ✕ other swara, ○ not heard.
+            val glyphs = buildAnnotatedString {
+                akshara.swaras.indices.forEach { slot ->
+                    val result = marks[slot]
+                    withStyle(SpanStyle(color = markColor(result))) { append(markGlyph(result) ?: " ") }
+                }
+            }
+            Text(glyphs, fontSize = MARK_SP.sp, maxLines = 1)
+        }
     }
+}
+
+/** Row sentence with each swara's mark, e.g. "S in tune R high G in tune, …". */
+@Composable
+private fun markedSpoken(avarta: Avarta, index: Int, marks: Map<MarkKey, NoteResult>, tala: Tala, karvaiWord: String): String {
+    val words = avarta.aksharas.mapIndexed { i, akshara ->
+        val text = when (akshara) {
+            Akshara.Karvai -> karvaiWord
+            is Akshara.Swaras -> akshara.swaras.mapIndexed { slot, swara ->
+                val mark = markWords(marks[MarkKey(index, i, slot)])
+                if (mark == null) swara.toString() else "$swara $mark"
+            }.joinToString(" ")
+        }
+        if (i > 0 && tala.beats[i].startsAnga) ", $text" else if (i > 0) " $text" else text
+    }
+    return words.joinToString("")
 }
 
 @Composable
@@ -213,6 +248,7 @@ fun TalaStrip(beatInAvarta: Int?, modifier: Modifier = Modifier, tala: Tala = Ta
 }
 
 private const val MIN_SWARA_SP = 8
+private const val MARK_SP = 11
 private const val ROW_HEIGHT_DP = 48
 private const val ROW_GROWTH = 0.75f
 

@@ -46,7 +46,8 @@ Do not add features speculatively.
 | `shared/.../pitch/` | `PitchDetector` (YIN), `AudioResampler`, `NeuralArbitrator`: ported from ukulele-companion with the interpolation sign fix |
 | `shared/.../singalong/` | `PitchPipeline`, `SwaraMapper`, `SingAlongClock`, `BleedModel`, `NoteScorer`, `SingAlongSession`: sing-along scoring |
 | `app/.../audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (`AudioTrack` on a worker thread) |
-| `app/.../viewmodel/` | `PracticeViewModel` |
+| `app/.../audio/` (sing-along) | `MicSource` (`AudioRecordMicSource` with echo cancellation; debug-only `SyntheticSingerMicSource`), `SingAlongEngine`, `NeuralPitchSupervisor` |
+| `app/.../viewmodel/` | `PracticeViewModel`, `SingAlongState` |
 | `app/.../ui/` | `PurandaraApp` (library ↔ player), `library/`, `player/` |
 | `iosApp/Purandara/Audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (renders ahead on a queue into `AVAudioPlayerNode` buffers; no Kotlin on the real-time thread) |
 | `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel`; `LibraryView`, `PlayerView`, `NotationView` (+ `TalaStripView`) |
@@ -56,7 +57,15 @@ Swift interop notes: Kotlin default arguments are not visible from Swift (use th
 small factories such as `PerformanceSettings.create(...)`, `RenderOptions.practice(...)`);
 Kotlin names starting with `copy`/`new`/`init` get a `do` prefix in Swift, so avoid them
 in API meant for iOS. Debug launch arguments `-open <varisai-id> -autoplay YES` open
-(and play) an exercise for screenshots.
+(and play) an exercise for screenshots. On Android (debug builds),
+`adb shell am start -n com.baijum.purandara/.MainActivity --ef singer 0` replaces
+the microphone with a synthetic singer (the value is cents off target), so
+sing-along can be exercised on an emulator.
+
+Instrumented tests: if `connectedDebugAndroidTest` reports 0 tests or finishes
+in seconds, the emulator is probably out of storage (the app carries ONNX
+Runtime); check `app/build/reports/androidTests/connected/debug/index.html`
+and `adb shell df -h /data`.
 
 ### Sound model
 

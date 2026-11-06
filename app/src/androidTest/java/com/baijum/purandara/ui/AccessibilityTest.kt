@@ -25,6 +25,17 @@ import com.baijum.purandara.ui.player.PlayerActions
 import com.baijum.purandara.ui.player.PlayerScreen
 import com.baijum.purandara.ui.theme.PurandaraTheme
 import com.baijum.purandara.viewmodel.PlaybackState
+import com.baijum.purandara.viewmodel.PracticeUiState
+import com.baijum.purandara.viewmodel.SingAlongState
+import com.baijum.purandara.viewmodel.MarkKey
+import com.baijum.purandara.domain.Note
+import com.baijum.purandara.domain.Swara
+import com.baijum.purandara.domain.schedule.Schedule
+import com.baijum.purandara.singalong.Attention
+import com.baijum.purandara.singalong.NoteResult
+import com.baijum.purandara.singalong.PassSummary
+import com.baijum.purandara.singalong.SwaraMapper
+import com.baijum.purandara.singalong.Tendency
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -38,19 +49,23 @@ class AccessibilityTest {
     val compose = createComposeRule()
 
     private var settings = PracticeSettings()
+    private var singAlongToggled = 0
 
-    private fun showPlayer(playback: PlaybackState = PlaybackState()) {
+    private fun showPlayer(
+        playback: PlaybackState = PlaybackState(),
+        singAlong: SingAlongState = SingAlongState(micPermitted = true),
+        id: String = "sarali-4",
+    ) {
         compose.setContent {
             PurandaraTheme {
                 PlayerScreen(
-                    varisai = VarisaiCatalog.byId("sarali-4")!!,
-                    settings = settings,
-                    playback = playback,
-                    canPlay = true,
+                    varisai = VarisaiCatalog.byId(id)!!,
+                    state = PracticeUiState(settings = settings, samplesLoaded = true, playback = playback, singAlong = singAlong),
                     actions = PlayerActions(
                         onBack = {},
                         onTogglePlay = {},
                         onSettingsChange = { settings = it(settings) },
+                        onToggleSingAlong = { singAlongToggled++ },
                     ),
                 )
             }
@@ -132,6 +147,59 @@ class AccessibilityTest {
         compose.onNodeWithContentDescription("Adi tala: clap 1 2 3, clap wave, clap wave")
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Beat 3 of 8"))
         compose.onNodeWithText("Stop").assertHasClickAction()
+    }
+
+    @Test
+    fun singAlongToggleIsLabelledWithItsState() {
+        showPlayer()
+        compose.onNodeWithContentDescription("Sing along")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Off"))
+            .performClick()
+        assertEquals(1, singAlongToggled)
+        assertTouchTarget(compose.onNodeWithContentDescription("Sing along"))
+    }
+
+    @Test
+    fun singAlongPanelDescribesTheLiveReadingAndAnnouncesThePassSummary() {
+        settings = settings.copy(singAlong = true)
+        val schedule = Schedule.of(VarisaiCatalog.byId("plain-scale-1")!!, settings.performance())
+        val ri = schedule.notes[1]
+        val summary = PassSummary(judged = 16, inTune = 12, close = 2, noVoice = 0,
+            attention = listOf(Attention(Note(Swara.R1), Tendency.HIGH, 2, 2)))
+        showPlayer(
+            id = "plain-scale-1",
+            singAlong = SingAlongState(
+                micPermitted = true,
+                live = SwaraMapper(schedule.settings.saHz, schedule.settings.raga, schedule.settings.tuning).read(schedule.settings.saHz * 1.5),
+                marks = mapOf(MarkKey(0, 1, 0) to NoteResult.Judged(cents = 30.0, octaveShift = 0, sung = null)),
+                lastSummary = 1 to summary,
+            ),
+        )
+        compose.onNodeWithContentDescription("Your pitch")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "P · in tune · +0¢ · G3"))
+        compose.onNodeWithText("Pass 1: 14 of 16 notes in tune or close")
+            .assertIsDisplayed()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion) and
+            androidx.compose.ui.test.hasAnyDescendant(hasText("Pass 1: 14 of 16 notes in tune or close"))).assertExists()
+        compose.onNodeWithText("Needs attention: R₁ high (2 of 2)").assertExists()
+        compose.onNodeWithContentDescription("Avarta 1: S R high G M, P D, N S′").assertExists()
+        assertEquals(ri.note.swara, Swara.R1)
+    }
+
+    @Test
+    fun deniedMicExplainsAndOffersSettings() {
+        // Sing-along stays off after a refusal; the explanation must still show.
+        compose.setContent {
+            PurandaraTheme {
+                PlayerScreen(
+                    varisai = VarisaiCatalog.byId("sarali-4")!!,
+                    state = PracticeUiState(settings = settings, samplesLoaded = true, singAlong = SingAlongState(micPermitted = false)),
+                    actions = PlayerActions({}, {}, {}),
+                    micDenied = true,
+                )
+            }
+        }
+        compose.onNodeWithText("Open settings").assertHasClickAction()
     }
 
     @Test

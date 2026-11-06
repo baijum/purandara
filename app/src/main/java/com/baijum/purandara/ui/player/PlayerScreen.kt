@@ -23,6 +23,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import com.baijum.purandara.domain.schedule.Schedule
+import com.baijum.purandara.viewmodel.PracticeUiState
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -70,39 +73,39 @@ import kotlin.math.roundToInt
 @Composable
 fun PlayerScreen(
     varisai: Varisai,
-    settings: PracticeSettings,
-    playback: PlaybackState,
-    canPlay: Boolean,
+    state: PracticeUiState,
     actions: PlayerActions,
+    micDenied: Boolean = false,
 ) {
+    val settings = state.settings
+    val playback = state.playback
+    val canPlay = state.samplesLoaded
     var showSettings by rememberSaveable { mutableStateOf(false) }
     Scaffold(
-        topBar = { PlayerTopBar(varisai.title, onBack = actions.onBack, onSettings = { showSettings = true }) },
-        bottomBar = {
-            Surface(tonalElevation = 3.dp) {
-                Button(
-                    onClick = actions.onTogglePlay,
-                    enabled = canPlay,
-                    modifier = Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
-                ) {
-                    Icon(
-                        painterResource(if (playback.playing) R.drawable.ic_stop else R.drawable.ic_play),
-                        contentDescription = null,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(if (playback.playing) R.string.stop else R.string.play))
-                }
-            }
+        topBar = {
+            PlayerTopBar(
+                varisai.title,
+                singAlong = settings.singAlong,
+                onBack = actions.onBack,
+                onSingAlong = actions.onToggleSingAlong,
+                onSettings = { showSettings = true },
+            )
         },
+        bottomBar = { PlayButtonBar(playback.playing, canPlay, actions.onTogglePlay) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             TalaStrip(
                 beatInAvarta = playback.beatInAvarta,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
+            // Also shown after a refused permission, so the student learns why nothing happened.
+            if (settings.singAlong || (micDenied && !state.singAlong.micPermitted)) {
+                SingAlongPanel(varisai, state, micDenied, actions.onOpenAppSettings)
+            }
             NotationView(
                 varisai = varisai,
                 position = playback.position,
+                marks = if (settings.singAlong) state.singAlong.marks else emptyMap(),
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
             PlaybackStatus(playback)
@@ -121,9 +124,24 @@ fun PlayerScreen(
     }
 }
 
+@Composable
+private fun PlayButtonBar(playing: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+    Surface(tonalElevation = 3.dp) {
+        Button(
+            onClick = onToggle,
+            enabled = enabled,
+            modifier = Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
+        ) {
+            Icon(painterResource(if (playing) R.drawable.ic_stop else R.drawable.ic_play), contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(if (playing) R.string.stop else R.string.play))
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PlayerTopBar(title: String, onBack: () -> Unit, onSettings: () -> Unit) {
+private fun PlayerTopBar(title: String, singAlong: Boolean, onBack: () -> Unit, onSingAlong: () -> Unit, onSettings: () -> Unit) {
     TopAppBar(
         title = { Text(title) },
         navigationIcon = {
@@ -132,11 +150,44 @@ private fun PlayerTopBar(title: String, onBack: () -> Unit, onSettings: () -> Un
             }
         },
         actions = {
+            val state = stringResource(if (singAlong) R.string.sing_along_on else R.string.sing_along_off)
+            IconToggleButton(
+                checked = singAlong,
+                onCheckedChange = { onSingAlong() },
+                modifier = Modifier.semantics { stateDescription = state },
+            ) {
+                Icon(painterResource(R.drawable.ic_mic), contentDescription = stringResource(R.string.sing_along))
+            }
             IconButton(onClick = onSettings) {
                 Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.practice_settings))
             }
         },
     )
+}
+
+/** Pitch lane, live reading, headphone hint, permission message and the last pass summary. */
+@Composable
+private fun SingAlongPanel(varisai: Varisai, state: PracticeUiState, micDenied: Boolean, onOpenAppSettings: () -> Unit) {
+    val sing = state.singAlong
+    val schedule = remember(varisai, state.settings) { Schedule.of(varisai, state.settings.performance()) }
+    Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (micDenied && !sing.micPermitted) {
+            Text(stringResource(R.string.mic_denied), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+            OutlinedButton(onClick = onOpenAppSettings) { Text(stringResource(R.string.open_settings)) }
+            return@Column
+        }
+        PitchLane(
+            schedule = schedule,
+            avarta = state.playback.position?.avarta,
+            pass = state.playback.position?.repetition,
+            trace = sing.trace,
+            live = sing.live,
+        )
+        if (sing.onSpeaker) {
+            Text(stringResource(R.string.headphones_hint), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        sing.lastSummary?.let { (pass, summary) -> PassSummaryCard(pass, summary) }
+    }
 }
 
 /** "Count-in…" during the count-in, or "Pass n of m" when an exercise repeats within an avarta. */
@@ -218,6 +269,16 @@ private fun PracticeSettingsSheet(
         }
         LevelSlider(stringResource(R.string.harmonium_volume), settings.harmoniumLevel, enabled = true) { v ->
             onSettingsChange { it.copy(harmoniumLevel = v) }
+        }
+        Text(stringResource(R.string.harmonium_guide), style = MaterialTheme.typography.titleSmall)
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            listOf(true to R.string.guide_all, false to R.string.guide_off).forEachIndexed { i, (guide, label) ->
+                SegmentedButton(
+                    selected = settings.harmoniumGuide == guide,
+                    onClick = { onSettingsChange { it.copy(harmoniumGuide = guide) } },
+                    shape = SegmentedButtonDefaults.itemShape(i, 2),
+                ) { Text(stringResource(label)) }
+            }
         }
         ToggleRow(stringResource(R.string.click), settings.click) { on -> onSettingsChange { it.copy(click = on) } }
         ToggleRow(stringResource(R.string.count_in), settings.countIn) { on -> onSettingsChange { it.copy(countIn = on) } }

@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioTimestamp
 import android.media.AudioTrack
 import android.os.Process
 import android.util.Log
@@ -67,6 +68,20 @@ class VarisaiAudioPlayer(context: Context) {
     /** Frames the hardware has played since [play], or null when idle. */
     fun positionFrames(): Long? = session?.takeUnless { it.finished }?.playedFrames()
 
+    /**
+     * Called on the playback thread after each rendered block with the frame
+     * it starts at and its RMS level (sing-along uses this to model leakage).
+     */
+    @Volatile var onRendered: ((startFrame: Long, rms: Float) -> Unit)? = null
+
+    /**
+     * The rendered frame that was leaving the speaker at [nanoTime]
+     * ([System.nanoTime] clock), or null when idle. Uses the hardware
+     * presentation timestamp when available, so output latency is included.
+     * Safe to call from any thread.
+     */
+    fun outputFrameAt(nanoTime: Long): Long? = session?.takeUnless { it.finished }?.frameAt(nanoTime)
+
     private inner class Session(private val renderer: SampleRenderer, private val onFinished: () -> Unit) {
         @Volatile private var stopRequested = false
 
@@ -107,6 +122,22 @@ class VarisaiAudioPlayer(context: Context) {
         /** Frames played; the head position is an unsigned 32-bit counter. */
         fun playedFrames(): Long = track.playbackHeadPosition.toLong() and UINT32_MASK
 
+        private val timestamp = AudioTimestamp()
+
+        fun frameAt(nanoTime: Long): Long? = synchronized(timestamp) {
+            try {
+                if (track.getTimestamp(timestamp)) {
+                    timestamp.framePosition + (nanoTime - timestamp.nanoTime) * renderer.sampleRate / NANOS_PER_SECOND
+                } else {
+                    // No hardware timestamp yet: the play head lags the speaker by
+                    // roughly the buffer, which is close enough for the first frames.
+                    playedFrames() - track.bufferSizeInFrames / 2
+                }
+            } catch (_: IllegalStateException) {
+                null // released concurrently
+            }
+        }
+
         private fun run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
             val buffer = FloatArray(CHUNK_FRAMES)
@@ -121,6 +152,7 @@ class VarisaiAudioPlayer(context: Context) {
                     }
                     val n = renderer.render(buffer)
                     if (n == 0) break
+                    onRendered?.invoke(written, rms(buffer, n))
                     var off = 0
                     while (off < n) {
                         val w = track.write(buffer, off, n - off, AudioTrack.WRITE_BLOCKING)
@@ -145,6 +177,14 @@ class VarisaiAudioPlayer(context: Context) {
     }
 
     private companion object {
+        const val NANOS_PER_SECOND = 1_000_000_000L
+
+        fun rms(buffer: FloatArray, n: Int): Float {
+            var sum = 0.0
+            for (i in 0 until n) sum += buffer[i] * buffer[i]
+            return kotlin.math.sqrt(sum / n).toFloat()
+        }
+
         const val TAG = "VarisaiAudioPlayer"
         const val CHUNK_FRAMES = 1024
         const val BUFFER_FRAMES = 4096

@@ -18,12 +18,23 @@ data class PracticeSettings(
     val harmoniumLevel: Float = RenderOptions.DEFAULT_HARMONIUM_LEVEL,
     val droneLevel: Float = RenderOptions.DEFAULT_DRONE_LEVEL,
     val tuning: Tuning = Tuning.JUST,
+    /** Sing along with pitch feedback (needs the microphone). */
+    val singAlong: Boolean = false,
+    /** Harmonium plays every note (true) or stays silent so only drone and click guide (false). */
+    val harmoniumGuide: Boolean = true,
 ) {
     fun performance(): PerformanceSettings =
         PerformanceSettings(saHz = Shruti.saHz(saMidi), tempo = tempo, kala = kala, tuning = tuning)
 
-    fun renderOptions(): RenderOptions =
-        RenderOptions.practice(drone, click, loop, countIn, harmoniumLevel, droneLevel)
+    /** Sing-along forces the count-in (leakage is measured while the student is silent). */
+    fun renderOptions(): RenderOptions = RenderOptions.practice(
+        drone = drone,
+        click = click,
+        loop = loop,
+        countIn = countIn || singAlong,
+        harmoniumLevel = if (singAlong && !harmoniumGuide) 0f else harmoniumLevel,
+        droneLevel = droneLevel,
+    )
 }
 
 /** Persists [PracticeSettings] in SharedPreferences. Values out of range fall back to defaults. */
@@ -42,6 +53,8 @@ class PracticePreferences(context: Context) {
             countIn = prefs.getBoolean(COUNT_IN, d.countIn),
             harmoniumLevel = prefs.getFloat(HARMONIUM_LEVEL, d.harmoniumLevel).takeIf { it in 0f..1f } ?: d.harmoniumLevel,
             droneLevel = prefs.getFloat(DRONE_LEVEL, d.droneLevel).takeIf { it in 0f..1f } ?: d.droneLevel,
+            singAlong = prefs.getBoolean(SING_ALONG, d.singAlong),
+            harmoniumGuide = prefs.getBoolean(HARMONIUM_GUIDE, d.harmoniumGuide),
             tuning = Tuning.entries.firstOrNull { it.name == prefs.getString(TUNING, null) } ?: d.tuning,
         )
     }
@@ -58,6 +71,8 @@ class PracticePreferences(context: Context) {
             .putFloat(HARMONIUM_LEVEL, s.harmoniumLevel)
             .putFloat(DRONE_LEVEL, s.droneLevel)
             .putString(TUNING, s.tuning.name)
+            .putBoolean(SING_ALONG, s.singAlong)
+            .putBoolean(HARMONIUM_GUIDE, s.harmoniumGuide)
             .apply()
     }
 
@@ -72,5 +87,7 @@ class PracticePreferences(context: Context) {
         const val COUNT_IN = "count_in"
         const val HARMONIUM_LEVEL = "harmonium_level"
         const val DRONE_LEVEL = "drone_level"
+        const val SING_ALONG = "sing_along"
+        const val HARMONIUM_GUIDE = "harmonium_guide"
     }
 }
