@@ -33,3 +33,6 @@
 *.ico binary
 *.xcframework binary
 *.framework binary
+
+# Audio
+*.flac binary

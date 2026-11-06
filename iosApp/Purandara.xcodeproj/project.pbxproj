@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		40BDEF4DD4F2AB7BFFA9A483 /* SharedFrameworkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */; };
+		80064C7F88A31F3EA3D5E83D /* audio in Resources */ = {isa = PBXBuildFile; fileRef = 88C8E5DD4E7C3B504D0222BD /* audio */; };
 		814E479F470E51F9091B5BB3 /* PurandaraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74015C2759451D3EC808AFD0 /* PurandaraApp.swift */; };
 		99D1BA41BBB3E9704013B7E7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 560AB5BD71CF4F8FC8CBBE4A /* ContentView.swift */; };
 		AB6CC5F96BEB624359C2D520 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 51ADA9130DD6170AD77733F3 /* Assets.xcassets */; };
@@ -27,6 +28,7 @@
 		51ADA9130DD6170AD77733F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		560AB5BD71CF4F8FC8CBBE4A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		74015C2759451D3EC808AFD0 /* PurandaraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurandaraApp.swift; sourceTree = "<group>"; };
+		88C8E5DD4E7C3B504D0222BD /* audio */ = {isa = PBXFileReference; lastKnownFileType = folder; name = audio; path = ../audio; sourceTree = SOURCE_ROOT; };
 		8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedFrameworkTests.swift; sourceTree = "<group>"; };
 		E9E3789F99C97FAB0759E82A /* PurandaraTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PurandaraTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FE49BD3C45C04B12B704AEB6 /* Purandara.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Purandara.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -55,6 +57,7 @@
 			isa = PBXGroup;
 			children = (
 				200899EE541578103020FB1F /* Purandara */,
+				F932E3060006E76C24C70E79 /* purandara */,
 				56F2366A27BEA58DF2DA7A03 /* PurandaraTests */,
 				CE23137C8034E2553F8BE59E /* Products */,
 			);
@@ -67,6 +70,15 @@
 				E9E3789F99C97FAB0759E82A /* PurandaraTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		F932E3060006E76C24C70E79 /* purandara */ = {
+			isa = PBXGroup;
+			children = (
+				88C8E5DD4E7C3B504D0222BD /* audio */,
+			);
+			name = purandara;
+			path = ..;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -149,6 +161,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB6CC5F96BEB624359C2D520 /* Assets.xcassets in Resources */,
+				80064C7F88A31F3EA3D5E83D /* audio in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

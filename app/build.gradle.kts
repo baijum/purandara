@@ -73,6 +73,19 @@ android {
         compose = true
     }
 
+    sourceSets {
+        getByName("main") {
+            // Bundled samples live once at the repo root and are shared with iOS.
+            assets.directories.add(rootProject.file("audio").path)
+        }
+    }
+
+    androidResources {
+        // FLAC is already compressed; storing it uncompressed lets SoundPool /
+        // AssetManager.openFd() read samples directly from the APK.
+        noCompress += "flac"
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

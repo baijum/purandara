@@ -20,10 +20,20 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
 ## Layout
 
 ```
-shared/   Kotlin Multiplatform module (commonMain / androidMain / iosMain / jvmMain)
-app/      Android app (Jetpack Compose)
-iosApp/   iOS app (SwiftUI). project.yml is the XcodeGen spec
+shared/         Kotlin Multiplatform module (commonMain / androidMain / iosMain / jvmMain)
+app/            Android app (Jetpack Compose)
+iosApp/         iOS app (SwiftUI). project.yml is the XcodeGen spec
+audio/          Bundled samples, shared by both apps (Android assets, iOS bundle folder)
+tools/samples/  Offline scripts that prepare audio/ from source recordings
 ```
+
+## Sound
+
+Swaras are played on a harmonium: one CC0 sample per semitone from C2 to C5,
+pitch-corrected to exact equal temperament. Each swara's just-intonation
+frequency is reached by playing the nearest sample a few cents faster or
+slower (`HarmoniumBank` in `shared/`). See [ATTRIBUTION.md](ATTRIBUTION.md)
+for the recordings' credits, and `tools/samples/prepare_harmonium.py` to rebuild them.
 
 ## Building
 
@@ -44,4 +54,5 @@ xcodebuild -project iosApp/Purandara.xcodeproj -scheme Purandara \
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Code: MIT, see [LICENSE](LICENSE). Bundled third-party material is listed
+with its licence in [ATTRIBUTION.md](ATTRIBUTION.md).

@@ -34,6 +34,7 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.kotest.property)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }

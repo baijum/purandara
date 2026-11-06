@@ -26,6 +26,11 @@ targets:
     platform: iOS
     sources:
       - Purandara
+      # Bundled samples, shared with Android; copied as a folder so paths
+      # match HarmoniumBank.assetPath(), e.g. audio/harmonium/49.flac.
+      - path: ../audio
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.baijum.purandara.ios
