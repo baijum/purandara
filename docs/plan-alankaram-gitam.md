@@ -1,7 +1,8 @@
 # Plan: Alankarams and Gitams
 
 Status: **proposed** (2026-11-06). Nothing is built yet. The open questions at
-the end need answers first. Candidate source: karnatik.com (see *Source review*).
+the end need answers first. Candidate source: karnatik.com, cross-checked against shivkumar.org (see
+*Source review* and *Cross-check*).
 
 The next two stages of the traditional beginner path after the varisais are:
 
@@ -182,21 +183,68 @@ A1 and A2 ship alankarams on their own. Gitams follow.
     retroflex). The app would show the words in the transliteration chosen in
     Q4.
 
-**Problems to settle before encoding**
+## Cross-check: shivkumar.org (2026-11-06)
 
-1. **Inconsistent lower-octave dots.**
-   - The site marks mandra with a trailing dot (`d.`), but drops it in places.
-   - On its own mandra-sthayi varisai page, `d n.` and `d n. s r` must be `d.`.
-   - In Padumanābha (`s d , | d p | m p`) and Kereya Nīranu (`d p d | s ,`) it
-     is unclear whether the `d` and `p` after `s` are lower or middle.
-   - Every lower note in the gitams needs a second source, a recording or your
-     teacher. The same rule kept Mandhra Sthayi out of the varisais.
-2. **No licence stated.**
+[Shivkumar Kalyanaraman's archive](https://www.shivkumar.org/music/varnams/index.html)
+has, for each of the four Malahari gitams:
+
+- notation (HTML, Word, PDF);
+- a recorded class;
+- recordings by Deepa Krishnamurthy at kattai 4 to 6½.
+
+**How independent it is**
+
+- **Alankarams:** not independent. The page credits "Rani, www.karnatik.com and
+  Chitraveena Ravi Kiran's book", and the notation is the same.
+- **Gitams:** independent.
+  - The layout, word spellings and section names differ.
+  - The meanings are by Dr. Aruna Turaga.
+  - Some words differ: Kereya Nīranu has *nōḍi* where karnatik.com has
+    *nambi*.
+
+**How its notation differs from karnatik.com**
+
+- Capitals are the middle octave and lowercase letters the lower octave. The
+  upper octave is not marked in the HTML.
+- A held note is written `-` or as the swara again over a `-` in the words.
+  Both mean the same as karnatik.com's `,`.
+
+**Result: the swaras were compared avarta by avarta with a script.**
+
+- **Lower octave: the two sources agree on every lower note in all four
+  gitams.**
+  - The only one is the `d` in Padumanābha's opening line (R S Ḍ S).
+  - The doubtful places in Padumanābha (`s d , | d p`) and Kereya Nīranu
+    (`d p d | s ,`) are middle octave in both sources. Each source marks the
+    lower note in the line just above, so leaving the mark off here is
+    deliberate.
+- **Swaras:** identical, apart from how holds are written, except for one line.
+  - In Śrī Gaṇanātha's refrain (*lambōdara*), karnatik.com has
+    `s r | m , g r ||` (*lam· | bō , da ra*).
+  - shivkumar.org has `S , | R M G R ||` (*lam - | bō - dha ra*).
+  - This is a real *pāṭhāntaram*. The recordings or your teacher decide (Q8).
+- **Mistakes in shivkumar.org headers:**
+  - Kereya Nīranu and Padumanābha are labelled "Chathurasra Jathi" Triputa,
+    but the notation is 3 + 2 + 2 (Tisra). karnatik.com is right.
+  - Malahari's descent is given with G2; it is G3 (antara gāndhāra).
+- **Licence:** neither site states one.
+
+**Plan for the gitam text:**
+
+- Encode from karnatik.com, the primary source, in its section order.
+- Cross-check every avarta against shivkumar.org in a test-like script kept
+  with the source notes.
+- Record each difference and the choice made in the notation file's header.
+
+**Remaining issues to settle before encoding**
+
+1. **Licence and credit.**
    - The compositions are traditional and public domain, and the notation is
      re-encoded in the app's own format.
-   - Still, credit karnatik.com in ATTRIBUTION.md (with the page links).
-     Preferably also ask the site's author before shipping.
-3. **Typos to fix in transcription,** recorded in the header.
+   - Credit both sites in ATTRIBUTION.md, with page links, Rani (karnatik.com)
+     and Shivkumar Kalyanaraman.
+   - Preferably ask both before shipping.
+2. **Typos to fix in transcription,** recorded in the header.
    - Example: the caraṇam 3 words of Śrī Gaṇanātha are split oddly
      (`sa r | vO t ta ma`).
    - Each fix is listed rather than made silently.
@@ -214,8 +262,8 @@ varisais that plan.md section 3.4 excludes.
 
 1. **Notation source (needed before A2 and G1).** The varisais were copied
    verbatim from your workbook, which has no alankarams or gitams.
-   karnatik.com is the candidate (see *Source review*). It is enough for the
-   alankarams; the gitams need the lower-octave check in Q8.
+   karnatik.com is the candidate (see *Source review*), cross-checked against
+   shivkumar.org for the gitams. Only Q8 is open.
    - Which book or teacher's notes should be the reference?
    - Gitams have regional variants (*pathantaram*), and the version should
      match what you are taught.
@@ -245,5 +293,9 @@ varisais that plan.md section 3.4 excludes.
    teacher counts it differently.
 7. **Sankeerna Eka alankaram.** Add karnatik.com's eighth alankaram (9 beats),
    or keep to the traditional seven? Recommendation: the seven.
-8. **Mandra cross-check.** Do you have a book, a recording you trust or your
-   teacher to confirm the lower notes in Padumanābha and Kereya Nīranu?
+8. **Śrī Gaṇanātha refrain.** Which version do you sing:
+   - `S R | M , G R` (karnatik.com)
+   - `S , | R M G R` (shivkumar.org)
+
+   Deepa Krishnamurthy's recording on shivkumar.org, or your teacher, decides.
+   The lower-octave question is settled: both sources agree.
