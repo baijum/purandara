@@ -1,6 +1,6 @@
 # Plan: Alankarams and Gitams
 
-Status: **approved** (2026-11-06). Milestones 1–4 below; none built yet.
+Status: **approved** (2026-11-06). Milestone 1 done; 2–4 to come.
 
 The next two stages of the traditional beginner path after the varisais:
 
@@ -27,7 +27,20 @@ below the milestones.
 **Outcome:** 7 alankarams and 4 gitams, in both apps. They work with the player,
 sing-along, history, "next up", accessibility and the website guide.
 
-## Milestone 1: shared talas, clicks, and per-exercise tala and raga
+## Milestone 1: shared talas, clicks, and per-exercise tala and raga ✅
+
+Done 2026-11-06. Differences from the plan below:
+
+- Raga and tala were **removed from `PerformanceSettings`**; `Schedule.tala` and
+  `Schedule.raga` come from the exercise, so they can't disagree and no
+  `forExercise` factory is needed.
+- The harmonium bank now reaches **D5** (MIDI 74): the CC0 source pack has C♯5
+  and D5, so no stretching fallback was needed. The existing files came out
+  byte-identical.
+- A closing `||` at the end of a notation line is allowed, as books write it.
+- `Raga.letters` / `Raga.swaras` list only the letters a raga uses
+  (`SwaraMapper` uses them, so Malahari doesn't crash on N).
+
 
 **Tala** (`shared/.../domain/Tala.kt`)
 

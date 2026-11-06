@@ -31,8 +31,8 @@ object HarmoniumBank {
     /** C2. Must match MIDI_LOW in prepare_harmonium.py. */
     const val MIDI_LOW: Int = 36
 
-    /** C5. Must match MIDI_HIGH in prepare_harmonium.py. */
-    const val MIDI_HIGH: Int = 72
+    /** D5. Must match MIDI_HIGH in prepare_harmonium.py. */
+    const val MIDI_HIGH: Int = 74
 
     const val DIRECTORY: String = "harmonium"
 
@@ -53,7 +53,7 @@ object HarmoniumBank {
 
     /**
      * The sample and playback rate that produce [frequencyHz], or `null` if the
-     * frequency is outside the bank (more than half a semitone beyond C2..C5)
+     * frequency is outside the bank (more than half a semitone beyond C2..D5)
      * or not a positive finite number.
      */
     fun playbackFor(frequencyHz: Double): SamplePlayback? {

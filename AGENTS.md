@@ -43,7 +43,7 @@ features speculatively.
 
 | Where | What |
 |---|---|
-| `shared/.../domain/` | `Swara`, `Raga`, `Tala`, `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
+| `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
 | `shared/.../domain/varisai/` | Notation parser and the exercise catalog (`catalog/` holds the notation text) |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
 | `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` + `FindSaGuide` (Find my Sa) |
@@ -94,7 +94,7 @@ loops at Sa A♯2/D3/F♯3/A♯3 prepared by `tools/samples/prepare_tanpura.py`;
 `TanpuraBank.playbackFor(saHz)` picks the nearest and a rate within ±3 semitones.
 The harmonium drone remains only as a fallback if the loops fail to load.
 
-Swaras use the CC0 harmonium bank: `audio/harmonium/<midi>.flac`, MIDI 36–72 (C2–C5),
+Swaras use the CC0 harmonium bank: `audio/harmonium/<midi>.flac`, MIDI 36–74 (C2–D5),
 each exactly 12-TET at A4 = 440 Hz. `HarmoniumBank.playbackFor(note, saHz)` picks the
 nearest sample and a playback rate (within ±half a semitone) that hits the swara's
 just-intonation ratio (`Swara.ratio`). Android plays at that rate via `SoundPool`;

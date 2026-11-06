@@ -11,7 +11,7 @@ import com.baijum.purandara.domain.varisai.Akshara
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.WrittenSwara
 
-/** How to perform an exercise. */
+/** How to perform an exercise. Its raga and tala come from the exercise itself. */
 data class PerformanceSettings(
     val saHz: Double,
     /** Tala aksharas per minute (the beat you clap). */
@@ -19,8 +19,6 @@ data class PerformanceSettings(
     /** 1..4: kala k puts 2^(k-1) written aksharas in each tala akshara. */
     val kala: Int = 1,
     val tuning: Tuning = Tuning.JUST,
-    val raga: Raga = Raga.MAYAMALAVAGOWLA,
-    val tala: Tala = Tala.ADI,
 ) {
     init {
         require(saHz > 0.0 && saHz.isFinite()) { "Sa must be a positive frequency, was $saHz" }
@@ -38,7 +36,7 @@ data class PerformanceSettings(
     val writtenAksharaSeconds: Double get() = talaAksharaSeconds / aksharasPerBeat
 
     companion object {
-        /** For callers without default arguments (Swift): Mayamalavagowla in Adi tala. */
+        /** For callers without default arguments (Swift). */
         fun create(saHz: Double, tempo: Int, kala: Int, tuning: Tuning): PerformanceSettings =
             PerformanceSettings(saHz = saHz, tempo = tempo, kala = kala, tuning = tuning)
 
@@ -99,6 +97,12 @@ class Schedule private constructor(
     val cursor: List<CursorEvent>,
     val durationSeconds: Double,
 ) {
+    /** The exercise's tala. */
+    val tala: Tala get() = varisai.tala
+
+    /** The exercise's raga. */
+    val raga: Raga get() = varisai.raga
+
     /** Notation position sounding at [seconds], or null before the start or after the end. */
     fun cursorAt(seconds: Double): NotationPosition? {
         if (seconds < 0.0 || seconds >= durationSeconds) return null
@@ -133,7 +137,7 @@ class Schedule private constructor(
          *   harmonium bank for this Sa.
          */
         fun of(varisai: Varisai, settings: PerformanceSettings): Schedule {
-            val reps = repetitionsToFillAvartas(varisai.aksharaCount, settings)
+            val reps = repetitionsToFillAvartas(varisai, settings)
             val aksharaSeconds = settings.writtenAksharaSeconds
             val notes = mutableListOf<NoteEvent>()
             val cursor = mutableListOf<CursorEvent>()
@@ -154,7 +158,7 @@ class Schedule private constructor(
                                 akshara.swaras.forEachIndexed { slot, swara ->
                                     val start = aksharaStart + slot * slotSeconds
                                     val position = NotationPosition(rep, avartaIndex, aksharaIndex, slot)
-                                    notes += noteEvent(swara, start, slotSeconds, position, settings)
+                                    notes += noteEvent(swara, start, slotSeconds, position, varisai.raga, settings)
                                     cursor += CursorEvent(start, position)
                                 }
                             }
@@ -165,9 +169,10 @@ class Schedule private constructor(
             }
 
             val totalBeats = written / settings.aksharasPerBeat
+            val tala = varisai.tala
             val beats = List(totalBeats) { i ->
-                val inAvarta = i % settings.tala.aksharas
-                BeatEvent(i * settings.talaAksharaSeconds, i, inAvarta, settings.tala.beats[inAvarta])
+                val inAvarta = i % tala.aksharas
+                BeatEvent(i * settings.talaAksharaSeconds, i, inAvarta, tala.beats[inAvarta])
             }
             return Schedule(
                 varisai = varisai,
@@ -181,9 +186,10 @@ class Schedule private constructor(
         }
 
         /** Smallest number of passes whose written aksharas fill whole tala avartas. */
-        fun repetitionsToFillAvartas(writtenAksharas: Int, settings: PerformanceSettings): Int {
+        fun repetitionsToFillAvartas(varisai: Varisai, settings: PerformanceSettings): Int {
+            val writtenAksharas = varisai.aksharaCount
             require(writtenAksharas > 0) { "exercise has no aksharas" }
-            val perAvarta = settings.tala.aksharas * settings.aksharasPerBeat
+            val perAvarta = varisai.tala.aksharas * settings.aksharasPerBeat
             var reps = 1
             while ((writtenAksharas * reps) % perAvarta != 0) reps++
             return reps
@@ -194,9 +200,10 @@ class Schedule private constructor(
             start: Double,
             duration: Double,
             position: NotationPosition,
+            raga: Raga,
             settings: PerformanceSettings,
         ): NoteEvent {
-            val note = Note(settings.raga.swara(written.letter), written.octave)
+            val note = Note(raga.swara(written.letter), written.octave)
             val hz = settings.tuning.frequency(note, settings.saHz)
             val playback = requireNotNull(HarmoniumBank.playbackFor(hz)) {
                 "$written (${hz.toInt()} Hz) is outside the harmonium bank for Sa ${settings.saHz} Hz"

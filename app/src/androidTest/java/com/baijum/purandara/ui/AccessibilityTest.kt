@@ -189,7 +189,7 @@ class AccessibilityTest {
             id = "plain-scale-1",
             singAlong = SingAlongState(
                 micPermitted = true,
-                live = SwaraMapper(schedule.settings.saHz, schedule.settings.raga, schedule.settings.tuning).read(schedule.settings.saHz * 1.5),
+                live = SwaraMapper(schedule.settings.saHz, schedule.raga, schedule.settings.tuning).read(schedule.settings.saHz * 1.5),
                 marks = mapOf(MarkKey(0, 1, 0) to NoteResult.Judged(cents = 30.0, octaveShift = 0, sung = null)),
                 lastSummary = 1 to summary,
             ),

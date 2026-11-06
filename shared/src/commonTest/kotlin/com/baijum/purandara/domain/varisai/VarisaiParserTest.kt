@@ -127,4 +127,60 @@ class VarisaiParserTest {
     fun rejectsAsciiApostropheInsteadOfPrime() {
         assertFailsWith<VarisaiParseException> { parser.parse("1\nS R G M P D N S'", VarisaiSet.SARALI) }
     }
+
+    @Test
+    fun headersSetTalaRagaAndTitle() {
+        val v = parseOne(
+            """
+            2
+            tala: rupaka-4
+            raga: malahari
+            title: Sri Gananatha
+            Mˌ Pˌ | Dˌ S R M ||
+            """,
+        )
+        assertEquals("rupaka-4", v.tala.key)
+        assertEquals("Malahari", v.raga.name)
+        assertEquals("Sri Gananatha", v.title)
+        val first = (v.avartas[0].aksharas[0] as Akshara.Swaras).swaras.single()
+        assertEquals(WrittenSwara(SwaraLetter.M, Octave.MANDRA), first)
+        assertEquals("M\u0323", first.toString())
+        assertEquals("low M low P, low D S R M", v.avartas[0].spoken(v.tala, "hold"))
+    }
+
+    @Test
+    fun avartaLengthFollowsTheExerciseTala() {
+        val e = assertFailsWith<VarisaiParseException> {
+            parseOne(
+                """
+                1
+                tala: dhruva-4
+                S R G M | G R | S R G R | S R G ||
+                """,
+            )
+        }
+        assertTrue("13 aksharas; Dhruva tala needs 14" in e.message!!, e.message)
+        val ok = parseOne("1\ntala: eka-4\nS R G M || R G M P")
+        assertEquals(2, ok.avartas.size)
+    }
+
+    @Test
+    fun unknownHeadersValuesAndLettersOutsideTheRagaAreErrors() {
+        assertFailsWith<VarisaiParseException> { parseOne("1\ntala: dhruva\nS R G M") }
+        assertFailsWith<VarisaiParseException> { parseOne("1\nraga: kalyani\nS R G M | P D | N S′ || S R G M | P D | N S′") }
+        val e = assertFailsWith<VarisaiParseException> {
+            parseOne("1\nraga: malahari\nS R G M | P D | N S′ || S R G M | P D | D S′")
+        }
+        assertEquals(3, e.line)
+        assertTrue("Malahari has no N" in e.message!!, e.message)
+        assertFailsWith<VarisaiParseException> { parseOne("1\nS R G M | P D | N S′ ||\ntala: eka-4") }
+        assertFailsWith<VarisaiParseException> { parser.parse("tala: eka-4\n1\nS R G M", VarisaiSet.SARALI) }
+    }
+
+    @Test
+    fun mandraMarkMustFollowASwaraOnce() {
+        assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nˌS R G M") }
+        assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nSˌˌ R G M") }
+        assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nS′ˌ R G M") }
+    }
 }

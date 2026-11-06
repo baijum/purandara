@@ -4,7 +4,6 @@ import com.baijum.purandara.domain.Pitch
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Swara
-import com.baijum.purandara.domain.SwaraLetter
 import com.baijum.purandara.domain.Tuning
 import kotlin.math.abs
 import kotlin.math.floor
@@ -74,7 +73,7 @@ class SwaraMapper(
     }
 
     private val ragaByPosition: Map<Int, Swara> =
-        SwaraLetter.entries.map(raga::swara).associateBy { it.semitone }
+        raga.swaras.associateBy { it.semitone }
 
     fun read(frequencyHz: Double): SwaraReading? {
         if (frequencyHz <= 0.0 || !frequencyHz.isFinite()) return null

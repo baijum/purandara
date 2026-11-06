@@ -75,7 +75,7 @@ class SingAlongSession(
     val outputLevels: OutputLevels = OutputLevels(),
     strictness: Strictness = Strictness.PRECISE,
 ) {
-    private val mapper = SwaraMapper(schedule.settings.saHz, schedule.settings.raga, schedule.settings.tuning, strictness)
+    private val mapper = SwaraMapper(schedule.settings.saHz, schedule.raga, schedule.settings.tuning, strictness)
     private val scorer = NoteScorer(schedule, mapper, strictness)
     private val bleed = BleedModel()
     private val frames = mutableListOf<ScoredFrame>()

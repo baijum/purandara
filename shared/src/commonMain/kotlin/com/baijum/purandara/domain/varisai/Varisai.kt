@@ -1,12 +1,23 @@
 package com.baijum.purandara.domain.varisai
 
 import com.baijum.purandara.domain.Octave
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.SwaraLetter
 import com.baijum.purandara.domain.Tala
 
-/** A swara as written: a letter and its octave (`S′` is S in the tara octave). */
+/**
+ * A swara as written: a letter and its octave. `S′` is S in the tara
+ * octave; `Ḍ` (a dot below) is D in the mandra octave.
+ */
 data class WrittenSwara(val letter: SwaraLetter, val octave: Octave = Octave.MADHYA) {
-    override fun toString(): String = letter.symbol + if (octave == Octave.TARA) "′" else ""
+    override fun toString(): String = letter.symbol + when (octave) {
+        Octave.TARA -> "′"
+        Octave.MANDRA -> "\u0323"
+        Octave.MADHYA -> ""
+    }
+
+    /** For screen readers: a dot below is not read aloud, so mandra is "low D". */
+    fun spoken(): String = if (octave == Octave.MANDRA) "low ${letter.symbol}" else toString()
 }
 
 /** One akshara of written notation. */
@@ -18,6 +29,10 @@ sealed interface Akshara {
         }
 
         override fun toString(): String = swaras.joinToString("")
+
+        /** For screen readers; spaced out when a mandra swara is spoken as "low D". */
+        fun spoken(): String =
+            swaras.joinToString(if (swaras.any { it.octave == Octave.MANDRA }) " " else "") { it.spoken() }
     }
 
     /** Karvai (`,`): the previous swara continues through this akshara. */
@@ -36,7 +51,10 @@ data class Avarta(val aksharas: List<Akshara>) {
      */
     fun spoken(tala: Tala, karvaiWord: String): String =
         aksharas.mapIndexed { i, a ->
-            val word = if (a == Akshara.Karvai) karvaiWord else a.toString()
+            val word = when (a) {
+                Akshara.Karvai -> karvaiWord
+                is Akshara.Swaras -> a.spoken()
+            }
             when {
                 i == 0 -> word
                 tala.beats[i].startsAnga -> ", $word"
@@ -55,13 +73,24 @@ enum class VarisaiSet(val title: String, val description: String) {
     DHATTU("Dhattu Varisai", "Leaps over a note and back: reach a distant pitch without sliding."),
 }
 
-/** One numbered exercise. */
-data class Varisai(val set: VarisaiSet, val number: Int, val avartas: List<Avarta>) {
+/**
+ * One numbered exercise, in its [tala] and [raga]. [name] is the title of a
+ * named piece (a gitam); exercises without one are titled by set and number.
+ */
+data class Varisai(
+    val set: VarisaiSet,
+    val number: Int,
+    val avartas: List<Avarta>,
+    val tala: Tala = Tala.ADI,
+    val raga: Raga = Raga.MAYAMALAVAGOWLA,
+    val name: String? = null,
+) {
     /** Stable identifier, e.g. `sarali-4`. */
     val id: String get() = "${set.name.lowercase().replace('_', '-')}-$number"
 
     /** Display title, e.g. "Sarali Varisai 4". */
-    val title: String get() = if (set == VarisaiSet.PLAIN_SCALE) set.title else "${set.title} $number"
+    val title: String
+        get() = name ?: if (set == VarisaiSet.PLAIN_SCALE) set.title else "${set.title} $number"
 
     /** Written aksharas across all avartas. */
     val aksharaCount: Int get() = avartas.sumOf { it.aksharas.size }

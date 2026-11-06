@@ -3,6 +3,8 @@ package com.baijum.purandara.domain
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertSame
 
 class RagaTalaTuningTest {
     @Test
@@ -15,8 +17,21 @@ class RagaTalaTuningTest {
     }
 
     @Test
-    fun ragaMustDefineEveryLetterWithFixedSaAndPa() {
+    fun malahariHasNoNi() {
+        val raga = Raga.MALAHARI
+        assertEquals(listOf(Swara.S, Swara.R1, Swara.G3, Swara.M1, Swara.P, Swara.D1), raga.swaras)
+        assertFalse(raga.uses(SwaraLetter.N))
+        assertFailsWith<IllegalArgumentException> { raga.swara(SwaraLetter.N) }
+        assertEquals(listOf(Swara.S, Swara.R1, Swara.M1, Swara.P, Swara.D1, Swara.S), raga.arohanam.map { it.swara })
+        assertEquals(Octave.TARA, raga.avarohanam.first().octave)
+        assertEquals(listOf(Swara.S, Swara.D1, Swara.P, Swara.M1, Swara.G3, Swara.R1, Swara.S), raga.avarohanam.map { it.swara })
+        assertSame(raga, Ragas.byKey("malahari"))
+    }
+
+    @Test
+    fun ragaNeedsSaFixedPaAndFiveLetters() {
         assertFailsWith<IllegalArgumentException> { Raga("Partial", mapOf(SwaraLetter.S to Swara.S)) }
+        assertFailsWith<IllegalArgumentException> { Raga("No Sa", SwaraLetter.entries.associateWith { Swara.R1 }) }
         val withWrongPa = SwaraLetter.entries.associateWith { Swara.S } + (SwaraLetter.P to Swara.M2)
         assertFailsWith<IllegalArgumentException> { Raga("Bad", withWrongPa) }
     }

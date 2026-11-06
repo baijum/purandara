@@ -149,7 +149,7 @@ struct PitchLane: View {
 
     private func draw(_ context: GraphicsContext, _ size: CGSize) {
         let sa = schedule.settings.saHz
-        let raga = schedule.settings.raga
+        let raga = schedule.raga
         let labelWidth: CGFloat = 26
         func y(_ cents: Double) -> CGFloat { size.height * (1 - (cents - Self.lowCents) / (Self.highCents - Self.lowCents)) }
         func cents(_ note: Note) -> Double { 1200 * log2(note.frequency(saHz: sa) / sa) }
@@ -166,7 +166,7 @@ struct PitchLane: View {
             context.draw(Text(name).font(.system(size: 10)), at: CGPoint(x: 8, y: yy), anchor: .leading)
         }
         guard let avarta else { return }
-        let span = Double(schedule.settings.tala.aksharas) * schedule.settings.writtenAksharaSeconds
+        let span = Double(schedule.tala.aksharas) * schedule.settings.writtenAksharaSeconds
         let start = Double(avarta) * span
         func x(_ t: Double) -> CGFloat { labelWidth + (size.width - labelWidth) * (t - start) / span }
         for e in schedule.notes where Int(e.position.avarta) == avarta {

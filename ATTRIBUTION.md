@@ -15,7 +15,7 @@ here, including public-domain (CC0) ones that do not legally require it.
   pack "Harmonium".
   [freesound.org/people/cabled_mess/packs/29512](https://freesound.org/people/cabled_mess/packs/29512/)
 - **License:** [Creative Commons 0 (CC0 1.0) Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/)
-- **Files used:** the 37 chromatic notes C2–C5.
+- **Files used:** the 39 chromatic notes C2–D5.
 - **Changes made:** each note was pitch-corrected to exact equal temperament
   at A4 = 440 Hz (the instrument is about 5–17 cents sharp), trimmed to
   2.5 seconds from the attack with a short fade-out, loudness-normalised,

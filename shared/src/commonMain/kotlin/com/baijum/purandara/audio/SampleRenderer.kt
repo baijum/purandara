@@ -117,7 +117,7 @@ class SampleRenderer(
     private val beatFrames: Int = framesOf(schedule.settings.talaAksharaSeconds, sampleRate)
 
     /** Frames of count-in before the exercise starts (0 without a count-in). */
-    val countInFrames: Int = if (options.countIn) schedule.settings.tala.aksharas * beatFrames else 0
+    val countInFrames: Int = if (options.countIn) schedule.tala.aksharas * beatFrames else 0
 
     /**
      * Total frames when not looping: count-in, performance and release.
@@ -140,9 +140,10 @@ class SampleRenderer(
 
     private val drones: List<Voice> = if (options.drone) buildDrones() else emptyList()
     private val clickStarts: IntArray
-    private val clickAccents: BooleanArray
-    private val accentClick = clickWave(ACCENT_CLICK_HZ, 1f)
-    private val plainClick = clickWave(PLAIN_CLICK_HZ, PLAIN_CLICK_LEVEL)
+    private val clickKriyas: Array<Kriya>
+
+    /** One click sound per hand action, so a laghu's counts sound unlike its clap. */
+    private val clickWaves: Map<Kriya, FloatArray> = Kriya.entries.associateWith { clickWave(CLICK_TONES.getValue(it)) }
 
     private var firstActiveVoice = 0
     private var fadeOutStart = Long.MAX_VALUE
@@ -151,7 +152,7 @@ class SampleRenderer(
     init {
         val beats = if (options.click) schedule.beats else emptyList()
         clickStarts = IntArray(beats.size) { framesOf(beats[it].startSeconds, sampleRate) }
-        clickAccents = BooleanArray(beats.size) { beats[it].beat.kriya == Kriya.CLAP }
+        clickKriyas = Array(beats.size) { beats[it].beat.kriya }
     }
 
     /**
@@ -304,9 +305,9 @@ class SampleRenderer(
     }
 
     private fun mixCountIn(out: FloatArray, at: Int, from: Int, to: Int) {
-        val beats = schedule.settings.tala.beats
+        val beats = schedule.tala.beats
         for (b in beats.indices) {
-            val wave = if (beats[b].kriya == Kriya.CLAP) accentClick else plainClick
+            val wave = clickWaves.getValue(beats[b].kriya)
             val s = b * beatFrames
             if (s >= to) break
             if (s + wave.size <= from) continue
@@ -316,7 +317,7 @@ class SampleRenderer(
 
     private fun mixClicks(out: FloatArray, at: Int, from: Int, to: Int) {
         for (c in clickStarts.indices) {
-            val wave = if (clickAccents[c]) accentClick else plainClick
+            val wave = clickWaves.getValue(clickKriyas[c])
             val s = clickStarts[c]
             if (s >= to) break
             if (s + wave.size <= from) continue
@@ -324,13 +325,21 @@ class SampleRenderer(
         }
     }
 
-    private fun clickWave(hz: Double, level: Float): FloatArray {
+    /** A decaying tone with a touch of seeded noise: the same samples every time. */
+    private fun clickWave(tone: ClickTone): FloatArray {
         val n = framesOf(CLICK_SECONDS, sampleRate)
+        var seed = NOISE_SEED
         return FloatArray(n) { i ->
+            seed = seed * LCG_MULTIPLIER + LCG_INCREMENT
+            val noise = ((seed ushr NOISE_SHIFT).toDouble() / NOISE_SCALE) * 2 - 1
             val t = i.toDouble() / sampleRate
-            (sin(2 * PI * hz * t) * exp(-t / CLICK_DECAY_SECONDS)).toFloat() * level
+            val body = (1 - tone.noise) * sin(2 * PI * tone.hz * t) + tone.noise * noise
+            (body * exp(-t / tone.decaySeconds)).toFloat() * tone.level
         }
     }
+
+    /** How one hand action's click sounds. */
+    private data class ClickTone(val hz: Double, val decaySeconds: Double, val level: Float, val noise: Double)
 
     /** One sounding sample: a note or a drone string. Coordinates are frames. */
     private class Voice(
@@ -369,11 +378,22 @@ class SampleRenderer(
             DroneString(Note(Swara.P), 0.7f, 0.37),
             DroneString(Note(Swara.S, Octave.TARA), 0.5f, 0.71),
         )
-        const val CLICK_SECONDS = 0.03
-        const val CLICK_DECAY_SECONDS = 0.006
-        const val ACCENT_CLICK_HZ = 2000.0
-        const val PLAIN_CLICK_HZ = 1400.0
-        const val PLAIN_CLICK_LEVEL = 0.6f
+        const val CLICK_SECONDS = 0.04
+
+        /**
+         * Clap, finger count and wave, after the author's ThaaLam app: a dry,
+         * bright clap; a shorter, higher finger tick; a lower, longer, airier wave.
+         */
+        val CLICK_TONES = mapOf(
+            Kriya.CLAP to ClickTone(hz = 2000.0, decaySeconds = 0.0057, level = 1f, noise = 0.10),
+            Kriya.COUNT to ClickTone(hz = 1700.0, decaySeconds = 0.0039, level = 0.5f, noise = 0.0),
+            Kriya.WAVE to ClickTone(hz = 950.0, decaySeconds = 0.0078, level = 0.55f, noise = 0.18),
+        )
+        const val NOISE_SEED = 0x2545F491L
+        const val LCG_MULTIPLIER = 6364136223846793005L
+        const val LCG_INCREMENT = 1442695040888963407L
+        const val NOISE_SHIFT = 11
+        const val NOISE_SCALE = 9007199254740992.0 // 2^53
         const val DEFAULT_STOP_FADE_SECONDS = 0.08
         const val COUNT_IN_CLICK_GAIN = 0.4f
     }

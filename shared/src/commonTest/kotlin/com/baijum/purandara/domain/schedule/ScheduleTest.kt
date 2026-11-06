@@ -3,9 +3,12 @@ package com.baijum.purandara.domain.schedule
 import com.baijum.purandara.domain.HarmoniumBank
 import com.baijum.purandara.domain.Kriya
 import com.baijum.purandara.domain.Pitch
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Swara
+import com.baijum.purandara.domain.Talas
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
+import com.baijum.purandara.domain.varisai.VarisaiParser
 import com.baijum.purandara.domain.varisai.VarisaiSet
 import io.kotest.property.Arb
 import io.kotest.property.arbitrary.element
@@ -102,6 +105,33 @@ class ScheduleTest {
         assertEquals((0 until 32).map { it % 8 }, s.beats.map { it.beatInAvarta })
         assertEquals(Kriya.CLAP, s.beats[8].beat.kriya)
         assertEquals(Kriya.WAVE, s.beats[13].beat.kriya)
+    }
+
+    @Test
+    fun beatsFollowTheExerciseTalaAtEveryKala() {
+        val parser = VarisaiParser()
+        for (tala in Talas.all) {
+            val line = List(tala.aksharas) { "S" }.joinToString(" ")
+            val v = parser.parse("1\ntala: ${tala.key}\n$line\n$line", VarisaiSet.SARALI).single()
+            for (kala in PerformanceSettings.KALA_RANGE) {
+                val s = Schedule.of(v, PerformanceSettings(saHz = saC3, kala = kala))
+                assertEquals(tala, s.tala)
+                assertEquals(0, s.beats.size % tala.aksharas, "${tala.key} kala $kala fills whole avartas")
+                s.beats.forEach { b ->
+                    assertEquals(b.index % tala.aksharas, b.beatInAvarta)
+                    assertEquals(tala.beats[b.beatInAvarta], b.beat)
+                }
+                assertEquals(s.durationSeconds, s.beats.size * s.settings.talaAksharaSeconds, 1e-9)
+            }
+        }
+    }
+
+    @Test
+    fun ragaComesFromTheExercise() {
+        val v = VarisaiParser().parse("1\nraga: malahari\ntala: eka-4\nS R G M", VarisaiSet.SARALI).single()
+        val s = Schedule.of(v, PerformanceSettings(saHz = saC3))
+        assertEquals(Raga.MALAHARI, s.raga)
+        assertEquals(listOf(Swara.S, Swara.R1, Swara.G3, Swara.M1), s.notes.map { it.note.swara })
     }
 
     @Test

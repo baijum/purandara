@@ -37,7 +37,7 @@ data, timing, tala, and sample playback.
 
 | Part | Where |
 |---|---|
-| 37 harmonium samples, C2–C5, exact 12-TET at A4 = 440 Hz | `audio/harmonium/<midi>.flac` |
+| 39 harmonium samples, C2–D5, exact 12-TET at A4 = 440 Hz | `audio/harmonium/<midi>.flac` |
 | `Swara`, `Octave`, `Note` with just-intonation ratios | `shared/.../domain/Swara.kt` |
 | `HarmoniumBank.playbackFor(note, saHz)` → sample + rate | `shared/.../domain/HarmoniumBank.kt` |
 | Samples packaged in the APK (uncompressed) and the iOS bundle | `app/build.gradle.kts`, `iosApp/project.yml` |
@@ -72,13 +72,17 @@ Copy the text verbatim so it can be compared line by line with the workbook.
 | A run of letters, e.g. `SR`, `S′S′`, `SRGM` | One akshara divided evenly between its swaras. |
 | `,` | Karvai: hold the previous swara through this akshara. No gap. |
 | `\|` | Ends a laghu or druta. Layout only; the parser doesn't use it for timing. |
-| `\|\|` | Ends an avarta. |
+| `\|\|` | Ends an avarta. Optional at the end of a line. |
 | A number on its own line | Starts a new exercise. |
+| `ˌ` (U+02CC) after a letter | Mandra sthayi (lower octave): `Dˌ`, shown as `Ḍ`. |
+| `tala: <key>` after the number | The exercise's tala (`Talas`: `adi`, `dhruva-4`, `matya-4`, `rupaka-4`, `jhampa-7`, `triputa-3`, `ata-5`, `eka-4`). Default `adi`. |
+| `raga: <key>` after the number | The exercise's raga (`Ragas`: `mayamalavagowla`, `malahari`). Default `mayamalavagowla`; letters the raga doesn't use are errors. |
+| `title: <text>` after the number | Title of a named piece (a gitam). |
 
 - Each whitespace-separated token is one akshara.
 - Each line is one or more complete avartas.
-- No mandra marker is defined yet. One gets added only when Mandhra Sthayi is
-  confirmed.
+- The mandra marker exists for written pieces (gitams); the Mandhra Sthayi
+  varisais stay excluded until confirmed (section 3.4).
 - Unknown characters are a parse error. The parser never guesses.
 
 ### 3.3 Validation
@@ -229,13 +233,14 @@ Sa, tempo, kala and toggles persist: `SharedPreferences` on Android,
 ## 7. Sa range
 
 - Exercises in scope span Sa to S′, so the highest note is Sa + 12 semitones.
-  The bank tops out at C5, so the highest Sa is C4.
+  The bank first topped out at C5, so the highest Sa is C4. It now reaches
+  D5 so the gitams can go up to upper Ri at that Sa.
 - The workbook's lowest suggestion is B♭2. Starting the picker at G2 leaves
   room for deep voices.
 - So the picker offers G2–C4. That covers typical men's and women's ranges with
   no gender setting.
 - Later Thara exercises will need up to about tara Pa, so a high Sa will need
-  samples above C5 (the source pack goes to D5). That's handled when Thara is confirmed.
+  samples above D5, where the source pack ends. That's handled when Thara is confirmed.
 
 ## 8. How the app differs from the workbook
 

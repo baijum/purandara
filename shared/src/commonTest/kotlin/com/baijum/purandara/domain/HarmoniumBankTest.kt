@@ -19,17 +19,17 @@ class HarmoniumBankTest {
     private val halfSemitone = 2.0.pow(0.5 / 12)
 
     @Test
-    fun coversC2ToC5() {
-        assertEquals(36..72, HarmoniumBank.midiRange)
-        assertEquals(37, HarmoniumBank.allAssetPaths().size)
+    fun coversC2ToD5() {
+        assertEquals(36..74, HarmoniumBank.midiRange)
+        assertEquals(39, HarmoniumBank.allAssetPaths().size)
         assertEquals("harmonium/36.flac", HarmoniumBank.allAssetPaths().first())
-        assertEquals("harmonium/72.flac", HarmoniumBank.allAssetPaths().last())
+        assertEquals("harmonium/74.flac", HarmoniumBank.allAssetPaths().last())
     }
 
     @Test
     fun assetPathRejectsOutOfRange() {
         assertFailsWith<IllegalArgumentException> { HarmoniumBank.assetPath(35) }
-        assertFailsWith<IllegalArgumentException> { HarmoniumBank.assetPath(73) }
+        assertFailsWith<IllegalArgumentException> { HarmoniumBank.assetPath(75) }
     }
 
     @Test
@@ -53,14 +53,14 @@ class HarmoniumBankTest {
     @Test
     fun outOfRangeFrequenciesReturnNull() {
         assertNull(HarmoniumBank.playbackFor(Pitch.midiToHz(35.0)))
-        assertNull(HarmoniumBank.playbackFor(Pitch.midiToHz(72.6)))
+        assertNull(HarmoniumBank.playbackFor(Pitch.midiToHz(74.6)))
         assertNull(HarmoniumBank.playbackFor(0.0))
         assertNull(HarmoniumBank.playbackFor(-10.0))
         assertNull(HarmoniumBank.playbackFor(Double.NaN))
         assertNull(HarmoniumBank.playbackFor(Double.POSITIVE_INFINITY))
         // Edges: up to half a semitone beyond the ends is still playable.
         assertEquals(36, HarmoniumBank.playbackFor(Pitch.midiToHz(35.6))?.midi)
-        assertEquals(72, HarmoniumBank.playbackFor(Pitch.midiToHz(72.4))?.midi)
+        assertEquals(74, HarmoniumBank.playbackFor(Pitch.midiToHz(74.4))?.midi)
     }
 
     @Test

@@ -29,7 +29,7 @@ import soundfile as sf
 import soxr
 
 HERE = Path(__file__).parent
-MIDI_LOW, MIDI_HIGH = 36, 72  # C2..C5, must match HarmoniumBank in the shared module
+MIDI_LOW, MIDI_HIGH = 36, 74  # C2..D5, must match HarmoniumBank in the shared module
 SR = 44_100
 CLIP_S = 2.5  # covers one swara at 24 bpm; the app fades out earlier for shorter notes
 END_FADE_S = 0.08

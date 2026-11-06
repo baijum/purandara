@@ -56,7 +56,7 @@ site/           The website and user guide (python3 site/build.py; published by 
 
 ## Sound
 
-Swaras are played on a harmonium: one CC0 sample per semitone from C2 to C5,
+Swaras are played on a harmonium: one CC0 sample per semitone from C2 to D5,
 pitch-corrected to exact equal temperament. Each swara's just-intonation
 frequency is reached by playing the nearest sample a few cents faster or
 slower (`HarmoniumBank` in `shared/`).

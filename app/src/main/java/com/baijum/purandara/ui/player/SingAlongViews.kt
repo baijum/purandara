@@ -60,10 +60,10 @@ fun PitchLane(
 ) {
     val colors = MaterialTheme.colorScheme
     val measurer = rememberTextMeasurer()
-    val avartaSeconds = schedule.settings.tala.aksharas * schedule.settings.writtenAksharaSeconds
+    val avartaSeconds = schedule.tala.aksharas * schedule.settings.writtenAksharaSeconds
     val reading = if (countingIn) stringResource(R.string.count_in_quiet) else liveText(live)
     val label = stringResource(R.string.pitch_lane)
-    val raga = schedule.settings.raga
+    val raga = schedule.raga
     val lines = SwaraLetter.entries.map { Note(raga.swara(it)) } + Note(raga.swara(SwaraLetter.S), Octave.TARA)
     val sa = schedule.settings.saHz
 

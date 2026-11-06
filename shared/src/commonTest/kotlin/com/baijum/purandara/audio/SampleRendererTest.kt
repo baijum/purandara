@@ -151,6 +151,26 @@ class SampleRendererTest {
     }
 
     @Test
+    fun clapCountAndWaveEachHaveTheirOwnClick() {
+        val s = schedule("plain-scale-1")
+        val out = renderAll(SampleRenderer(sineBank, s, RenderOptions(harmoniumGain = 0f, drone = false, click = true)))
+        val n = (0.03 * sr).toInt()
+        fun click(beat: Int): List<Float> {
+            val start = (s.beats[beat].startSeconds * sr).toInt()
+            return (start until start + n).map { out[it] }
+        }
+        // Adi: x 1 2 3 x v x v. The same action always sounds the same.
+        assertEquals(click(1), click(2))
+        assertEquals(click(5), click(7))
+        assertEquals(click(0), click(4))
+        val clap = click(0)
+        val count = click(1)
+        val wave = click(5)
+        assertTrue(clap != count && count != wave && clap != wave, "three different clicks")
+        assertTrue(clap.maxOf { abs(it) } > maxOf(count.maxOf { abs(it) }, wave.maxOf { abs(it) }), "the clap is loudest")
+    }
+
+    @Test
     fun fullMixNeverClips() {
         val s = schedule("dhattu-1", tempo = 120, kala = 4)
         val out = renderAll(SampleRenderer(sineBank, s, RenderOptions(drone = true, click = true)))

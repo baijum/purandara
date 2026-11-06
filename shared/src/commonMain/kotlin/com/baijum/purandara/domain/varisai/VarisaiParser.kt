@@ -1,56 +1,70 @@
 package com.baijum.purandara.domain.varisai
 
 import com.baijum.purandara.domain.Octave
+import com.baijum.purandara.domain.Raga
+import com.baijum.purandara.domain.Ragas
 import com.baijum.purandara.domain.SwaraLetter
 import com.baijum.purandara.domain.Tala
+import com.baijum.purandara.domain.Talas
 
 /** A notation error, with a 1-based [line] and [column] in the source text. */
 class VarisaiParseException(val line: Int, val column: Int, detail: String) :
     IllegalArgumentException("line $line, column $column: $detail")
 
 /**
- * Parses varisai notation (grammar: docs/plan.md, section 3.2).
+ * Parses exercise notation (grammar: docs/plan.md, section 3.2).
  *
  * ```
  * 4
  * S R G M | P , | S R || S R G M | P D | N S′
  * ```
  *
- * A number on its own line starts an exercise. Each whitespace-separated
- * token is one akshara; `||` ends an avarta; `|` is layout only. The parser
- * never guesses: unknown characters, avartas of the wrong length, and a
- * leading karvai are errors.
+ * A number on its own line starts an exercise. Header lines may follow it:
+ * `tala: <key>` ([Talas]), `raga: <key>` ([Ragas]) and `title: <text>`.
+ * Each whitespace-separated token is one akshara; `||` ends an avarta (a
+ * closing `||` at the end of a line is optional); `|` is layout only. `′` after a letter is the upper octave, `ˌ` (U+02CC) the
+ * lower. The parser never guesses: unknown characters, letters the raga
+ * doesn't use, avartas of the wrong length, and a leading karvai are errors.
  */
-class VarisaiParser(private val tala: Tala = Tala.ADI) {
+class VarisaiParser(
+    private val defaultTala: Tala = Tala.ADI,
+    private val defaultRaga: Raga = Raga.MAYAMALAVAGOWLA,
+) {
+
+    /** The exercise being read. */
+    private class Draft(val number: Int, val line: Int, var tala: Tala, var raga: Raga) {
+        var name: String? = null
+        val avartas = mutableListOf<Avarta>()
+    }
 
     fun parse(text: String, set: VarisaiSet): List<Varisai> {
         val result = mutableListOf<Varisai>()
-        var number: Int? = null
-        var numberLine = 0
-        val avartas = mutableListOf<Avarta>()
+        var draft: Draft? = null
 
         fun finish() {
-            val n = number ?: return
-            if (avartas.isEmpty()) throw VarisaiParseException(numberLine, 1, "exercise $n has no notation")
-            result += Varisai(set, n, avartas.toList())
-            avartas.clear()
+            val d = draft ?: return
+            if (d.avartas.isEmpty()) throw VarisaiParseException(d.line, 1, "exercise ${d.number} has no notation")
+            result += Varisai(set, d.number, d.avartas.toList(), d.tala, d.raga, d.name)
         }
 
         text.lines().forEachIndexed { index, raw ->
             val lineNo = index + 1
             val line = raw.trim()
+            val header = HEADER.matchEntire(line)
             when {
                 line.isEmpty() -> Unit
                 line.all { it.isDigit() } -> {
                     finish()
-                    number = line.toInt()
-                    numberLine = lineNo
+                    draft = Draft(line.toInt(), lineNo, defaultTala, defaultRaga)
+                }
+                header != null -> {
+                    val d = draft ?: throw VarisaiParseException(lineNo, 1, "header before the first exercise number")
+                    if (d.avartas.isNotEmpty()) throw VarisaiParseException(lineNo, 1, "header after notation")
+                    header(d, header.groupValues[1], header.groupValues[2].trim(), lineNo)
                 }
                 else -> {
-                    if (number == null) {
-                        throw VarisaiParseException(lineNo, 1, "notation before the first exercise number")
-                    }
-                    avartas += parseLine(raw, lineNo, isFirstLine = avartas.isEmpty())
+                    val d = draft ?: throw VarisaiParseException(lineNo, 1, "notation before the first exercise number")
+                    d.avartas += parseLine(raw, lineNo, d, isFirstLine = d.avartas.isEmpty())
                 }
             }
         }
@@ -58,7 +72,16 @@ class VarisaiParser(private val tala: Tala = Tala.ADI) {
         return result
     }
 
-    private fun parseLine(raw: String, lineNo: Int, isFirstLine: Boolean): List<Avarta> {
+    private fun header(d: Draft, field: String, value: String, lineNo: Int) {
+        val column = field.length + 2
+        when (field) {
+            "tala" -> d.tala = Talas.byKey(value) ?: throw VarisaiParseException(lineNo, column, "unknown tala \"$value\"")
+            "raga" -> d.raga = Ragas.byKey(value) ?: throw VarisaiParseException(lineNo, column, "unknown raga \"$value\"")
+            "title" -> d.name = value
+        }
+    }
+
+    private fun parseLine(raw: String, lineNo: Int, d: Draft, isFirstLine: Boolean): List<Avarta> {
         val avartas = mutableListOf<Avarta>()
         var segmentStart = 0
         val segments = mutableListOf<Pair<Int, String>>()
@@ -68,22 +91,23 @@ class VarisaiParser(private val tala: Tala = Tala.ADI) {
             segmentStart = i + 2
             i = raw.indexOf("||", segmentStart)
         }
-        segments += segmentStart to raw.substring(segmentStart)
+        // A closing `||` at the end of the line, as books write it, leaves nothing after it.
+        if (segments.isEmpty() || raw.substring(segmentStart).isNotBlank()) segments += segmentStart to raw.substring(segmentStart)
 
         for ((offset, segment) in segments) {
             val aksharas = mutableListOf<Akshara>()
             for ((column, token) in tokens(segment, offset)) {
-                val akshara = parseToken(token, lineNo, column)
+                val akshara = parseToken(token, lineNo, column, d.raga)
                 if (akshara == Akshara.Karvai && isFirstLine && avartas.isEmpty() && aksharas.isEmpty()) {
                     throw VarisaiParseException(lineNo, column, "an exercise cannot start with a karvai")
                 }
                 aksharas += akshara
             }
-            if (aksharas.size != tala.aksharas) {
+            if (aksharas.size != d.tala.aksharas) {
                 throw VarisaiParseException(
                     lineNo,
                     offset + 1,
-                    "avarta has ${aksharas.size} aksharas; ${tala.name} tala needs ${tala.aksharas}",
+                    "avarta has ${aksharas.size} aksharas; ${d.tala.name} tala needs ${d.tala.aksharas}",
                 )
             }
             avartas += Avarta(aksharas)
@@ -108,20 +132,28 @@ class VarisaiParser(private val tala: Tala = Tala.ADI) {
         return out
     }
 
-    private fun parseToken(token: String, lineNo: Int, column: Int): Akshara {
+    private fun parseToken(token: String, lineNo: Int, column: Int, raga: Raga): Akshara {
         if (token == ",") return Akshara.Karvai
         val swaras = mutableListOf<WrittenSwara>()
         token.forEachIndexed { k, c ->
-            if (c == TARA_MARK) {
+            val octave = when (c) {
+                TARA_MARK -> Octave.TARA
+                MANDRA_MARK -> Octave.MANDRA
+                else -> null
+            }
+            if (octave != null) {
                 val last = swaras.lastOrNull()
                     ?: throw VarisaiParseException(lineNo, column + k, "octave mark without a swara")
                 if (last.octave != Octave.MADHYA) {
                     throw VarisaiParseException(lineNo, column + k, "repeated octave mark")
                 }
-                swaras[swaras.lastIndex] = last.copy(octave = Octave.TARA)
+                swaras[swaras.lastIndex] = last.copy(octave = octave)
             } else {
                 val letter = SwaraLetter.fromSymbol(c)
                     ?: throw VarisaiParseException(lineNo, column + k, "unexpected character '$c' in \"$token\"")
+                if (!raga.uses(letter)) {
+                    throw VarisaiParseException(lineNo, column + k, "${raga.name} has no ${letter.symbol}")
+                }
                 swaras += WrittenSwara(letter)
             }
         }
@@ -131,5 +163,10 @@ class VarisaiParser(private val tala: Tala = Tala.ADI) {
     private companion object {
         /** U+2032 PRIME, the tara (upper octave) mark. */
         const val TARA_MARK = '′'
+
+        /** U+02CC MODIFIER LETTER LOW VERTICAL LINE, the mandra (lower octave) mark; shown as a dot below. */
+        const val MANDRA_MARK = 'ˌ'
+
+        val HEADER = Regex("""(tala|raga|title):(.*)""")
     }
 }
