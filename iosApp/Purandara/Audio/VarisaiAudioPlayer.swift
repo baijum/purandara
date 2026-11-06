@@ -134,9 +134,14 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         }
         micOnSpeaker = onSpeaker
         #if DEBUG
-        print("[player] configure record \(wantRecord) echoCancel \(wantVoiceProcessing) "
-            + "out \(session.currentRoute.outputs.map { $0.portType.rawValue })")
+        defer {
+            print("[player] configure record \(wantRecord) echoCancel \(wantVoiceProcessing) running \(engine.isRunning) "
+                + "out \(session.currentRoute.outputs.map { $0.portType.rawValue })")
+        }
         #endif
+        // The input must be part of the engine before it starts: creating it on
+        // a running engine (first `inputNode` access) leaves the engine silent.
+        if wantRecord { _ = engine.inputNode }
         if !engine.isRunning { try engine.start() }
         // After starting: switching voice processing changes the input format,
         // and a tap installed with the stale format never receives buffers.
