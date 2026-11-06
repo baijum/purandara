@@ -29,7 +29,7 @@ class GitamCatalogTest {
         assertEquals(
             listOf(
                 Talas.RUPAKA, Talas.RUPAKA, Talas.TRIPUTA_TISRA, Talas.TRIPUTA_TISRA,
-                Talas.TRIPUTA_TISRA, Talas.MISRA_CHAPU, Talas.TRIPUTA_TISRA, Talas.DHRUVA,
+                Talas.TRIPUTA_TISRA, Talas.TRIPUTA_TISRA, Talas.TRIPUTA_TISRA, Talas.DHRUVA,
                 Talas.ADI,
             ),
             gitams.map { it.tala },
@@ -90,8 +90,9 @@ class GitamCatalogTest {
 
     @Test
     fun singleSourceGitamGoldens() {
-        // Kamalajadala: Misra Chapu, its bars marking the 3 + 4 angas.
+        // Kamalajadala: Tisra Triputa (issue #3), its 7 aksharas as 3 + 2 + 2.
         val kamala = gitam(6)
+        assertEquals(Talas.byKey("triputa-3"), kamala.tala)
         assertEquals(12, kamala.avartas.size)
         kamala.avartas.forEach { assertEquals(7, it.aksharas.size, "$kamala: $it") }
         assertEquals("S S S N D N S", kamala.avartas[0].toString())

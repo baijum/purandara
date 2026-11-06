@@ -7,11 +7,13 @@ Progress:
 - G1 (part): Analekara (Suddha Saveri), karnatik.com and shivkumar.org.
   One note differs between them (the first "ta - la di - nam": `P , M` on
   karnatik.com, kept; `P , P` on shivkumar.org); see `Gitam.kt`.
-- **G1 complete (2026-11-07): Kamalajadala (Kalyani, Misra Chapu), Re Re
+- **G1 complete (2026-11-07): Kamalajadala (Kalyani, Tisra Triputa), Re Re
   Sri Ramachandra (Arabhi) and Sri Ramachandra (Bhairavi, Dhruva) added from
   shivkumar.org alone — a single source, accepted by the user's decision
   (issue #1).** New engine work: Misra Chapu (a chapu tala, its angas 3 + 4
-  per ThaaLam's model — the source's own bars agree) and swara variants (a
+  per ThaaLam's model — the source's own bars agree; Kamalajadala itself was
+  re-set to Tisra Triputa the same day, issue #3, so Misra Chapu stays built
+  but unused by the catalog) and swara variants (a
   digit after a letter, e.g. Bhairavi's `D1` beside its `D2`, allowed per
   raga, shown as a subscript). New ragas: Kalyani, Arabhi, Bhairavi. The
   pieces' octave and variant marks survive only in the pages' PDFs (the HTML
@@ -64,7 +66,7 @@ What the two web sources have (checked 2026-11-06):
 | **Gitams** | | | | |
 | Analekara | Suddha Saveri, Tisra Triputa | ✅ notation | ✅ | (not given) |
 | Vara Veena | Mohanam, Rupaka | ❌ links to shivkumar.org | ✅ | Appayya Dikshitar ✅ |
-| Kamala Jadala | Kalyani; karnatik.com says Tisra Triputa, shivkumar.org says Misra Chapu | ❌ | ✅ | Purandara Dasa ✅ |
+| Kamala Jadala | Kalyani; karnatik.com says Tisra Triputa, shivkumar.org says Misra Chapu (the same 7-akshara cycle; settled Tisra Triputa, issue #3) | ❌ | ✅ | Purandara Dasa ✅ |
 | Re Re Sri Ramachandra | Arabhi, Tisra Triputa | ❌ | ✅ | Paidala Gurumurti Sastri ✅ |
 | Sri Ramachandra Shrita | Bhairavi, Dhruva | ❌ | ✅ | Purandara Dasa ✅ |
 | Kamala Sulochana | Anandabhairavi, Adi | ❌ (no notation) | ❌ | Purandara Dasa ✅ |
@@ -112,10 +114,11 @@ chapter covers only Jalajaksha and a Vasanta varnam.
 
 **Update (2026-11-07):** the user accepted shivkumar.org as the single
 source for Kamala Jadala, Re Re Sri Ramachandra and Sri Ramachandra Shrita,
-and all three are now in the app (gitam-6/7/8) — Kamala Jadala in Misra
-Chapu (issue #3: the source's own bars mark the chapu angas 3 + 4, which is
-how the app builds it; karnatik.com's Tisra Triputa remains the alternative
-if the teacher says so). **Kamala Sulochana is now in the app too (gitam-9,
+and all three are now in the app (gitam-6/7/8) — Kamala Jadala re-set to
+Tisra Triputa on 2026-11-07 (issue #3 settled: karnatik.com and the
+collection PDF say Tisra Triputa, and shivkumar.org's own header equates
+Misra Chapu with Triputa — the same 7-akshara cycle; the source's 3 + 4
+chapu bars are listed as the variant). **Kamala Sulochana is now in the app too (gitam-9,
 Anandabhairavi, Adi)**: the user supplied the "Gurukulam & SF" geetham-notes
 collection (a complete gitam book with notation) plus a staff-and-sargam
 rendering of the piece, which agree bar for bar (two mandra-Ni readings left
@@ -123,7 +126,8 @@ as the collection has them, for the teacher). The same collection gives
 second sources for gitam-7 and gitam-8 and a third for Vara Veena, with the
 differences listed in `Gitam.kt`'s header: it sets Re Re in Rupaka (the
 chosen source: Tisra Triputa), Kamalajadala in Tisra Triputa an octave
-higher (the chosen source: Misra Chapu, middle octave), and reads Sri
+higher (the chosen source: middle octave; the tala now follows it),
+and reads Sri
 Ramachandra's both Dhaivatas as the plain D2 (the chosen source sings the
 D1 variant).
 
@@ -265,6 +269,9 @@ Book-specific notes:
   Kamala Jadala that way.
   - Chapu talas are counted differently from suladi talas.
   - Add `AngaKind.CHAPU` (from ThaaLam's model) with its own strip labels.
+  - *(Outcome: built and shipped for Kamalajadala, then the tala was
+    settled as Tisra Triputa — issue #3, 2026-11-07 — so the catalog no
+    longer uses Misra Chapu; the anga stays in `ThaaLam`.)*
 - **Catalog:** these continue the Gitam set (gitam-5 to gitam-8), with the
   same grammar, tests and cross-check script.
 
@@ -377,9 +384,15 @@ varnam engine work #6.
 2. **Which varnams.** Ninnukori, Evvari Bodhana, Sami Ninne Kori and
    Jalajaksha are the usual first four. Does your teacher use a different
    order or different varnams?
-3. **Kamala Jadala's tala.** The sources disagree: karnatik.com says Tisra
-   Triputa, shivkumar.org says Misra Chapu. Both have 7 beats but are counted
-   differently. What does your teacher count?
+3. **Kamala Jadala's tala.** *(Resolved 2026-11-07, issue #3 closed.)* The
+   sources disagree: karnatik.com says Tisra Triputa, shivkumar.org says
+   Misra Chapu — but both name the same 7-akshara cycle (shivkumar.org's own
+   header says "Misra Chapu (Triputa Talam)"), and the research found no
+   independent source on either side: karnatik.com links to shivkumar.org for
+   notation, and the other write-ups (a lemez.net documentation PDF, video
+   lessons) either derive from those two or say Triputa. The user settled it
+   as Tisra Triputa (karnatik.com's listing and the collection PDF agree);
+   the source's 3 + 4 chapu bars are listed as the variant.
 4. **Varnam speeds.** Should the app sing the first half in first speed then
    second, and the second half in second speed only? Or each section in both
    speeds?

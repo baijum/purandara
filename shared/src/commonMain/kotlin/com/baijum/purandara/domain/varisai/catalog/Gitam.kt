@@ -63,11 +63,16 @@ package com.baijum.purandara.domain.varisai.catalog
  * its HTML loses. karnatik.com has lyrics only for all three. The pages mark
  * no sections, so these gitams have none; words are the pages', lowercased.
  *
- * - Kamalajadala (Kalyani, Misra Chapu): the source's bars mark the chapu
- *   angas as 3 + 4, which is how the app's Misra Chapu is built. All madhya.
- *   Its last line reads "D P - M" where the parallel phrase (avarta 4), the
- *   words and the 7-akshara avarta give "D P M"; the typo is corrected.
- *   "(a)su" (the elided a of "kaasura") is written "su".
+ * - Kamalajadala (Kalyani, Tisra Triputa): the tala was Misra Chapu until
+ *   2026-11-07, when the user settled issue #3 in favour of Tisra Triputa —
+ *   karnatik.com's listing and the collection PDF (gitam 9's source) both say
+ *   Tisra Triputa, and shivkumar.org's own header equates the names
+ *   ("Misra Chapu (Triputa Talam)"); Misra Chapu is the common-practice
+ *   rendering of the same 7-akshara cycle, so the swaras are unchanged. The
+ *   source's bars mark the chapu angas as 3 + 4; listed as the variant.
+ *   All madhya. Its last line reads "D P - M" where the parallel phrase
+ *   (avarta 4), the words and the 7-akshara avarta give "D P M"; the typo is
+ *   corrected. "(a)su" (the elided a of "kaasura") is written "su".
  * - Re Re Sri Ramachandra (Arabhi, Tisra Triputa): on this page lowercase
  *   means the mandra octave (on other pages it is length); its mandras are
  *   written with `ˌ`. The page's avarohana header says N2/G2, but the raga
@@ -120,10 +125,10 @@ package com.baijum.purandara.domain.varisai.catalog
  *
  * The same collection PDF (see gitam 9) also gives second sources for three
  * of the pieces above, with differences for the teacher to settle:
- * - Kamalajadala: it calls the tala Tisra Triputa (shivkumar.org's PDF, the
- *   chosen source, has Misra Chapu — issue #3), and writes the piece an
- *   octave higher, from tara Sa down to mandra Dha, where the chosen source
- *   stays in the middle octave.
+ * - Kamalajadala: it calls the tala Tisra Triputa (as does karnatik.com; the
+ *   chosen source's PDF has Misra Chapu — settled as Tisra Triputa, issue #3),
+ *   and writes the piece an octave higher, from tara Sa down to mandra Dha,
+ *   where the chosen source stays in the middle octave.
  * - Re Re Sri Ramachandra: it sets the piece in (Chaturasra) Rupaka — six
  *   aksharas to the avarta — where the chosen source has Tisra Triputa
  *   (seven). The melody's letters agree.
@@ -275,7 +280,7 @@ R′ R′ S′ | D P | M P ||
 6
 title: Kamalajadala
 raga: kalyani
-tala: misra-chapu
+tala: triputa-3
 S S S N D N S ||
 " ka ma la ja - da la ||
 N D P D P M P ||
