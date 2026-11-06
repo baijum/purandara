@@ -1,0 +1,184 @@
+// Ported from ukulele-companion (same author, MIT): FFTProcessor.kt. Changes: instance class (per-detector twiddle cache, no lock); only fft/ifft kept.
+package com.baijum.purandara.pitch
+
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+
+/**
+ * Pure-Kotlin radix-2 Cooley–Tukey FFT implementation.
+ *
+ * Operates on buffers whose length is a power of two (e.g. 4096 samples
+ * from [com.baijum.ukufretboard.audio.AudioCaptureEngine]).
+ *
+ * Twiddle factors (cos/sin values) are cached per FFT size to avoid
+ * recomputing them on every frame (~43 times/second in the tuner pipeline).
+ *
+ * All operations are allocation-light and suitable for real-time audio
+ * processing on the UI thread budget (~93 ms per frame at 44.1 kHz / 4096).
+ */
+internal class Fft {
+    /**
+     * Cached twiddle factors (cos, sin) for each FFT stage length.
+     *
+     * Key: FFT size N. Value: array of pairs (wReal, wImag) indexed by
+     * stage length. Lazily populated on first use and reused thereafter.
+     */
+    private val twiddleCache = HashMap<Int, TwiddleFactors>()
+
+    /**
+     * Pre-computed cos/sin twiddle factors for all butterfly stages of a
+     * given FFT size.
+     */
+    private class TwiddleFactors(
+        n: Int,
+    ) {
+        /** Twiddle real parts, indexed [stage][k]. */
+        val real: Array<FloatArray>
+
+        /** Twiddle imaginary parts, indexed [stage][k]. */
+        val imag: Array<FloatArray>
+
+        init {
+            val stages = mutableListOf<FloatArray>()
+            val stagesI = mutableListOf<FloatArray>()
+            var len = 2
+            while (len <= n) {
+                val halfLen = len / 2
+                val angle = -2.0 * PI / len
+                val stageR = FloatArray(halfLen)
+                val stageI = FloatArray(halfLen)
+                for (k in 0 until halfLen) {
+                    val theta = angle * k
+                    stageR[k] = cos(theta).toFloat()
+                    stageI[k] = sin(theta).toFloat()
+                }
+                stages.add(stageR)
+                stagesI.add(stageI)
+                len = len shl 1
+            }
+            real = stages.toTypedArray()
+            imag = stagesI.toTypedArray()
+        }
+    }
+
+    private fun getTwiddle(n: Int): TwiddleFactors = twiddleCache.getOrPut(n) { TwiddleFactors(n) }
+
+    /**
+     * Computes an in-place radix-2 Cooley–Tukey FFT.
+     *
+     * On return, [real] and [imag] contain the complex frequency-domain
+     * representation. The length of both arrays must be the same power of two.
+     *
+     * @param real Real part of the signal (overwritten with FFT result).
+     * @param imag Imaginary part (should be all-zero for a real signal;
+     *   overwritten with FFT result).
+     */
+    fun fft(
+        real: FloatArray,
+        imag: FloatArray,
+    ) {
+        val n = real.size
+        require(n > 0 && n and (n - 1) == 0) { "FFT size must be a power of 2" }
+
+        // --- Bit-reversal permutation ----------------------------------------
+        var j = 0
+        for (i in 1 until n) {
+            var bit = n shr 1
+            while (j and bit != 0) {
+                j = j xor bit
+                bit = bit shr 1
+            }
+            j = j xor bit
+
+            if (i < j) {
+                // Swap real
+                val tmpR = real[i]
+                real[i] = real[j]
+                real[j] = tmpR
+                // Swap imag
+                val tmpI = imag[i]
+                imag[i] = imag[j]
+                imag[j] = tmpI
+            }
+        }
+
+        // --- Butterfly stages (using cached twiddle factors) -----------------
+        val twiddle = getTwiddle(n)
+        var len = 2
+        var stageIdx = 0
+        while (len <= n) {
+            val halfLen = len / 2
+            val twR = twiddle.real[stageIdx]
+            val twI = twiddle.imag[stageIdx]
+
+            var i = 0
+            while (i < n) {
+                for (k in 0 until halfLen) {
+                    val evenIdx = i + k
+                    val oddIdx = i + k + halfLen
+
+                    val curR = twR[k]
+                    val curI = twI[k]
+
+                    // Twiddle factor × odd element
+                    val tR = curR * real[oddIdx] - curI * imag[oddIdx]
+                    val tI = curR * imag[oddIdx] + curI * real[oddIdx]
+
+                    real[oddIdx] = real[evenIdx] - tR
+                    imag[oddIdx] = imag[evenIdx] - tI
+                    real[evenIdx] = real[evenIdx] + tR
+                    imag[evenIdx] = imag[evenIdx] + tI
+                }
+                i += len
+            }
+            len = len shl 1
+            stageIdx++
+        }
+    }
+
+    /**
+     * Computes an in-place inverse FFT (IFFT).
+     *
+     * Uses the identity IFFT(X) = (1/N) * conj(FFT(conj(X))):
+     * 1. Conjugate the input (negate imaginary parts).
+     * 2. Apply the forward [fft].
+     * 3. Conjugate the output and divide by N.
+     *
+     * On return, [real] and [imag] contain the time-domain signal.
+     *
+     * @param real Real part of the frequency-domain signal (overwritten).
+     * @param imag Imaginary part (overwritten).
+     */
+    fun ifft(
+        real: FloatArray,
+        imag: FloatArray,
+    ) {
+        val n = real.size
+        require(n > 0 && n and (n - 1) == 0) { "IFFT size must be a power of 2" }
+
+        // Conjugate input
+        for (i in imag.indices) imag[i] = -imag[i]
+
+        // Forward FFT
+        fft(real, imag)
+
+        // Conjugate output and normalise
+        val invN = 1.0f / n
+        for (i in 0 until n) {
+            real[i] *= invN
+            imag[i] = -imag[i] * invN
+        }
+    }
+
+    /**
+     * Computes the magnitude spectrum from a complex FFT result.
+     *
+     * Only the first N/2 bins are returned (the positive-frequency half),
+     * since the input is real-valued and the spectrum is symmetric.
+     *
+     * @param real Real part of the FFT result.
+     * @param imag Imaginary part of the FFT result.
+     * @return A [FloatArray] of length N/2 containing magnitude values.
+     */
+}

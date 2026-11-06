@@ -212,7 +212,7 @@ In the player (both platforms):
 
 | # | Milestone | Done when |
 |---|---|---|
-| S1 | Port YIN, `AudioResampler`, `NeuralArbitrator` to `shared/`; voice-range tuning; synthetic detector tests | ±2 cents and no octave errors across 60 Hz–1 kHz on the synthetic suite, on JVM, Android host and iOS |
+| S1 ✅ | Port YIN, `AudioResampler`, `NeuralArbitrator` to `shared/`; voice-range tuning; synthetic detector tests | Done: all 67 ported tests plus 8 voice tests pass on JVM, Android host and iOS; within ±2 cents 60 Hz–1 kHz, no octave errors. Found and fixed a sign error in the ported parabolic interpolation (up to ~32 cents) |
 | S2 | `PitchTracker` + `NoteScorer` + pass summary (shared) | All section 4.5 scorer and bleed tests pass |
 | S3 | Neural runtime on both platforms: bundle SwiftF0, ONNX Runtime AAR and iOS xcframework script, supervisors, CI | Model loads on emulator and simulator; arbitration active; falls back cleanly without the model |
 | S4 | Android sing-along: permission, capture with echo cancellation, pitch lane, cell marks, summary, guide setting | Emulator run with an injected WAV "singer"; on-device bleed check with and without headphones |
