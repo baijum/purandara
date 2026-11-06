@@ -26,13 +26,14 @@ struct LibraryView: View {
                                 Text(varisai.title)
                                 Text(varisai.avartas.first?.description() ?? "")
                                     .font(.callout.monospaced())
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(Color.subdued)
                                     .lineLimit(1)
                             }
                         }
                     }
                 } header: {
                     Text(section.set.title)
+                        .foregroundStyle(Color.subdued)
                         .accessibilityAddTraits(.isHeader)
                 }
             }
@@ -46,7 +47,6 @@ struct LibraryView: View {
         .safeAreaInset(edge: .top) {
             Text("Mayamalavagowla · Adi tala")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal)
         }

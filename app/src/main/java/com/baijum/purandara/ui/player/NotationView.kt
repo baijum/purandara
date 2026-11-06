@@ -1,6 +1,8 @@
 package com.baijum.purandara.ui.player
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +26,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,6 +37,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baijum.purandara.R
+import com.baijum.purandara.domain.Kriya
 import com.baijum.purandara.domain.Tala
 import com.baijum.purandara.domain.schedule.NotationPosition
 import com.baijum.purandara.domain.varisai.Akshara
@@ -40,9 +46,10 @@ import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.ui.LocalReduceMotion
 
 /**
- * The exercise as a grid: one row per avarta, eight akshara cells with the
- * tala marks above. The sounding akshara and swara are highlighted, and the
- * list follows playback.
+ * The exercise as a grid: one row per avarta, eight akshara cells in the
+ * same columns as the [TalaStrip] above (so the marks are not repeated on
+ * every row). The sounding akshara and swara are highlighted, and the list
+ * follows playback.
  */
 @Composable
 fun NotationView(
@@ -90,12 +97,13 @@ private fun AvartaRow(
     activeSlot: Int?,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier.fillMaxWidth().height(64.dp), verticalAlignment = Alignment.CenterVertically) {
+    // Taller rows with larger system text, so swaras grow instead of shrinking to fit.
+    val rowHeight = ROW_HEIGHT_DP.dp * (1f + (LocalDensity.current.fontScale - 1f).coerceAtLeast(0f) * ROW_GROWTH)
+    Row(modifier.fillMaxWidth().height(rowHeight), verticalAlignment = Alignment.CenterVertically) {
         avarta.aksharas.forEachIndexed { i, akshara ->
             if (i > 0 && tala.beats[i].startsAnga) AngaBar()
             AksharaCell(
                 akshara = akshara,
-                mark = tala.beats[i].label,
                 active = i == activeAkshara,
                 activeSlot = activeSlot.takeIf { i == activeAkshara },
                 modifier = Modifier.weight(1f),
@@ -108,7 +116,6 @@ private fun AvartaRow(
 @Composable
 private fun AksharaCell(
     akshara: Akshara,
-    mark: String,
     active: Boolean,
     activeSlot: Int?,
     modifier: Modifier = Modifier,
@@ -122,7 +129,6 @@ private fun AksharaCell(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(mark, style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
         val text = buildAnnotatedString {
             when (akshara) {
                 Akshara.Karvai -> append(",")
@@ -136,12 +142,19 @@ private fun AksharaCell(
             }
         }
         val swaraCount = (akshara as? Akshara.Swaras)?.swaras?.size ?: 1
-        Text(
+        val baseSize = if (swaraCount > 2) 13.sp else if (swaraCount == 2) 17.sp else 20.sp
+        // Shrink to fit rather than clip: with large system fonts a pair such
+        // as "GM" would otherwise lose a swara.
+        BasicText(
             text,
-            fontSize = if (swaraCount > 2) 13.sp else if (swaraCount == 2) 17.sp else 20.sp,
-            textAlign = TextAlign.Center,
+            style = TextStyle(
+                textAlign = TextAlign.Center,
+                color = if (active) colors.onPrimaryContainer else colors.onSurface,
+            ),
             maxLines = 1,
-            color = if (active) colors.onPrimaryContainer else colors.onSurface,
+            softWrap = false,
+            autoSize = TextAutoSize.StepBased(minFontSize = MIN_SWARA_SP.sp, maxFontSize = baseSize),
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -161,14 +174,21 @@ private fun AngaBar(double: Boolean = false) {
 /**
  * The tala being kept: one mark per beat of the avarta, the current beat
  * filled. At higher kalas several written aksharas share one beat, so this is
- * separate from the marks printed above the notation. Visual only; screen
- * reader users follow the click and the music.
+ * separate from the marks printed above the notation. One accessibility node
+ * whose state is read only when focused, so nothing is announced during playback.
  */
 @Composable
 fun TalaStrip(beatInAvarta: Int?, modifier: Modifier = Modifier, tala: Tala = Tala.ADI) {
     val colors = MaterialTheme.colorScheme
+    val clap = stringResource(R.string.clap)
+    val wave = stringResource(R.string.wave)
+    val talaLabel = stringResource(R.string.tala_label, tala.name, spokenBeats(tala, clap, wave))
+    val beatText = beatInAvarta?.let { stringResource(R.string.beat_of, it + 1, tala.aksharas) } ?: ""
     Row(
-        modifier.fillMaxWidth().height(36.dp).clearAndSetSemantics {},
+        modifier.fillMaxWidth().height(36.dp).clearAndSetSemantics {
+            contentDescription = talaLabel
+            stateDescription = beatText
+        },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -191,3 +211,22 @@ fun TalaStrip(beatInAvarta: Int?, modifier: Modifier = Modifier, tala: Tala = Ta
         }
     }
 }
+
+private const val MIN_SWARA_SP = 8
+private const val ROW_HEIGHT_DP = 48
+private const val ROW_GROWTH = 0.75f
+
+/** "clap 1 2 3, clap wave, clap wave": the tala marks as words. */
+internal fun spokenBeats(tala: Tala, clap: String, wave: String): String =
+    tala.beats.mapIndexed { i, beat ->
+        val word = when (beat.kriya) {
+            Kriya.CLAP -> clap
+            Kriya.WAVE -> wave
+            Kriya.COUNT -> beat.label
+        }
+        when {
+            i == 0 -> word
+            beat.startsAnga -> ", $word"
+            else -> " $word"
+        }
+    }.joinToString("")

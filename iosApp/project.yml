@@ -89,12 +89,27 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.baijum.purandara.ios.tests
         GENERATE_INFOPLIST_FILE: YES
+  PurandaraUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0" # performAccessibilityAudit()
+    sources:
+      - PurandaraUITests
+    dependencies:
+      - target: Purandara
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.baijum.purandara.ios.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Purandara
 schemes:
   Purandara:
     build:
       targets:
         Purandara: all
         PurandaraTests: [test]
+        PurandaraUITests: [test]
     test:
       targets:
         - PurandaraTests
+        - PurandaraUITests

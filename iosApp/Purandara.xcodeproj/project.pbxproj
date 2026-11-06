@@ -18,10 +18,19 @@
 		814E479F470E51F9091B5BB3 /* PurandaraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74015C2759451D3EC808AFD0 /* PurandaraApp.swift */; };
 		AB6CC5F96BEB624359C2D520 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 51ADA9130DD6170AD77733F3 /* Assets.xcassets */; };
 		B8EB36EB6F794A62C7CDFF7E /* PracticeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A18B2D52EAB6EBCA1269A1B /* PracticeTests.swift */; };
+		BF08A74FECBA0408C6B1285C /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483E84CDF43D5F521EB0595D /* Colors.swift */; };
+		D9FA91204D0D5862998418F9 /* PurandaraUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5FBDB9CFC6E06CA052AF937 /* PurandaraUITests.swift */; };
 		FC3F796F00AA989D622B24F0 /* NotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E08763E5702FC198877A4751 /* NotationView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		073A8FA0353F3DAB3D327A04 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 86D101E7EE2D0879F8F0B1FC /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BF7EDF38BD49C8567F4F4840;
+			remoteInfo = Purandara;
+		};
 		C853A70DCC493D0C65827191 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 86D101E7EE2D0879F8F0B1FC /* Project object */;
@@ -32,6 +41,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		483E84CDF43D5F521EB0595D /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		49C9FF674A7F91662569737F /* PracticeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeSettings.swift; sourceTree = "<group>"; };
 		51ADA9130DD6170AD77733F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VarisaiAudioPlayer.swift; sourceTree = "<group>"; };
@@ -41,7 +51,9 @@
 		8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedFrameworkTests.swift; sourceTree = "<group>"; };
 		9DE6BE56662F27C8F99F8397 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		C27118B7E3E2165E03506755 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		C5FBDB9CFC6E06CA052AF937 /* PurandaraUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurandaraUITests.swift; sourceTree = "<group>"; };
 		DC4E97700204636916DBA862 /* PracticeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeViewModel.swift; sourceTree = "<group>"; };
+		DDFC0C5EDFBE869CD6F297C5 /* PurandaraUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PurandaraUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E08763E5702FC198877A4751 /* NotationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotationView.swift; sourceTree = "<group>"; };
 		E9E3789F99C97FAB0759E82A /* PurandaraTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PurandaraTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarmoniumSamples.swift; sourceTree = "<group>"; };
@@ -91,6 +103,7 @@
 		5CBFAF5DFF934D3CCF4B46F6 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				483E84CDF43D5F521EB0595D /* Colors.swift */,
 				C27118B7E3E2165E03506755 /* LibraryView.swift */,
 				E08763E5702FC198877A4751 /* NotationView.swift */,
 				9DE6BE56662F27C8F99F8397 /* PlayerView.swift */,
@@ -112,8 +125,17 @@
 				200899EE541578103020FB1F /* Purandara */,
 				F932E3060006E76C24C70E79 /* purandara */,
 				56F2366A27BEA58DF2DA7A03 /* PurandaraTests */,
+				A2831EE11FBC0B4C83A9E3BC /* PurandaraUITests */,
 				CE23137C8034E2553F8BE59E /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		A2831EE11FBC0B4C83A9E3BC /* PurandaraUITests */ = {
+			isa = PBXGroup;
+			children = (
+				C5FBDB9CFC6E06CA052AF937 /* PurandaraUITests.swift */,
+			);
+			path = PurandaraUITests;
 			sourceTree = "<group>";
 		};
 		CE23137C8034E2553F8BE59E /* Products */ = {
@@ -121,6 +143,7 @@
 			children = (
 				FE49BD3C45C04B12B704AEB6 /* Purandara.app */,
 				E9E3789F99C97FAB0759E82A /* PurandaraTests.xctest */,
+				DDFC0C5EDFBE869CD6F297C5 /* PurandaraUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -137,6 +160,24 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		931F6B4BDA242A46EE62866F /* PurandaraUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 724D5D161650636508756BEF /* Build configuration list for PBXNativeTarget "PurandaraUITests" */;
+			buildPhases = (
+				267DF4C292F25678083E6A78 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CAEA735B80DE8C0896A8BBF7 /* PBXTargetDependency */,
+			);
+			name = PurandaraUITests;
+			packageProductDependencies = (
+			);
+			productName = PurandaraUITests;
+			productReference = DDFC0C5EDFBE869CD6F297C5 /* PurandaraUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		BDA1BE60B2F67605852C92EC /* PurandaraTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5C1B9E7503471C61A39CD8D3 /* Build configuration list for PBXNativeTarget "PurandaraTests" */;
@@ -183,6 +224,9 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					931F6B4BDA242A46EE62866F = {
+						TestTargetID = BF7EDF38BD49C8567F4F4840;
+					};
 					BF7EDF38BD49C8567F4F4840 = {
 						ProvisioningStyle = Automatic;
 					};
@@ -204,6 +248,7 @@
 			targets = (
 				BF7EDF38BD49C8567F4F4840 /* Purandara */,
 				BDA1BE60B2F67605852C92EC /* PurandaraTests */,
+				931F6B4BDA242A46EE62866F /* PurandaraUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -243,6 +288,14 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		267DF4C292F25678083E6A78 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D9FA91204D0D5862998418F9 /* PurandaraUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8B22FC8AA0BFDCDA419847BC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -256,6 +309,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BF08A74FECBA0408C6B1285C /* Colors.swift in Sources */,
 				0296579E3B2E308DB06B5A52 /* HarmoniumSamples.swift in Sources */,
 				124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */,
 				FC3F796F00AA989D622B24F0 /* NotationView.swift in Sources */,
@@ -275,9 +329,32 @@
 			target = BF7EDF38BD49C8567F4F4840 /* Purandara */;
 			targetProxy = C853A70DCC493D0C65827191 /* PBXContainerItemProxy */;
 		};
+		CAEA735B80DE8C0896A8BBF7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BF7EDF38BD49C8567F4F4840 /* Purandara */;
+			targetProxy = 073A8FA0353F3DAB3D327A04 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		31B534F956322E3C76FE54D4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.baijum.purandara.ios.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Purandara;
+			};
+			name = Release;
+		};
 		580986B3DFA7F4AF64638D4B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -469,6 +546,24 @@
 			};
 			name = Release;
 		};
+		BB691FC613AAC8FB2077358D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.baijum.purandara.ios.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Purandara;
+			};
+			name = Debug;
+		};
 		BCF5C39353BA9D8A4ADB6911 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -534,6 +629,15 @@
 			buildConfigurations = (
 				89F3B14F8986F81AB4B08058 /* Debug */,
 				CA2F67E7770BDCA821D83806 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		724D5D161650636508756BEF /* Build configuration list for PBXNativeTarget "PurandaraUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB691FC613AAC8FB2077358D /* Debug */,
+				31B534F956322E3C76FE54D4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

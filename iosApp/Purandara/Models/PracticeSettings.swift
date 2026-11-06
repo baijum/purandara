@@ -15,6 +15,9 @@ struct PracticeSettings: Equatable {
     var drone = true
     var click = false
     var loop = false
+    var countIn = true
+    var harmoniumLevel: Float = RenderOptions.companion.DEFAULT_HARMONIUM_LEVEL
+    var droneLevel: Float = RenderOptions.companion.DEFAULT_DRONE_LEVEL
     var tuning: TuningChoice = .just
 
     static let saRange = Int(Shruti.shared.SA_RANGE.first)...Int(Shruti.shared.SA_RANGE.last)
@@ -27,6 +30,12 @@ struct PracticeSettings: Equatable {
             tempo: Int32(tempo),
             kala: Int32(kala),
             tuning: tuning.kotlin)
+    }
+
+    func renderOptions() -> RenderOptions {
+        RenderOptions.companion.practice(
+            drone: drone, click: click, loop: loop, countIn: countIn,
+            harmoniumLevel: harmoniumLevel, droneLevel: droneLevel)
     }
 }
 
@@ -44,6 +53,9 @@ struct PracticeSettingsStore {
         static let click = "practice.click"
         static let loop = "practice.loop"
         static let tuning = "practice.tuning"
+        static let countIn = "practice.countIn"
+        static let harmoniumLevel = "practice.harmoniumLevel"
+        static let droneLevel = "practice.droneLevel"
     }
 
     func load() -> PracticeSettings {
@@ -54,6 +66,9 @@ struct PracticeSettingsStore {
         if let v = defaults.object(forKey: Key.drone) as? Bool { s.drone = v }
         if let v = defaults.object(forKey: Key.click) as? Bool { s.click = v }
         if let v = defaults.object(forKey: Key.loop) as? Bool { s.loop = v }
+        if let v = defaults.object(forKey: Key.countIn) as? Bool { s.countIn = v }
+        if let v = defaults.object(forKey: Key.harmoniumLevel) as? Float, (0...1).contains(v) { s.harmoniumLevel = v }
+        if let v = defaults.object(forKey: Key.droneLevel) as? Float, (0...1).contains(v) { s.droneLevel = v }
         if let raw = defaults.string(forKey: Key.tuning), let v = PracticeSettings.TuningChoice(rawValue: raw) { s.tuning = v }
         return s
     }
@@ -65,6 +80,9 @@ struct PracticeSettingsStore {
         defaults.set(s.drone, forKey: Key.drone)
         defaults.set(s.click, forKey: Key.click)
         defaults.set(s.loop, forKey: Key.loop)
+        defaults.set(s.countIn, forKey: Key.countIn)
+        defaults.set(s.harmoniumLevel, forKey: Key.harmoniumLevel)
+        defaults.set(s.droneLevel, forKey: Key.droneLevel)
         defaults.set(s.tuning.rawValue, forKey: Key.tuning)
     }
 }

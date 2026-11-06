@@ -25,6 +25,12 @@ data class RenderOptions(
      * then never ends on its own; call [SampleRenderer.fadeOut] to stop.
      */
     val loop: Boolean = false,
+    /**
+     * Before the exercise, one avarta of tala clicks (the drone already
+     * sounding), as you would clap a cycle before singing. Played once, even
+     * when looping, and regardless of [click].
+     */
+    val countIn: Boolean = false,
     /** Crossfade between consecutive notes, centred on the note boundary. */
     val legatoSeconds: Double = 0.03,
     /** Fade-out after the last note (not used when looping). */
@@ -33,9 +39,34 @@ data class RenderOptions(
     val droneFadeSeconds: Double = 0.3,
 ) {
     companion object {
-        /** Default levels with the three practice toggles; for callers without default arguments (Swift). */
-        fun practice(drone: Boolean, click: Boolean, loop: Boolean): RenderOptions =
-            RenderOptions(drone = drone, click = click, loop = loop)
+        private const val MAX_HARMONIUM_GAIN = 0.8f
+        private const val MAX_DRONE_GAIN = 0.4f
+
+        /** Default harmonium level (0..1) for [practice]. */
+        const val DEFAULT_HARMONIUM_LEVEL = 0.75f
+
+        /** Default drone level (0..1) for [practice]. */
+        const val DEFAULT_DRONE_LEVEL = 0.5f
+
+        /**
+         * Options from the student's practice settings; levels are 0..1.
+         * Also for callers without default arguments (Swift).
+         */
+        fun practice(
+            drone: Boolean,
+            click: Boolean,
+            loop: Boolean,
+            countIn: Boolean,
+            harmoniumLevel: Float,
+            droneLevel: Float,
+        ): RenderOptions = RenderOptions(
+            harmoniumGain = MAX_HARMONIUM_GAIN * harmoniumLevel.coerceIn(0f, 1f),
+            drone = drone,
+            droneGain = MAX_DRONE_GAIN * droneLevel.coerceIn(0f, 1f),
+            click = click,
+            loop = loop,
+            countIn = countIn,
+        )
     }
 }
 
@@ -60,8 +91,18 @@ class SampleRenderer(
     /** Frames of one pass of the performance, without any release tail. */
     val performanceFrames: Int = framesOf(schedule.durationSeconds, sampleRate)
 
-    /** Total frames when not looping: the performance plus its release. Unbounded ([Long.MAX_VALUE]) when looping. */
-    val totalFrames: Long = if (options.loop) Long.MAX_VALUE else (performanceFrames + releaseFrames).toLong()
+    /** Frames per tala akshara (beat). */
+    private val beatFrames: Int = framesOf(schedule.settings.talaAksharaSeconds, sampleRate)
+
+    /** Frames of count-in before the exercise starts (0 without a count-in). */
+    val countInFrames: Int = if (options.countIn) schedule.settings.tala.aksharas * beatFrames else 0
+
+    /**
+     * Total frames when not looping: count-in, performance and release.
+     * Unbounded ([Long.MAX_VALUE]) when looping.
+     */
+    val totalFrames: Long =
+        if (options.loop) Long.MAX_VALUE else (countInFrames + performanceFrames + releaseFrames).toLong()
 
     /** Frames rendered so far. */
     var position: Long = 0
@@ -104,7 +145,14 @@ class SampleRenderer(
 
         var done = 0
         while (done < n) {
-            val absolute = position + done
+            val frame = position + done
+            if (frame < countInFrames) {
+                val chunk = min(n - done, (countInFrames - frame).toInt())
+                mixCountIn(out, offset + done, frame.toInt(), frame.toInt() + chunk)
+                done += chunk
+                continue
+            }
+            val absolute = frame - countInFrames
             val pass = absolute / performanceFrames
             val inPass = (absolute % performanceFrames).toInt()
             // Non-looping: one pass that runs on into the release tail.
@@ -147,11 +195,20 @@ class SampleRenderer(
         fadeOutStart = Long.MAX_VALUE
     }
 
-    /** Seconds into the current pass for an absolute frame (e.g. the audio device's play head). */
+    /**
+     * Seconds into the current pass of the exercise for a frame since the
+     * start (e.g. the audio device's play head). Negative during the count-in.
+     */
     fun passSeconds(frame: Long): Double {
-        val inPass = if (options.loop) frame % performanceFrames else frame
+        val sinceStart = frame - countInFrames
+        if (sinceStart < 0) return sinceStart.toDouble() / sampleRate
+        val inPass = if (options.loop) sinceStart % performanceFrames else sinceStart
         return inPass.toDouble() / sampleRate
     }
+
+    /** 0-based beat of the count-in avarta at [frame], or null outside the count-in. */
+    fun countInBeat(frame: Long): Int? =
+        if (frame in 0 until countInFrames) (frame / beatFrames).toInt() else null
 
     private fun mixPassVoices(out: FloatArray, at: Int, from: Int, to: Int) {
         while (firstActiveVoice < voices.size && voices[firstActiveVoice].end <= from) firstActiveVoice++
@@ -204,6 +261,17 @@ class SampleRenderer(
                 // Different starting points so the three loops don't pulse together.
                 sourceOffset = offsetSeconds * sampleRate,
             )
+        }
+    }
+
+    private fun mixCountIn(out: FloatArray, at: Int, from: Int, to: Int) {
+        val beats = schedule.settings.tala.beats
+        for (b in beats.indices) {
+            val wave = if (beats[b].kriya == Kriya.CLAP) accentClick else plainClick
+            val s = b * beatFrames
+            if (s >= to) break
+            if (s + wave.size <= from) continue
+            for (t in max(s, from) until min(s + wave.size, to)) out[at + t - from] += wave[t - s] * COUNT_IN_CLICK_GAIN
         }
     }
 
@@ -268,5 +336,6 @@ class SampleRenderer(
         const val PLAIN_CLICK_HZ = 1400.0
         const val PLAIN_CLICK_LEVEL = 0.6f
         const val DEFAULT_STOP_FADE_SECONDS = 0.08
+        const val COUNT_IN_CLICK_GAIN = 0.4f
     }
 }

@@ -234,6 +234,65 @@ class SampleRendererTest {
     }
 
     @Test
+    fun countInPlaysOneAvartaOfClicksBeforeTheFirstNote() {
+        val s = schedule("plain-scale-1") // tempo 60: count-in is 8 s
+        val r = SampleRenderer(levelBank, s, notesOnly.copy(countIn = true))
+        assertEquals(8 * sr, r.countInFrames)
+        assertEquals((8 * sr + 16 * sr + (0.25 * sr).toInt()).toLong(), r.totalFrames)
+        val out = renderAll(r)
+        // Count-in: a click at each beat and silence in between.
+        for (beat in 0 until 8) {
+            val start = beat * sr
+            assertTrue((start until start + sr / 50).maxOf { abs(out[it]) } > 0.1f, "no click on count-in beat $beat")
+            assertEquals(0f, out[start + sr / 2], 1e-6f)
+        }
+        // The first note starts exactly at the end of the count-in.
+        assertEquals(levelOf(s.notes[0].playback.midi), out[8 * sr + sr / 2], 1e-6f)
+        assertEquals(null, r.countInBeat(8L * sr))
+        assertEquals(0, r.countInBeat(0))
+        assertEquals(7, r.countInBeat(7L * sr + 10))
+        assertEquals(-1.0, r.passSeconds(7L * sr), 1e-9)
+        assertEquals(0.5, r.passSeconds(8L * sr + sr / 2), 1e-9)
+    }
+
+    @Test
+    fun countInPlaysOnceWhenLooping() {
+        val s = schedule("sarali-1")
+        val r = SampleRenderer(levelBank, s, notesOnly.copy(loop = true, countIn = true))
+        val pass = r.performanceFrames
+        val start = r.countInFrames
+        val out = renderFrames(r, start + pass * 2 + sr)
+        for (t in start + sr until start + pass - sr) assertEquals(out[t], out[t + pass], 1e-6f, "frame $t")
+        assertEquals(1.5, r.passSeconds((start + pass + 1.5 * sr).toLong()), 1e-9)
+        assertEquals(null, r.countInBeat((start + pass).toLong()))
+    }
+
+    @Test
+    fun countInBlockSizeDoesNotChangeTheOutput() {
+        val s = schedule("janta-1")
+        val options = RenderOptions(drone = true, click = true, countIn = true)
+        val whole = renderAll(SampleRenderer(sineBank, s, options), block = Int.MAX_VALUE / 2)
+        val chunked = renderAll(SampleRenderer(sineBank, s, options), block = 555)
+        assertTrue(whole.contentEquals(chunked))
+    }
+
+    @Test
+    fun practiceLevelsScaleTheMix() {
+        val loud = RenderOptions.practice(drone = true, click = false, loop = false, countIn = false, harmoniumLevel = 1f, droneLevel = 1f)
+        val quiet = RenderOptions.practice(drone = true, click = false, loop = false, countIn = false, harmoniumLevel = 0.5f, droneLevel = 0f)
+        assertEquals(loud.harmoniumGain / 2, quiet.harmoniumGain, 1e-6f)
+        assertEquals(0f, quiet.droneGain)
+        val clamped = RenderOptions.practice(drone = true, click = false, loop = false, countIn = true, harmoniumLevel = 7f, droneLevel = -1f)
+        assertEquals(loud.harmoniumGain, clamped.harmoniumGain)
+        assertEquals(0f, clamped.droneGain)
+        assertTrue(clamped.countIn)
+        // Everything at full level still never clips.
+        val s = schedule("dhattu-1", tempo = 120, kala = 4)
+        val out = renderAll(SampleRenderer(sineBank, s, loud.copy(click = true, countIn = true)))
+        assertTrue(out.all { abs(it) < 1f }, "peak ${out.maxOf { abs(it) }}")
+    }
+
+    @Test
     fun missingSampleIsRejected() {
         val partial = SampleBank(sr, mapOf(48 to FloatArray(clipFrames)))
         assertFailsWith<IllegalArgumentException> { SampleRenderer(partial, schedule("plain-scale-1"), notesOnly) }

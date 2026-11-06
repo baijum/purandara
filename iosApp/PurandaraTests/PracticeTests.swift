@@ -19,7 +19,7 @@ final class HarmoniumSamplesTests: XCTestCase {
         let renderer = SampleRenderer(
             bank: bank,
             schedule: Schedule.companion.of(varisai: varisai, settings: settings),
-            options: RenderOptions.companion.practice(drone: true, click: true, loop: false))
+            options: PracticeSettings().renderOptions())
         let out = KotlinFloatArray(size: Int32(HarmoniumSamples.sampleRate))
         XCTAssertEqual(renderer.render(out: out, offset: 0, length: out.size), out.size)
         var peak: Float = 0
@@ -59,6 +59,9 @@ final class PracticeSettingsStoreTests: XCTestCase {
         XCTAssertEqual(s.kala, 1)
         XCTAssertTrue(s.drone)
         XCTAssertEqual(s.tuning, .just)
+        XCTAssertTrue(s.countIn)
+        XCTAssertEqual(s.harmoniumLevel, 0.75)
+        XCTAssertEqual(s.droneLevel, 0.5)
     }
 
     func testRoundTrip() {
@@ -70,6 +73,9 @@ final class PracticeSettingsStoreTests: XCTestCase {
         s.click = true
         s.loop = true
         s.tuning = .equal
+        s.countIn = false
+        s.harmoniumLevel = 0.3
+        s.droneLevel = 0.9
         store.save(s)
         XCTAssertEqual(store.load(), s)
     }

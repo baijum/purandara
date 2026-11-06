@@ -79,3 +79,15 @@ xcodebuild -project iosApp/Purandara.xcodeproj -scheme Purandara \
 ```
 
 Add tests in `shared/src/commonTest` for every piece of domain logic (kotlin.test + Kotest property tests).
+
+Accessibility checks (run before UI changes are merged):
+
+```bash
+./gradlew :app:connectedDebugAndroidTest   # AccessibilityTest: labels, roles, states, 48dp targets (needs an emulator)
+xcodebuild ... test                        # includes PurandaraUITests: performAccessibilityAudit() on each screen
+```
+
+Lessons from the iOS audit: the system `.secondary` grey fails contrast for small
+text (use `Color.subdued`); menu pickers and text bar buttons clip or cap Dynamic
+Type; visible text must appear in some element's label; translucent bars over
+scrolling content fail contrast.

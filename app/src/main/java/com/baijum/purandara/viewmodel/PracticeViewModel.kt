@@ -7,7 +7,6 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.baijum.purandara.audio.HarmoniumSamples
-import com.baijum.purandara.audio.RenderOptions
 import com.baijum.purandara.audio.SampleBank
 import com.baijum.purandara.audio.SampleRenderer
 import com.baijum.purandara.audio.VarisaiAudioPlayer
@@ -36,6 +35,8 @@ data class PlaybackState(
     val beatInAvarta: Int? = null,
     /** Passes through the exercise needed to fill whole avartas at this kala. */
     val repetitions: Int = 1,
+    /** True during the count-in avarta before the exercise. */
+    val countingIn: Boolean = false,
 )
 
 data class PracticeUiState(
@@ -107,11 +108,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         stop()
         val settings = _state.value.settings
         val schedule = Schedule.of(varisai, settings.performance())
-        val r = SampleRenderer(
-            bank,
-            schedule,
-            RenderOptions(drone = settings.drone, click = settings.click, loop = settings.loop),
-        )
+        val r = SampleRenderer(bank, schedule, settings.renderOptions())
         renderer = r
         _state.update { it.copy(playback = PlaybackState(playing = true, repetitions = schedule.repetitions)) }
         player.play(r) { mainHandler.post { onPlaybackFinished(r) } }
@@ -119,12 +116,14 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             while (isActive) {
                 val frames = player.positionFrames()
                 if (frames != null) {
+                    val countInBeat = r.countInBeat(frames)
                     val seconds = r.passSeconds(frames)
                     _state.update {
                         it.copy(
                             playback = it.playback.copy(
-                                position = schedule.cursorAt(seconds),
-                                beatInAvarta = schedule.beatAt(seconds)?.beatInAvarta,
+                                countingIn = countInBeat != null,
+                                position = if (countInBeat != null) null else schedule.cursorAt(seconds),
+                                beatInAvarta = countInBeat ?: schedule.beatAt(seconds)?.beatInAvarta,
                             ),
                         )
                     }
@@ -139,7 +138,9 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         ticker = null
         player.stop()
         renderer = null
-        _state.update { it.copy(playback = it.playback.copy(playing = false, position = null, beatInAvarta = null)) }
+        _state.update {
+            it.copy(playback = it.playback.copy(playing = false, position = null, beatInAvarta = null, countingIn = false))
+        }
     }
 
     private fun onPlaybackFinished(finished: SampleRenderer) {

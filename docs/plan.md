@@ -192,15 +192,17 @@ on iOS.
 2. **Player:**
    - **Tala strip:** the beats being kept (`x 1 2 3 | x v | x v`), current beat
      filled. Separate from the notation because at kala 2+ several written
-     aksharas share one beat.
-   - **Notation:** one row per avarta, with the written tala marks above each
-     akshara cell. The current akshara is highlighted, and the current swara
-     within it when an akshara holds several.
-   - **Transport:** play/stop, repeat (once, or loop), and a count-in of one
-     clapped avarta. The workbook says to clap a cycle first.
-   - **Controls:** tempo, kala (1–4), drone on/off, click on/off.
-3. **Settings:** Sa (note name plus octave, with kattai shown alongside),
-   tuning **[Decision 1]**, drone and harmonium levels.
+     aksharas share one beat. The notation cells sit in the same columns, so
+     the marks are not repeated on every row.
+   - **Notation:** one row per avarta. The current akshara is highlighted, and
+     the current swara within it when an akshara holds several.
+   - **On screen:** tempo and speed (what changes while practising), Play/Stop,
+     and "Count-in…" / "Pass n of m" status.
+3. **Practice settings** (sheet from the player's toolbar): Sa (note name plus
+   octave, with kattai), tuning **[Decision 1]**, drone and its volume,
+   harmonium volume, tala click, count-in (one avarta, on by default), repeat.
+   Moved off the player in M5: squeezed under the notation, rows were always
+   partly hidden at the bottom edge, which both platforms' accessibility checks flagged.
 
 Sa, tempo, kala and toggles persist: `SharedPreferences` on Android,
 `UserDefaults` on iOS. Default Sa is C3, as in the workbook.
@@ -212,8 +214,12 @@ Sa, tempo, kala and toggles persist: `SharedPreferences` on Android,
 - Each avarta row reads as text, e.g. "Avarta 1: S R S R, S R, G M".
   A karvai is read as "hold".
 - No live announcements during playback, because they would talk over the
-  music. The highlight is visual only. A screen reader user hears the
-  harmonium and click instead.
+  music. The tala strip is one element ("Adi tala: clap 1 2 3, clap wave,
+  clap wave") whose value ("Beat 3 of 8") is read only when focused.
+- Text scales with the system size: Android rows grow with font scale and
+  swaras shrink-to-fit rather than clip; iOS uses Dynamic Type text styles.
+- Automated: Android `AccessibilityTest` (instrumented); iOS
+  `performAccessibilityAudit()` on library, player and settings.
 - With reduce motion on, the highlight moves without animation.
 - Play/stop is reachable without scrolling and has a hardware-keyboard /
   media-button shortcut where the platform supports it.
@@ -263,7 +269,7 @@ and Xcode, and is reviewable on its own.
 | M2 ✅ | `SampleRenderer` (shared) | Pitch within ±0.5 cent and note changes within ±1 ms of the schedule (synthetic-sample tests on JVM, Android host and iOS); real-harmonium render within ±0.3 cent (opt-in `RenderDemoTest`) |
 | M3 ✅ | Android: decode, `AudioTrack` output, Library and Player screens | Verified on a Pixel 9 emulator: plays in sync (highlight matches the hardware play head), loops, stops; 0 underruns; screen-reader labels checked |
 | M4 ✅ | iOS: decode, `AVAudioEngine` output, Library and Player screens | Verified on the iPhone 17 Pro simulator: plays in sync, finishes, same screens as Android; 10 XCTests incl. decoding all samples from the bundle |
-| M5 | Settings, persistence, count-in, polish | Parity check across both apps |
+| M5 ✅ | Settings, persistence, count-in, polish | Count-in and levels (shared); settings sheet on both apps; Android a11y instrumented tests and iOS accessibility audits pass; large-text checks on both |
 
 ## 11. Afterwards
 

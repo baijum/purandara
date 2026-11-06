@@ -23,6 +23,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -44,9 +46,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -71,17 +75,9 @@ fun PlayerScreen(
     canPlay: Boolean,
     actions: PlayerActions,
 ) {
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(varisai.title) },
-                navigationIcon = {
-                    IconButton(onClick = actions.onBack) {
-                        Icon(painterResource(R.drawable.ic_back), contentDescription = stringResource(R.string.back))
-                    }
-                },
-            )
-        },
+        topBar = { PlayerTopBar(varisai.title, onBack = actions.onBack, onSettings = { showSettings = true }) },
         bottomBar = {
             Surface(tonalElevation = 3.dp) {
                 Button(
@@ -109,20 +105,17 @@ fun PlayerScreen(
                 position = playback.position,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
-            val pass = playback.position?.repetition
-            if (playback.repetitions > 1) {
-                Text(
-                    stringResource(R.string.pass_of, (pass ?: 0) + 1, playback.repetitions),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                )
-            }
+            PlaybackStatus(playback)
             HorizontalDivider()
-            PracticeControls(
+            QuickControls(settings, actions.onSettingsChange, Modifier.padding(16.dp))
+        }
+    }
+    if (showSettings) {
+        ModalBottomSheet(onDismissRequest = { showSettings = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+            PracticeSettingsSheet(
                 settings = settings,
                 onSettingsChange = actions.onSettingsChange,
-                modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp),
             )
         }
     }
@@ -130,15 +123,54 @@ fun PlayerScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PracticeControls(
+private fun PlayerTopBar(title: String, onBack: () -> Unit, onSettings: () -> Unit) {
+    TopAppBar(
+        title = { Text(title) },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(painterResource(R.drawable.ic_back), contentDescription = stringResource(R.string.back))
+            }
+        },
+        actions = {
+            IconButton(onClick = onSettings) {
+                Icon(painterResource(R.drawable.ic_tune), contentDescription = stringResource(R.string.practice_settings))
+            }
+        },
+    )
+}
+
+/** "Count-in…" during the count-in, or "Pass n of m" when an exercise repeats within an avarta. */
+@Composable
+private fun PlaybackStatus(playback: PlaybackState) {
+    val pass = playback.position?.repetition
+    when {
+        playback.countingIn -> StatusText(stringResource(R.string.counting_in), MaterialTheme.colorScheme.primary)
+        playback.repetitions > 1 -> StatusText(
+            stringResource(R.string.pass_of, (pass ?: 0) + 1, playback.repetitions),
+            MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun StatusText(text: String, color: Color) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelMedium,
+        color = color,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+}
+
+/** What changes while practising: tempo and speed. The rest is in [PracticeSettingsSheet]. */
+@Composable
+private fun QuickControls(
     settings: PracticeSettings,
     onSettingsChange: ((PracticeSettings) -> PracticeSettings) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SaPicker(settings.saMidi) { midi -> onSettingsChange { it.copy(saMidi = midi) } }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TempoControl(settings.tempo) { tempo -> onSettingsChange { it.copy(tempo = tempo) } }
-
         Text(stringResource(R.string.kala), style = MaterialTheme.typography.titleSmall)
         val kalaNames = listOf(R.string.kala_1, R.string.kala_2, R.string.kala_3, R.string.kala_4).map { stringResource(it) }
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -151,10 +183,23 @@ private fun PracticeControls(
                 ) { Text("$kala", modifier = Modifier.clearAndSetSemantics {}) }
             }
         }
+    }
+}
 
-        ToggleRow(stringResource(R.string.drone), settings.drone) { on -> onSettingsChange { it.copy(drone = on) } }
-        ToggleRow(stringResource(R.string.click), settings.click) { on -> onSettingsChange { it.copy(click = on) } }
-        ToggleRow(stringResource(R.string.loop), settings.loop) { on -> onSettingsChange { it.copy(loop = on) } }
+/** Sa, tuning, drone, levels, click, count-in and repeat. */
+@Composable
+private fun PracticeSettingsSheet(
+    settings: PracticeSettings,
+    onSettingsChange: ((PracticeSettings) -> PracticeSettings) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            stringResource(R.string.practice_settings),
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.semantics { heading() },
+        )
+        SaPicker(settings.saMidi) { midi -> onSettingsChange { it.copy(saMidi = midi) } }
 
         Text(stringResource(R.string.tuning), style = MaterialTheme.typography.titleSmall)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -166,6 +211,17 @@ private fun PracticeControls(
                 ) { Text(stringResource(label)) }
             }
         }
+
+        ToggleRow(stringResource(R.string.drone), settings.drone) { on -> onSettingsChange { it.copy(drone = on) } }
+        LevelSlider(stringResource(R.string.drone_volume), settings.droneLevel, enabled = settings.drone) { v ->
+            onSettingsChange { it.copy(droneLevel = v) }
+        }
+        LevelSlider(stringResource(R.string.harmonium_volume), settings.harmoniumLevel, enabled = true) { v ->
+            onSettingsChange { it.copy(harmoniumLevel = v) }
+        }
+        ToggleRow(stringResource(R.string.click), settings.click) { on -> onSettingsChange { it.copy(click = on) } }
+        ToggleRow(stringResource(R.string.count_in), settings.countIn) { on -> onSettingsChange { it.copy(countIn = on) } }
+        ToggleRow(stringResource(R.string.loop), settings.loop) { on -> onSettingsChange { it.copy(loop = on) } }
     }
 }
 
@@ -231,6 +287,30 @@ private fun TempoControl(tempo: Int, onChange: (Int) -> Unit) {
     }
 }
 
+/** A 0..1 level, applied when the drag ends so playback restarts only once. */
+@Composable
+private fun LevelSlider(label: String, level: Float, enabled: Boolean, onChange: (Float) -> Unit) {
+    var value by remember(level) { mutableFloatStateOf(level) }
+    val percent = (value * PERCENT).roundToInt()
+    val description = stringResource(R.string.percent, percent)
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Text("$percent%", style = MaterialTheme.typography.bodyLarge)
+        }
+        Slider(
+            value = value,
+            onValueChange = { value = it },
+            onValueChangeFinished = { onChange(value) },
+            enabled = enabled,
+            modifier = Modifier.semantics {
+                contentDescription = label
+                stateDescription = description
+            },
+        )
+    }
+}
+
 @Composable
 private fun StepButton(symbol: String, label: String, onClick: () -> Unit) {
     OutlinedButton(
@@ -252,3 +332,4 @@ private fun ToggleRow(label: String, checked: Boolean, onChange: (Boolean) -> Un
 }
 
 private const val TEMPO_STEP = 5
+private const val PERCENT = 100

@@ -12,6 +12,8 @@ struct PlaybackState: Equatable {
     var beatInAvarta: Int?
     /// Passes through the exercise needed to fill whole avartas at this kala.
     var repetitions = 1
+    /// True during the count-in avarta before the exercise.
+    var countingIn = false
 }
 
 /// Holds practice settings, the samples and playback. Mirrors Android's `PracticeViewModel`.
@@ -69,7 +71,7 @@ final class PracticeViewModel: ObservableObject {
         let renderer = SampleRenderer(
             bank: bank,
             schedule: schedule,
-            options: RenderOptions.companion.practice(drone: settings.drone, click: settings.click, loop: settings.loop))
+            options: settings.renderOptions())
         current = varisai
         self.schedule = schedule
         self.renderer = renderer
@@ -112,14 +114,16 @@ final class PracticeViewModel: ObservableObject {
 
     private func tick() {
         guard let renderer, let schedule, let frames = player.positionFrames() else { return }
+        let countInBeat = renderer.countInBeat(frame: frames).map { Int(truncating: $0) }
         let seconds = renderer.passSeconds(frame: frames)
-        let position = schedule.cursorAt(seconds: seconds)
+        let position = countInBeat == nil ? schedule.cursorAt(seconds: seconds) : nil
         var next = playback
+        next.countingIn = countInBeat != nil
         next.repetition = position.map { Int($0.repetition) }
         next.avarta = position.map { Int($0.avarta) }
         next.akshara = position.map { Int($0.akshara) }
         next.slot = position.map { Int($0.slot) }
-        next.beatInAvarta = schedule.beatAt(seconds: seconds).map { Int($0.beatInAvarta) }
+        next.beatInAvarta = countInBeat ?? schedule.beatAt(seconds: seconds).map { Int($0.beatInAvarta) }
         if next != playback { playback = next }
     }
 

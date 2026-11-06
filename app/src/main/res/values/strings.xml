@@ -27,6 +27,11 @@
     <string name="drone">Drone (Sa and Pa)</string>
     <string name="click">Tala click</string>
     <string name="loop">Repeat continuously</string>
+    <string name="count_in">Count in one avarta</string>
+    <string name="counting_in">Count-in…</string>
+    <string name="harmonium_volume">Harmonium volume</string>
+    <string name="drone_volume">Drone volume</string>
+    <string name="percent">%d percent</string>
     <string name="tuning">Tuning</string>
     <string name="tuning_just">Just (tanpura)</string>
     <string name="tuning_equal">Equal (keyboard)</string>
@@ -34,4 +39,9 @@
     <string name="avarta_description">Avarta %1$d: %2$s</string>
     <string name="karvai_spoken">hold</string>
     <string name="notation">Notation</string>
+    <string name="tala_label">%1$s tala: %2$s</string>
+    <string name="clap">clap</string>
+    <string name="wave">wave</string>
+    <string name="practice_settings">Practice settings</string>
+    <string name="beat_of">Beat %1$d of %2$d</string>
 </resources>
