@@ -2,6 +2,8 @@ package com.baijum.purandara.ui.player
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,18 +19,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import com.baijum.purandara.domain.schedule.Schedule
-import com.baijum.purandara.viewmodel.PracticeUiState
 import androidx.compose.material3.IconToggleButton
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -40,6 +39,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -53,9 +53,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -64,8 +64,10 @@ import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.schedule.PerformanceSettings
+import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.viewmodel.PlaybackState
+import com.baijum.purandara.viewmodel.PracticeUiState
 import kotlin.math.roundToInt
 
 /** Plays one exercise: notation on top, controls below, Play/Stop at the bottom. */
@@ -108,7 +110,7 @@ fun PlayerScreen(
                 marks = if (settings.singAlong) state.singAlong.marks else emptyMap(),
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
-            PlaybackStatus(playback)
+            PlaybackStatus(playback, settings.saMidi)
             HorizontalDivider()
             QuickControls(settings, actions.onSettingsChange, Modifier.padding(16.dp))
         }
@@ -191,16 +193,28 @@ private fun SingAlongPanel(varisai: Varisai, state: PracticeUiState, micDenied: 
     }
 }
 
-/** "Count-in…" during the count-in, or "Pass n of m" when an exercise repeats within an avarta. */
+/**
+ * While playing: the Sa in use, then "Count-in…" during the count-in or
+ * "Pass n of m" when an exercise repeats within an avarta. Wraps onto two
+ * lines at large text sizes rather than clipping.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PlaybackStatus(playback: PlaybackState) {
+private fun PlaybackStatus(playback: PlaybackState, saMidi: Int) {
+    if (!playback.playing) return
     val pass = playback.position?.repetition
-    when {
-        playback.countingIn -> StatusText(stringResource(R.string.counting_in), MaterialTheme.colorScheme.primary)
-        playback.repetitions > 1 -> StatusText(
-            stringResource(R.string.pass_of, (pass ?: 0) + 1, playback.repetitions),
+    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        StatusText(
+            stringResource(R.string.sa_playing, stringResource(R.string.sa_value, Shruti.noteName(saMidi), Shruti.kattai(saMidi))),
             MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        when {
+            playback.countingIn -> StatusText(stringResource(R.string.counting_in), MaterialTheme.colorScheme.primary)
+            playback.repetitions > 1 -> StatusText(
+                stringResource(R.string.pass_of, (pass ?: 0) + 1, playback.repetitions),
+                MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 

@@ -28,20 +28,8 @@ struct PlayerView: View {
                 marks: viewModel.settings.singAlong ? viewModel.singAlong.marks : [:],
                 header: showPanel && typeSize.isAccessibilitySize ? AnyView(SingAlongPanel(varisai: varisai)) : nil)
                 .frame(maxHeight: .infinity)
-            if viewModel.playback.countingIn {
-                Text("Count-in…")
-                    .font(.caption)
-                    .foregroundStyle(Color.accentColor)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.vertical, 4)
-            } else if viewModel.playback.repetitions > 1 {
-                Text("Pass \((viewModel.playback.repetition ?? 0) + 1) of \(viewModel.playback.repetitions)")
-                    .font(.caption)
-                    .foregroundStyle(Color.subdued)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.vertical, 4)
+            if viewModel.playback.playing {
+                PlaybackStatus(playback: viewModel.playback, saMidi: viewModel.settings.saMidi)
             }
             Divider()
             QuickControls(settings: $viewModel.settings)
@@ -90,6 +78,36 @@ struct PlayerView: View {
 }
 
 /// What changes while practising: tempo and speed. Everything else is in `PracticeSettingsView`.
+/// While playing: the Sa in use, then "Count-in…" or "Pass n of m". Side by
+/// side when they fit, stacked at large text sizes rather than clipped.
+private struct PlaybackStatus: View {
+    let playback: PlaybackState
+    let saMidi: Int
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack { sa; Spacer(); status }
+            VStack(alignment: .leading, spacing: 2) { sa; status }
+        }
+        .font(.caption)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal)
+        .padding(.vertical, 4)
+    }
+
+    private var sa: some View {
+        Text("Sa: \(PracticeSettingsView.saLabel(saMidi))").foregroundStyle(Color.subdued)
+    }
+
+    @ViewBuilder private var status: some View {
+        if playback.countingIn {
+            Text("Count-in…").foregroundStyle(Color.accentColor)
+        } else if playback.repetitions > 1 {
+            Text("Pass \((playback.repetition ?? 0) + 1) of \(playback.repetitions)").foregroundStyle(Color.subdued)
+        }
+    }
+}
+
 private struct QuickControls: View {
     @Binding var settings: PracticeSettings
 
