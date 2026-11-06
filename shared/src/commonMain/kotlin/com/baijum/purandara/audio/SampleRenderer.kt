@@ -31,7 +31,13 @@ data class RenderOptions(
     val releaseSeconds: Double = 0.25,
     /** Drone fade-in at the start and fade-out at the end. */
     val droneFadeSeconds: Double = 0.3,
-)
+) {
+    companion object {
+        /** Default levels with the three practice toggles; for callers without default arguments (Swift). */
+        fun practice(drone: Boolean, click: Boolean, loop: Boolean): RenderOptions =
+            RenderOptions(drone = drone, click = click, loop = loop)
+    }
+}
 
 /**
  * Renders a [Schedule] to mono float PCM at the bank's sample rate.

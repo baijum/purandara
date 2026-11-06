@@ -2,6 +2,7 @@ package com.baijum.purandara.domain.varisai
 
 import com.baijum.purandara.domain.Octave
 import com.baijum.purandara.domain.SwaraLetter
+import com.baijum.purandara.domain.Tala
 
 /** A swara as written: a letter and its octave (`S′` is S in the tara octave). */
 data class WrittenSwara(val letter: SwaraLetter, val octave: Octave = Octave.MADHYA) {
@@ -28,6 +29,20 @@ sealed interface Akshara {
 /** One avarta (tala cycle) of notation. */
 data class Avarta(val aksharas: List<Akshara>) {
     override fun toString(): String = aksharas.joinToString(" ")
+
+    /**
+     * Text for screen readers: angas separated by commas, a karvai spoken as
+     * [karvaiWord] (localised by the caller), e.g. "S R G M, P hold, S R".
+     */
+    fun spoken(tala: Tala, karvaiWord: String): String =
+        aksharas.mapIndexed { i, a ->
+            val word = if (a == Akshara.Karvai) karvaiWord else a.toString()
+            when {
+                i == 0 -> word
+                tala.beats[i].startsAnga -> ", $word"
+                else -> " $word"
+            }
+        }.joinToString("")
 }
 
 /** The graded exercise sets, in teaching order. */

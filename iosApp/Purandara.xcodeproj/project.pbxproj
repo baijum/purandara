@@ -7,11 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0296579E3B2E308DB06B5A52 /* HarmoniumSamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */; };
+		124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27118B7E3E2165E03506755 /* LibraryView.swift */; };
+		20652ABAADD16B8AEC84E47A /* VarisaiAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */; };
+		3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC4E97700204636916DBA862 /* PracticeViewModel.swift */; };
 		40BDEF4DD4F2AB7BFFA9A483 /* SharedFrameworkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */; };
+		7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C9FF674A7F91662569737F /* PracticeSettings.swift */; };
+		7E5B9A9F2648990917F1D608 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE6BE56662F27C8F99F8397 /* PlayerView.swift */; };
 		80064C7F88A31F3EA3D5E83D /* audio in Resources */ = {isa = PBXBuildFile; fileRef = 88C8E5DD4E7C3B504D0222BD /* audio */; };
 		814E479F470E51F9091B5BB3 /* PurandaraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74015C2759451D3EC808AFD0 /* PurandaraApp.swift */; };
-		99D1BA41BBB3E9704013B7E7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 560AB5BD71CF4F8FC8CBBE4A /* ContentView.swift */; };
 		AB6CC5F96BEB624359C2D520 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 51ADA9130DD6170AD77733F3 /* Assets.xcassets */; };
+		B8EB36EB6F794A62C7CDFF7E /* PracticeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A18B2D52EAB6EBCA1269A1B /* PracticeTests.swift */; };
+		FC3F796F00AA989D622B24F0 /* NotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E08763E5702FC198877A4751 /* NotationView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,12 +32,19 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		49C9FF674A7F91662569737F /* PracticeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeSettings.swift; sourceTree = "<group>"; };
 		51ADA9130DD6170AD77733F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		560AB5BD71CF4F8FC8CBBE4A /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VarisaiAudioPlayer.swift; sourceTree = "<group>"; };
 		74015C2759451D3EC808AFD0 /* PurandaraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurandaraApp.swift; sourceTree = "<group>"; };
 		88C8E5DD4E7C3B504D0222BD /* audio */ = {isa = PBXFileReference; lastKnownFileType = folder; name = audio; path = ../audio; sourceTree = SOURCE_ROOT; };
+		8A18B2D52EAB6EBCA1269A1B /* PracticeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeTests.swift; sourceTree = "<group>"; };
 		8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedFrameworkTests.swift; sourceTree = "<group>"; };
+		9DE6BE56662F27C8F99F8397 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
+		C27118B7E3E2165E03506755 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
+		DC4E97700204636916DBA862 /* PracticeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeViewModel.swift; sourceTree = "<group>"; };
+		E08763E5702FC198877A4751 /* NotationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotationView.swift; sourceTree = "<group>"; };
 		E9E3789F99C97FAB0759E82A /* PurandaraTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PurandaraTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarmoniumSamples.swift; sourceTree = "<group>"; };
 		FE49BD3C45C04B12B704AEB6 /* Purandara.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Purandara.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -39,18 +53,57 @@
 			isa = PBXGroup;
 			children = (
 				51ADA9130DD6170AD77733F3 /* Assets.xcassets */,
-				560AB5BD71CF4F8FC8CBBE4A /* ContentView.swift */,
 				74015C2759451D3EC808AFD0 /* PurandaraApp.swift */,
+				249C466CD43E43530CD6112C /* Audio */,
+				6E0A2BAEE3829E604C2F7270 /* Models */,
+				34A8FB45DF60ECB5FA2CFDC1 /* ViewModels */,
+				5CBFAF5DFF934D3CCF4B46F6 /* Views */,
 			);
 			path = Purandara;
+			sourceTree = "<group>";
+		};
+		249C466CD43E43530CD6112C /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */,
+				6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		34A8FB45DF60ECB5FA2CFDC1 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				DC4E97700204636916DBA862 /* PracticeViewModel.swift */,
+			);
+			path = ViewModels;
 			sourceTree = "<group>";
 		};
 		56F2366A27BEA58DF2DA7A03 /* PurandaraTests */ = {
 			isa = PBXGroup;
 			children = (
+				8A18B2D52EAB6EBCA1269A1B /* PracticeTests.swift */,
 				8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */,
 			);
 			path = PurandaraTests;
+			sourceTree = "<group>";
+		};
+		5CBFAF5DFF934D3CCF4B46F6 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				C27118B7E3E2165E03506755 /* LibraryView.swift */,
+				E08763E5702FC198877A4751 /* NotationView.swift */,
+				9DE6BE56662F27C8F99F8397 /* PlayerView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		6E0A2BAEE3829E604C2F7270 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				49C9FF674A7F91662569737F /* PracticeSettings.swift */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 		7D94C1FCA57D04C679E7ECC5 = {
@@ -194,6 +247,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B8EB36EB6F794A62C7CDFF7E /* PracticeTests.swift in Sources */,
 				40BDEF4DD4F2AB7BFFA9A483 /* SharedFrameworkTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -202,8 +256,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				99D1BA41BBB3E9704013B7E7 /* ContentView.swift in Sources */,
+				0296579E3B2E308DB06B5A52 /* HarmoniumSamples.swift in Sources */,
+				124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */,
+				FC3F796F00AA989D622B24F0 /* NotationView.swift in Sources */,
+				7E5B9A9F2648990917F1D608 /* PlayerView.swift in Sources */,
+				7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */,
+				3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */,
 				814E479F470E51F9091B5BB3 /* PurandaraApp.swift in Sources */,
+				20652ABAADD16B8AEC84E47A /* VarisaiAudioPlayer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

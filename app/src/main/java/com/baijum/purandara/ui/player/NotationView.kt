@@ -68,7 +68,7 @@ fun NotationView(
     val karvaiWord = stringResource(R.string.karvai_spoken)
     LazyColumn(state = listState, modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         itemsIndexed(varisai.avartas) { index, avarta ->
-            val description = stringResource(R.string.avarta_description, index + 1, spoken(avarta, tala, karvaiWord))
+            val description = stringResource(R.string.avarta_description, index + 1, avarta.spoken(tala, karvaiWord))
             AvartaRow(
                 avarta = avarta,
                 tala = tala,
@@ -191,10 +191,3 @@ fun TalaStrip(beatInAvarta: Int?, modifier: Modifier = Modifier, tala: Tala = Ta
         }
     }
 }
-
-/** Text a screen reader speaks for an avarta: angas separated by commas, karvai as a word. */
-internal fun spoken(avarta: Avarta, tala: Tala, karvaiWord: String): String =
-    avarta.aksharas.mapIndexed { i, a ->
-        val word = if (a == Akshara.Karvai) karvaiWord else a.toString()
-        if (i > 0 && tala.beats[i].startsAnga) ", $word" else if (i > 0) " $word" else word
-    }.joinToString("")

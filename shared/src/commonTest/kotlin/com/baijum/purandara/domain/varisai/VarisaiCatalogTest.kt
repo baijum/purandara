@@ -106,3 +106,18 @@ class VarisaiCatalogTest {
     private fun swaras(v: Varisai): List<WrittenSwara> =
         v.avartas.flatMap { it.aksharas }.filterIsInstance<Akshara.Swaras>().flatMap { it.swaras }
 }
+
+class SpokenAvartaTest {
+    @Test
+    fun angasAreSeparatedAndKarvaiIsSpoken() {
+        val sarali4 = VarisaiCatalog.byId("sarali-4")!!
+        assertEquals("S R G M, P hold, S R", sarali4.avartas[0].spoken(com.baijum.purandara.domain.Tala.ADI, "hold"))
+        assertEquals("S R G M, P D, N S′", sarali4.avartas[1].spoken(com.baijum.purandara.domain.Tala.ADI, "hold"))
+    }
+
+    @Test
+    fun pairsStayTogether() {
+        val janta1 = VarisaiCatalog.byId("janta-1")!!
+        assertEquals("SS RR GG MM, PP DD, NN S′S′", janta1.avartas[0].spoken(com.baijum.purandara.domain.Tala.ADI, "hold"))
+    }
+}

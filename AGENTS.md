@@ -40,6 +40,15 @@ Do not add features speculatively.
 | `app/.../audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (`AudioTrack` on a worker thread) |
 | `app/.../viewmodel/` | `PracticeViewModel` |
 | `app/.../ui/` | `PurandaraApp` (library ↔ player), `library/`, `player/` |
+| `iosApp/Purandara/Audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (renders ahead on a queue into `AVAudioPlayerNode` buffers; no Kotlin on the real-time thread) |
+| `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel`; `LibraryView`, `PlayerView`, `NotationView` (+ `TalaStripView`) |
+| `shared/src/iosMain/.../audio/FloatBridge.kt` | Bulk float copies between Swift buffers and Kotlin arrays |
+
+Swift interop notes: Kotlin default arguments are not visible from Swift (use the
+small factories such as `PerformanceSettings.create(...)`, `RenderOptions.practice(...)`);
+Kotlin names starting with `copy`/`new`/`init` get a `do` prefix in Swift, so avoid them
+in API meant for iOS. Debug launch arguments `-open <varisai-id> -autoplay YES` open
+(and play) an exercise for screenshots.
 
 ### Sound model
 

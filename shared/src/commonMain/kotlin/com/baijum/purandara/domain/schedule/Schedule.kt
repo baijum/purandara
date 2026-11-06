@@ -38,6 +38,10 @@ data class PerformanceSettings(
     val writtenAksharaSeconds: Double get() = talaAksharaSeconds / aksharasPerBeat
 
     companion object {
+        /** For callers without default arguments (Swift): Mayamalavagowla in Adi tala. */
+        fun create(saHz: Double, tempo: Int, kala: Int, tuning: Tuning): PerformanceSettings =
+            PerformanceSettings(saHz = saHz, tempo = tempo, kala = kala, tuning = tuning)
+
         const val DEFAULT_TEMPO = 60
         val TEMPO_RANGE = 30..120
         val KALA_RANGE = 1..4
