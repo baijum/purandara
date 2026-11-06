@@ -1,9 +1,13 @@
 package com.baijum.purandara.domain.varisai
 
+import com.baijum.purandara.domain.HarmoniumBank
+import com.baijum.purandara.domain.Note
 import com.baijum.purandara.domain.Octave
 import com.baijum.purandara.domain.Raga
+import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.SwaraLetter
 import com.baijum.purandara.domain.Tala
+import com.baijum.purandara.domain.Tuning
 
 /**
  * A swara as written: a letter and its octave. `S′` is S in the tara
@@ -138,6 +142,27 @@ data class Varisai(
             VarisaiSet.ALANKARAM -> "${set.title} $number · ${tala.name} tala"
             else -> "${set.title} $number"
         }
+
+    /**
+     * The Sa choices (MIDI, within [Shruti.SA_RANGE]) at which every note of
+     * this piece is inside the harmonium samples, for any fine-tune and
+     * either tuning. Every varisai and alankaram allows the whole range; a
+     * gitam that climbs to upper Ma does not allow the highest Sa.
+     */
+    val playableSaMidis: IntRange by lazy {
+        val notes = avartas.flatMap { it.aksharas }.filterIsInstance<Akshara.Swaras>().flatMap { it.swaras }
+            .map { Note(raga.swara(it.letter), it.octave) }.distinct()
+        val ok = Shruti.SA_RANGE.filter { midi ->
+            Shruti.FINE_TUNE_RANGE.let { listOf(it.first, it.last) }.all { cents ->
+                val sa = Shruti.saHz(midi, cents)
+                Tuning.entries.all { tuning -> notes.all { HarmoniumBank.playbackFor(tuning.frequency(it, sa)) != null } }
+            }
+        }
+        if (ok.isEmpty()) IntRange.EMPTY else ok.first()..ok.last()
+    }
+
+    /** The playable Sa nearest to [saMidi] (itself when it is playable). */
+    fun nearestPlayableSa(saMidi: Int): Int = saMidi.coerceIn(playableSaMidis)
 
     /** Written aksharas across all avartas. */
     val aksharaCount: Int get() = avartas.sumOf { it.aksharas.size }

@@ -302,8 +302,10 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     fun play() {
         val varisai = _state.value.selected ?: return
         val bank = bank ?: return
-        stop()
         val settings = _state.value.settings
+        // The player offers a playable Sa instead; never build a schedule the samples can't play.
+        if (settings.saMidi !in varisai.playableSaMidis) return
+        stop()
         val schedule = Schedule.of(varisai, settings.performance())
         val r = SampleRenderer(bank, schedule, settings.renderOptions())
         renderer = r

@@ -9,6 +9,10 @@ struct PlayerView: View {
     @State private var showingSettings = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
+    /// Whether every note of this piece is inside the harmonium samples at the chosen Sa.
+    private var saPlayable: Bool { viewModel.saPlayable(varisai) }
+    private var nearestSa: Int { Int(varisai.nearestPlayableSa(saMidi: Int32(viewModel.settings.saMidi))) }
+
     var body: some View {
         VStack(spacing: 0) {
             TalaStripView(beatInAvarta: viewModel.playback.beatInAvarta, tala: varisai.tala)
@@ -17,6 +21,15 @@ struct PlayerView: View {
                 // contrast of the right-most beat (flagged by the accessibility audit).
                 .padding(.top, 16)
                 .padding(.bottom, 8)
+            if !saPlayable {
+                SaOutOfRange(
+                    sa: PracticeSettingsView.saLabel(viewModel.settings.saMidi, cents: viewModel.settings.saCents),
+                    nearest: PracticeSettingsView.saLabel(nearestSa, cents: 0)
+                ) {
+                    viewModel.settings.saMidi = nearestSa
+                    viewModel.settings.saCents = 0
+                }
+            }
             let showPanel = viewModel.settings.singAlong || (viewModel.singAlong.micDenied && !viewModel.singAlong.micPermitted)
             // At accessibility text sizes the panel scrolls with the notation so nothing is pushed off screen.
             if showPanel && !typeSize.isAccessibilitySize {
@@ -52,7 +65,7 @@ struct PlayerView: View {
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!viewModel.canPlay)
+            .disabled(!viewModel.canPlay || !saPlayable)
             .padding()
             // Opaque: controls scrolling behind a translucent bar fail contrast checks.
             .background(Color(uiColor: .systemBackground))
@@ -338,5 +351,32 @@ private struct LevelSlider: View {
             .accessibilityLabel(Text(title))
             .accessibilityValue(Text("\(Int((shown * 100).rounded())) percent"))
         }
+    }
+}
+
+/// This piece climbs past the harmonium samples at the chosen Sa: say so and offer one that fits.
+private struct SaOutOfRange: View {
+    let sa: String
+    let nearest: String
+    let useNearest: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                // Red symbol, normal text: red callout text fails contrast.
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color.red).accessibilityHidden(true)
+                Text("At Sa \(sa) this piece goes higher than the harmonium can play.")
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Button(action: useNearest) {
+                Text("Use Sa \(nearest)").fixedSize(horizontal: false, vertical: true)
+            }
+            .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true) // never squeezed by the notation below
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
     }
 }

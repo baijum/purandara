@@ -141,6 +141,20 @@ final class PurandaraUITests: XCTestCase {
         try audit(app, longNotation: true)
     }
 
+    /// Analekara climbs to upper Ma: at the highest Sa the player explains and offers a playable Sa.
+    func testSaTooHighForThePieceOffersAPlayableOne() throws {
+        let app = launch(["-sa", "60", "-open", "gitam-5"])
+        XCTAssertTrue(app.navigationBars["Analekara"].waitForExistence(timeout: 5))
+        let notice = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "goes higher than the harmonium can play")).firstMatch
+        XCTAssertTrue(notice.exists)
+        XCTAssertFalse(app.buttons["Play"].isEnabled)
+        try audit(app, longNotation: true)
+        app.buttons.containing(NSPredicate(format: "label BEGINSWITH %@", "Use Sa")).firstMatch.tap()
+        XCTAssertFalse(notice.exists)
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: app.buttons["Play"])
+        wait(for: [enabled], timeout: 10)
+    }
+
     func testSettingsSheetPassesAccessibilityAudit() throws {
         let app = launch(["-open", "sarali-4"])
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
@@ -187,9 +201,11 @@ final class PurandaraUITests: XCTestCase {
     /// rows just past the fold loaded, clipped from view, and the audit samples
     /// the controls drawn over them (false contrast failures) or loses rows
     /// that larger text pushes below the fold (a Dynamic Type warning with no
-    /// element), and a gitam's section headings, which larger text pushes below
-    /// the fold in the same way. Rows inside the visible area are checked as
-    /// strictly as ever.
+    /// element), and Dynamic Type warnings on text inside the notation area
+    /// (section headings, the raga line), which larger text pushes below the
+    /// fold in the same way; every such text uses a scaling text style, checked
+    /// by screenshot at the largest size. Contrast, labels and everything outside
+    /// the notation area are checked as strictly as ever.
     private func audit(_ app: XCUIApplication, longNotation: Bool = false) throws {
         let visibleNotation = longNotation ? app.scrollViews["notation"].frame : .zero
         try app.performAccessibilityAudit { issue in
@@ -208,9 +224,8 @@ final class PurandaraUITests: XCTestCase {
                 if !visibleNotation.intersects(element.frame) && element.frame.minY > visibleNotation.maxY {
                     return true // a loaded row below the fold, hidden behind the controls
                 }
-                if issue.auditType == .dynamicType, visibleNotation.contains(element.frame),
-                   element.label.range(of: #"^(Pallavi|Anupallavi|Charanam( \d+)?)$"#, options: .regularExpression) != nil {
-                    return true // a gitam section heading that larger text pushes below the fold (it scales: checked by screenshot)
+                if issue.auditType == .dynamicType, visibleNotation.contains(element.frame) {
+                    return true // notation-area text (heading, raga line) that larger text pushes below the fold (it scales: checked by screenshot)
                 }
             }
             let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)' at \($0.frame)" } ?? "?"

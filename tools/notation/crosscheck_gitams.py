@@ -24,6 +24,7 @@ SOURCES = {
     "Kunda Gaura": ("https://karnatik.com/c1807.shtml", "https://www.shivkumar.org/music/varnams/kundagoura-geetham.htm"),
     "Kereya Neeranu": ("https://karnatik.com/c1808.shtml", "https://www.shivkumar.org/music/varnams/kerayaneeranu-geetham.htm"),
     "Padumanabha": ("https://karnatik.com/c1809.shtml", "https://www.shivkumar.org/music/varnams/padumanabha-geetham.htm"),
+    "Analekara": ("https://karnatik.com/c2415.shtml", "https://www.shivkumar.org/music/varnams/analekara-geetham.htm"),
 }
 
 

@@ -116,7 +116,8 @@ a licence; the authors are to be asked before a store release.
   [Sri Gananatha](https://karnatik.com/c1806.shtml),
   [Kunda Gaura](https://karnatik.com/c1807.shtml),
   [Kereya Neeranu](https://karnatik.com/c1808.shtml),
-  [Padumanabha](https://karnatik.com/c1809.shtml) (swaras, words, section order).
+  [Padumanabha](https://karnatik.com/c1809.shtml),
+  [Analekara](https://karnatik.com/c2415.shtml) (swaras, words, section order).
 - **Checked against:** Shivkumar Kalyanaraman's archive,
   [shivkumar.org/music/varnams](https://www.shivkumar.org/music/varnams/index.html)
   (swaras, avarta by avarta, with `tools/notation/crosscheck_gitams.py`), and

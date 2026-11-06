@@ -1,7 +1,16 @@
 # Plan: More gitams, then swarajatis, then varnams
 
-Status: **proposed** (2026-11-06). Nothing is built yet. The open questions at
-the end need answers first, above all **Q1 (sources)**.
+Status: **in progress** (2026-11-06). Building what two sources allow, and
+the engine work, while Q1 (a second source for the rest) is open.
+
+Progress:
+- G1 (part): Analekara (Suddha Saveri), karnatik.com and shivkumar.org.
+  One note differs between them (the first "ta - la di - nam": `P , M` on
+  karnatik.com, kept; `P , P` on shivkumar.org); see `Gitam.kt`.
+- The **highest Sa per piece** (from V1) came forward: Analekara climbs to
+  upper Ma. `Varisai.playableSaMidis`; both players explain and offer the
+  nearest Sa, and Play stays off until then.
+- Vara Veena, Kamala Jadala and Re Re Sri Ramachandra wait for a second source.
 
 These continue the beginner path after the Malahari gitams
 (`docs/plan-alankaram-gitam.md`):

@@ -4,6 +4,7 @@ import com.baijum.purandara.domain.HarmoniumBank
 import com.baijum.purandara.domain.Kriya
 import com.baijum.purandara.domain.Pitch
 import com.baijum.purandara.domain.Raga
+import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Swara
 import com.baijum.purandara.domain.Talas
 import com.baijum.purandara.domain.Tuning
@@ -149,16 +150,32 @@ class ScheduleTest {
     }
 
     @Test
-    fun everyExercisePlayableForEverySaInRangeAndBothTunings() = runTest {
+    fun everyExercisePlayableForEverySaItAllowsAndBothTunings() = runTest {
         val halfSemitone = 2.0.pow(0.5 / 12)
-        checkAll(Arb.element(VarisaiCatalog.all), Arb.int(43..60), Arb.enum<Tuning>()) { v, saMidi, tuning ->
-            val s = Schedule.of(v, PerformanceSettings(saHz = Pitch.midiToHz(saMidi), tuning = tuning))
+        checkAll(Arb.element(VarisaiCatalog.all), Arb.int(43..60), Arb.enum<Tuning>(), Arb.int(-50..50)) { v, picked, tuning, cents ->
+            val saMidi = v.nearestPlayableSa(picked)
+            val s = Schedule.of(v, PerformanceSettings(saHz = Shruti.saHz(saMidi, cents), tuning = tuning))
             s.notes.forEach { n ->
                 assertTrue(n.playback.midi in HarmoniumBank.midiRange)
-                assertTrue(n.playback.rate in 1 / halfSemitone..halfSemitone, "${v.id} Sa $saMidi: rate ${n.playback.rate}")
+                // At most half a semitone (a fine-tune of ±50 cents can land exactly there).
+                assertTrue(n.playback.rate in (1 / halfSemitone - 1e-9)..(halfSemitone + 1e-9), "${v.id} Sa $saMidi: rate ${n.playback.rate}")
                 assertEquals(n.frequencyHz, Pitch.midiToHz(n.playback.midi) * n.playback.rate, 1e-9 * n.frequencyHz)
             }
         }
+    }
+
+    @Test
+    fun playableSaRangeIsWholeForTheExercisesAndCappedWhereAPieceClimbs() {
+        VarisaiCatalog.all.filter { it.set != VarisaiSet.GITAM }.forEach { assertEquals(Shruti.SA_RANGE, it.playableSaMidis, it.id) }
+        VarisaiCatalog.all.forEach { v ->
+            assertTrue(Shruti.DEFAULT_SA_MIDI in v.playableSaMidis, "${v.id}: the default Sa must be playable")
+            assertEquals(v.playableSaMidis.last, v.nearestPlayableSa(Shruti.SA_RANGE.last))
+        }
+        // Analekara climbs to upper Ma: F5 at Sa C4 is past the last sample (D5).
+        val analekara = VarisaiCatalog.byId("gitam-5")!!
+        assertTrue(analekara.playableSaMidis.last < Shruti.SA_RANGE.last)
+        val tooHigh = analekara.playableSaMidis.last + 1
+        assertFailsWith<IllegalArgumentException> { Schedule.of(analekara, PerformanceSettings(saHz = Shruti.saHz(tooHigh, 50))) }
     }
 
     @Test

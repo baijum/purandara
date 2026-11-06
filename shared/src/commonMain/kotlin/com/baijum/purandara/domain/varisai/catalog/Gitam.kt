@@ -42,6 +42,15 @@ package com.baijum.purandara.domain.varisai.catalog
  *   "shikshaka") are split at syllables.
  * - The one lower-octave note is Padumanabha's `R S Dˌ` (both sources agree);
  *   the doubtful `S D ,` and `D P D S` are middle octave in both.
+ * - Analekara (karnatik.com https://karnatik.com/c2415.shtml; shivkumar.org
+ *   analekara-geetham.htm): karnatik.com writes the repeat "(sakala…
+ *   parigatamnam)" out but its page stops mid-line; the repeat is taken to
+ *   end at "parigatamnam", as its lyrics say, so the gitam ends on upper Sa.
+ *   Its sections are named by their opening words (it has no pallavi).
+ *   One note differs between the sources, consistently on each: the first
+ *   "ta - la di - nam" is `P , M | D , | D P` on karnatik.com (kept, the
+ *   primary source) and `P , P | D D | D P` on shivkumar.org. Open for a
+ *   teacher or book to settle.
  * - shivkumar.org labels Kereya Neeranu and Padumanabha "Chathurasra Jathi"
  *   Triputa, but its notation is 3 + 2 + 2 (Tisra), as karnatik.com says.
  */
@@ -160,4 +169,27 @@ D D P | P , | P M || R , M | M G | R S ||
 S , S | D D | D P || P , P | M G | R S ||
 " tha - la | bhal - | la re || ra - ma | na - | - ma ||
 (pallavi)
+
+5
+title: Analekara
+raga: suddha-saveri
+tala: triputa-3
+[analekara]
+R′ M′ R′ | R′ S′ | D S′ || S′ , S′ | D P | M P ||
+" a - sa | le - | ka ra || un - ni | po - | la di ||
+[sakala]
+D D S′ | D , | D P || P M R | D , | D P ||
+" sa ka la | sha - | stra pu || ra - na | di - | nam - ||
+P , M | D , | D P || P , P | M P | D P ||
+" ta - la | di - | nam - || ta - la | pa ri | ga tu ||
+P M R | S R | S R || P M P | S R | S R ||
+" re - - | - - | - - || re - - | - - | - - ||
+P P D | P P | M R || R S R | M , | M , ||
+" re - - | - - | - - || se - tu | va - | ha - ||
+D P D | S′ , | S′ , ||
+" pa ri ga | tam - | nam - ||
+[jata juta]
+R′ R′ S′ | D P | M P ||
+" ja ta - | ju - | - ta ||
+(sakala)
 """

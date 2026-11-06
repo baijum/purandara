@@ -86,7 +86,8 @@ fun PlayerScreen(
 ) {
     val settings = state.settings
     val playback = state.playback
-    val canPlay = state.samplesLoaded
+    val saPlayable = settings.saMidi in varisai.playableSaMidis
+    val canPlay = state.samplesLoaded && saPlayable
     var showSettings by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         topBar = {
@@ -112,6 +113,7 @@ fun PlayerScreen(
                 tala = varisai.tala,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
+            if (!saPlayable) SaOutOfRange(varisai, settings, actions.onSettingsChange)
             // Also shown after a refused permission, so the student learns why nothing happened.
             if (settings.singAlong || (micDenied && !state.singAlong.micPermitted)) {
                 SingAlongPanel(varisai, state, micDenied, actions.onOpenAppSettings)
@@ -211,6 +213,26 @@ private fun SingAlongPanel(varisai: Varisai, state: PracticeUiState, micDenied: 
  * "Pass n of m" when an exercise repeats within an avarta. Wraps onto two
  * lines at large text sizes rather than clipping.
  */
+/** This piece climbs past the harmonium samples at the chosen Sa: say so and offer one that fits. */
+@Composable
+private fun SaOutOfRange(
+    varisai: Varisai,
+    settings: PracticeSettings,
+    onSettingsChange: ((PracticeSettings) -> PracticeSettings) -> Unit,
+) {
+    val nearest = varisai.nearestPlayableSa(settings.saMidi)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        Text(
+            stringResource(R.string.sa_out_of_range, saLabel(settings.saMidi, settings.saCents)),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+        )
+        OutlinedButton(onClick = { onSettingsChange { it.copy(saMidi = nearest, saCents = 0) } }) {
+            Text(stringResource(R.string.use_sa, saLabel(nearest, 0)))
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PlaybackStatus(playback: PlaybackState, sa: String) {

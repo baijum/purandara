@@ -149,12 +149,20 @@ final class PracticeViewModel: ObservableObject {
 
     var canPlay: Bool { samplesLoaded }
 
+    /// Whether every note of [varisai] is inside the harmonium samples at the chosen Sa (`Varisai.playableSaMidis`).
+    func saPlayable(_ varisai: Varisai) -> Bool {
+        let range = varisai.playableSaMidis
+        return settings.saMidi >= Int(range.first) && settings.saMidi <= Int(range.last)
+    }
+
     func togglePlay(_ varisai: Varisai) {
         if playback.playing { stop() } else { play(varisai) }
     }
 
     func play(_ varisai: Varisai) {
         guard let bank else { return }
+        // The player offers a playable Sa instead; never build a schedule the samples can't play.
+        guard saPlayable(varisai) else { return }
         stopTimer()
         let schedule = Schedule.companion.of(varisai: varisai, settings: settings.performance())
         let renderer = SampleRenderer(

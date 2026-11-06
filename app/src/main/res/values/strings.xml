@@ -94,6 +94,8 @@
     <string name="notation">Notation</string>
     <string name="tala_label">%1$s tala: %2$s</string>
     <string name="raga_tala">%1$s · %2$s tala</string>
+    <string name="sa_out_of_range">At Sa %1$s this piece goes higher than the harmonium can play.</string>
+    <string name="use_sa">Use Sa %1$s</string>
     <string name="gitam_notation">Gitam notation</string>
     <string name="gitam_notation_desc">What a gitam shows under each beat: its swaras, its words, or both.</string>
     <string name="words_swaras">Swaras</string>

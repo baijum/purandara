@@ -14,11 +14,12 @@ class GitamCatalogTest {
     private fun gitam(n: Int) = VarisaiCatalog.byId("gitam-$n")!!
 
     @Test
-    fun fourMalahariGitamsInTeachingOrder() {
-        assertEquals(listOf("Sri Gananatha", "Kunda Gaura", "Kereya Neeranu", "Padumanabha"), gitams.map { it.title })
+    fun gitamsInTeachingOrder() {
+        assertEquals(listOf("Sri Gananatha", "Kunda Gaura", "Kereya Neeranu", "Padumanabha", "Analekara"), gitams.map { it.title })
         assertEquals(gitams.map { it.title }, gitams.map { it.shortTitle })
-        assertEquals(listOf(Talas.RUPAKA, Talas.RUPAKA, Talas.TRIPUTA_TISRA, Talas.TRIPUTA_TISRA), gitams.map { it.tala })
-        gitams.forEach { assertEquals(Raga.MALAHARI, it.raga, it.id) }
+        assertEquals(listOf(Talas.RUPAKA, Talas.RUPAKA, Talas.TRIPUTA_TISRA, Talas.TRIPUTA_TISRA, Talas.TRIPUTA_TISRA), gitams.map { it.tala })
+        gitams.take(4).forEach { assertEquals(Raga.MALAHARI, it.raga, it.id) }
+        assertEquals(Raga.SUDDHA_SAVERI, gitam(5).raga)
     }
 
     @Test
@@ -68,7 +69,7 @@ class GitamCatalogTest {
     }
 
     @Test
-    fun rangeIsLowerPaToUpperPaWithoutOctaveLeaps() {
+    fun rangeIsLowerPaToUpperMaWithoutOctaveLeaps() {
         gitams.forEach { v ->
             val steps = v.avartas.flatMap { it.aksharas }.filterIsInstance<Akshara.Swaras>().flatMap { it.swaras }
                 .map { v.raga.swara(it.letter).semitone + 12 * it.octave.offset }
@@ -81,6 +82,6 @@ class GitamCatalogTest {
             v.id to v.avartas.flatMap { it.aksharas }.filterIsInstance<Akshara.Swaras>().flatMap { it.swaras }
                 .filter { it.octave == Octave.MANDRA }.map { it.toString() }
         }
-        assertEquals(mapOf("gitam-1" to emptyList(), "gitam-2" to emptyList(), "gitam-3" to emptyList(), "gitam-4" to List(6) { "D\u0323" }), mandra)
+        assertEquals(mapOf("gitam-1" to emptyList(), "gitam-2" to emptyList(), "gitam-3" to emptyList(), "gitam-4" to List(6) { "D\u0323" }, "gitam-5" to emptyList()), mandra)
     }
 }

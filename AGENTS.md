@@ -45,7 +45,7 @@ features speculatively.
 | Where | What |
 |---|---|
 | `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
-| `shared/.../domain/varisai/` | Notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt` with its sources and fixes in the header); `WordsDisplay` |
+| `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt` with its sources and fixes in the header); `WordsDisplay` |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
 | `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` + `FindSaGuide` (Find my Sa) |
 | `shared/.../practice/` | `PracticeHistory`: practised / best sing-along per exercise, continue and next up (stored on device as JSON) |
@@ -76,7 +76,7 @@ traps on the isolation check): build them in a `nonisolated` helper, and pass Ko
 to the main actor in a `Handoff`. Debug launch arguments `-open <varisai-id> -autoplay YES` open
 (and play) an exercise for screenshots (`-open shruti` / `-open find-sa` open the Sa
 screens); add `-singAlong YES -singer <cents>` for a synthetic singer on iOS, and
-`-resetSettings YES` to start from default settings and an empty history. On Android (debug builds),
+`-resetSettings YES` to start from default settings and an empty history (then `-sa <midi>` to pick a Sa). On Android (debug builds),
 `adb shell am start -n com.baijum.purandara/.MainActivity --ef singer 0` replaces
 the microphone with a synthetic singer (the value is cents off target), so
 sing-along can be exercised on an emulator.

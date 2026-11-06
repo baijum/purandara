@@ -23,7 +23,7 @@ struct PurandaraApp: App {
     /// Debug aid for screenshots, UI tests and manual checks:
     /// `-open sarali-4` opens an exercise (`-open shruti` / `-open find-sa` the Sa screens), `-autoplay YES` also starts it once samples load,
     /// `-singAlong YES` turns sing-along on, `-singer <cents>` uses a synthetic singer,
-    /// `-resetSettings YES` starts from default settings (UI tests).
+    /// `-resetSettings YES` starts from default settings (UI tests), `-sa <midi>` then picks a Sa.
     private func openFromLaunchArguments() {
         #if DEBUG
         let defaults = UserDefaults.standard
@@ -31,6 +31,8 @@ struct PurandaraApp: App {
             viewModel.settings = PracticeSettings()
             viewModel.resetHistory()
         }
+        let sa = defaults.integer(forKey: "sa") // launch arguments arrive as strings
+        if PracticeSettings.saRange.contains(sa) { viewModel.settings.saMidi = sa }
         guard let id = defaults.string(forKey: "open") else { return }
         path = [id]
         if defaults.bool(forKey: "singAlong") { viewModel.settings.singAlong = true }

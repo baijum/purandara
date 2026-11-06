@@ -27,10 +27,10 @@ class VarisaiCatalogTest {
             VarisaiSet.VAKRA_JANTA to 2,
             VarisaiSet.DHATTU to 6,
             VarisaiSet.ALANKARAM to 7,
-            VarisaiSet.GITAM to 4,
+            VarisaiSet.GITAM to 5,
         )
         assertEquals(expected, VarisaiSet.entries.associateWith { VarisaiCatalog.inSet(it).size })
-        assertEquals(48, VarisaiCatalog.all.size)
+        assertEquals(49, VarisaiCatalog.all.size)
     }
 
     @Test

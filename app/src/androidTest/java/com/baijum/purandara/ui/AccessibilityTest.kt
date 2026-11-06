@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
@@ -188,6 +189,16 @@ class AccessibilityTest {
         compose.onNodeWithContentDescription("Avarta 1: M P, D S′ S′ R′. Words: sri ga na na tha").assertIsDisplayed()
         // The syllables are summarised in the avarta's sentence, not read one by one.
         compose.onAllNodesWithText("tha").assertCountEquals(0)
+    }
+
+    @Test
+    fun aSaTooHighForThePieceIsExplainedWithAPlayableOne() {
+        settings = settings.copy(saMidi = 60)
+        showPlayer(id = "gitam-5")
+        compose.onNodeWithText("this piece goes higher than the harmonium can play", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Play").assertIsNotEnabled()
+        compose.onNodeWithText("Use Sa", substring = true).assertHasClickAction().performClick()
+        assertTrue(settings.saMidi in VarisaiCatalog.byId("gitam-5")!!.playableSaMidis)
     }
 
     @Test
