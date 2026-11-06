@@ -25,6 +25,7 @@ import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.Pitch
 import com.baijum.purandara.domain.schedule.NotationPosition
 import com.baijum.purandara.domain.schedule.Schedule
+import com.baijum.purandara.domain.varisai.SectionSpan
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.practice.PracticeHistory
@@ -65,6 +66,8 @@ data class PlaybackState(
 data class PracticeUiState(
     val settings: PracticeSettings = PracticeSettings(),
     val selected: Varisai? = null,
+    /** One section of [selected] being practised alone, or null for the whole piece. */
+    val section: SectionSpan? = null,
     val samplesLoaded: Boolean = false,
     val loadError: Boolean = false,
     val playback: PlaybackState = PlaybackState(),
@@ -149,10 +152,11 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun select(varisai: Varisai?) {
+    /** Opens [varisai] (null: back to the landing page), optionally to practise one [section] alone. */
+    fun select(varisai: Varisai?, section: SectionSpan? = null) {
         stop()
         _state.update {
-            it.copy(selected = varisai, playback = PlaybackState(), singAlong = it.singAlong.copy(marks = emptyMap(), trace = emptyList(), lastSummary = null, live = null))
+            it.copy(selected = varisai, section = section, playback = PlaybackState(), singAlong = it.singAlong.copy(marks = emptyMap(), trace = emptyList(), lastSummary = null, live = null))
         }
     }
 
@@ -306,7 +310,8 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         // The player offers a playable Sa instead; never build a schedule the samples can't play.
         if (settings.saMidi !in varisai.playableSaMidis) return
         stop()
-        val schedule = Schedule.of(varisai, settings.performance())
+        val section = _state.value.section
+        val schedule = section?.let { Schedule.ofSection(varisai, settings.performance(), it) } ?: Schedule.of(varisai, settings.performance())
         val r = SampleRenderer(bank, schedule, settings.renderOptions())
         renderer = r
         this.schedule = schedule
@@ -343,7 +348,8 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         if (frames == null || frames < 0) return
         if (!practisedThisPlay && frames >= r.countInFrames + r.performanceFrames) {
             practisedThisPlay = true
-            updateHistory { it.practised(varisai.id, System.currentTimeMillis()) }
+            // A section alone doesn't count as practising the whole piece.
+            if (schedule.section == null) updateHistory { it.practised(varisai.id, System.currentTimeMillis()) }
         }
         val countInBeat = r.countInBeat(frames)
         val seconds = r.passSeconds(frames)
@@ -402,6 +408,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         map { MarkKey(it.event.position.avarta, it.event.position.akshara, it.event.position.slot) to it.result }
 
     private fun recordScore(result: PassResult) {
+        if (_state.value.section != null) return // only whole-piece passes are a best result
         val id = _state.value.selected?.id ?: return
         updateHistory { it.scored(id, result, System.currentTimeMillis()) }
     }

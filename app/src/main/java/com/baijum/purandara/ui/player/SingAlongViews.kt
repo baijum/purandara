@@ -72,7 +72,7 @@ fun PitchLane(
     }) {
         val laneColors = LaneColors(colors.outlineVariant, colors.onSurfaceVariant, colors.primary, colors.secondary, colors.error)
         Canvas(Modifier.fillMaxWidth().height(LANE_HEIGHT.dp)) {
-            val lane = Lane(size.width, size.height, sa, scale, avarta?.let { it * avartaSeconds } ?: 0.0, avartaSeconds)
+            val lane = Lane(size.width, size.height, sa, scale, avarta?.let { schedule.avartaStartSeconds(it) } ?: 0.0, avartaSeconds)
             drawSwaraLines(lane, scale.lines, laneColors, measurer)
             val a = avarta ?: return@Canvas
             drawStaircase(lane, schedule.notes.filter { it.position.avarta == a }, laneColors)

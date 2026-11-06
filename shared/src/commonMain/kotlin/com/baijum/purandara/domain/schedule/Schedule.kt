@@ -8,6 +8,7 @@ import com.baijum.purandara.domain.Tala
 import com.baijum.purandara.domain.TalaBeat
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.varisai.Akshara
+import com.baijum.purandara.domain.varisai.SectionSpan
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.WrittenSwara
 
@@ -91,6 +92,8 @@ data class CursorEvent(val startSeconds: Double, val position: NotationPosition)
 class Schedule private constructor(
     val varisai: Varisai,
     val settings: PerformanceSettings,
+    /** The avartas played: the whole piece, or one section ([section]). */
+    val avartaRange: IntRange,
     val repetitions: Int,
     val notes: List<NoteEvent>,
     val beats: List<BeatEvent>,
@@ -108,6 +111,12 @@ class Schedule private constructor(
 
     /** Seconds per written avarta (one row block of notation). */
     val avartaSeconds: Double get() = aksharaSeconds * varisai.tala.aksharas * varisai.beat
+
+    /** The section played, or null for the whole piece. */
+    val section: SectionSpan? get() = varisai.sections.firstOrNull { it.firstAvarta..it.lastAvarta == avartaRange }
+
+    /** When avarta [avarta] (a piece-wide index) starts within one pass. */
+    fun avartaStartSeconds(avarta: Int): Double = (avarta - avartaRange.first) * avartaSeconds
 
     /** Notation position sounding at [seconds], or null before the start or after the end. */
     fun cursorAt(seconds: Double): NotationPosition? {
@@ -142,21 +151,32 @@ class Schedule private constructor(
          * @throws IllegalArgumentException if a note falls outside the
          *   harmonium bank for this Sa.
          */
-        fun of(varisai: Varisai, settings: PerformanceSettings): Schedule {
-            val reps = repetitionsToFillAvartas(varisai, settings)
+        fun of(varisai: Varisai, settings: PerformanceSettings): Schedule = of(varisai, settings, varisai.avartas.indices)
+
+        /** Just one section of the piece; notation positions keep the piece's avarta numbers. */
+        fun ofSection(varisai: Varisai, settings: PerformanceSettings, section: SectionSpan): Schedule =
+            of(varisai, settings, section.firstAvarta..section.lastAvarta)
+
+        private fun of(varisai: Varisai, settings: PerformanceSettings, range: IntRange): Schedule {
+            require(!range.isEmpty() && range.first >= 0 && range.last < varisai.avartas.size) { "avartas $range outside the piece" }
+            val reps = repetitionsToFillAvartas(range.sumOf { varisai.avartas[it].aksharas.size }, varisai, settings)
             val aksharaSeconds = settings.writtenAksharaSeconds / varisai.beat
             val notes = mutableListOf<NoteEvent>()
             val cursor = mutableListOf<CursorEvent>()
             var written = 0 // written aksharas elapsed
 
             for (rep in 0 until reps) {
-                varisai.avartas.forEachIndexed { avartaIndex, avarta ->
+                for (avartaIndex in range) {
+                    val avarta = varisai.avartas[avartaIndex]
                     avarta.aksharas.forEachIndexed { aksharaIndex, akshara ->
                         val aksharaStart = written * aksharaSeconds
                         when (akshara) {
                             is Akshara.Karvai -> {
-                                val previous = notes.removeAt(notes.lastIndex)
-                                notes += previous.copy(durationSeconds = previous.durationSeconds + aksharaSeconds)
+                                // A section can't start on a karvai in practice; if one did, it would be silent.
+                                if (notes.isNotEmpty()) {
+                                    val previous = notes.removeAt(notes.lastIndex)
+                                    notes += previous.copy(durationSeconds = previous.durationSeconds + aksharaSeconds)
+                                }
                                 cursor += CursorEvent(aksharaStart, NotationPosition(rep, avartaIndex, aksharaIndex, 0))
                             }
                             is Akshara.Swaras -> {
@@ -183,6 +203,7 @@ class Schedule private constructor(
             return Schedule(
                 varisai = varisai,
                 settings = settings,
+                avartaRange = range,
                 repetitions = reps,
                 notes = notes,
                 beats = beats,
@@ -192,8 +213,10 @@ class Schedule private constructor(
         }
 
         /** Smallest number of passes whose written aksharas fill whole tala avartas. */
-        fun repetitionsToFillAvartas(varisai: Varisai, settings: PerformanceSettings): Int {
-            val writtenAksharas = varisai.aksharaCount
+        fun repetitionsToFillAvartas(varisai: Varisai, settings: PerformanceSettings): Int =
+            repetitionsToFillAvartas(varisai.aksharaCount, varisai, settings)
+
+        private fun repetitionsToFillAvartas(writtenAksharas: Int, varisai: Varisai, settings: PerformanceSettings): Int {
             require(writtenAksharas > 0) { "exercise has no aksharas" }
             val perAvarta = varisai.tala.aksharas * settings.aksharasPerBeat * varisai.beat
             var reps = 1

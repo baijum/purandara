@@ -122,6 +122,7 @@ private fun PlayerRoute(viewModel: PracticeViewModel, state: PracticeUiState, mi
             onBack = { viewModel.select(null) },
             onTogglePlay = viewModel::togglePlay,
             onSettingsChange = viewModel::updateSettings,
+            onSelectSection = { section -> viewModel.select(selected, section) },
             onToggleSingAlong = {
                 when {
                     state.settings.singAlong -> viewModel.updateSettings { it.copy(singAlong = false) }

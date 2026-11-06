@@ -7,6 +7,7 @@ struct PlayerView: View {
     let varisai: Varisai
     @EnvironmentObject private var viewModel: PracticeViewModel
     @State private var showingSettings = false
+    @State private var showingSections = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Whether every note of this piece is inside the harmonium samples at the chosen Sa.
@@ -46,6 +47,17 @@ struct PlayerView: View {
                         .font(.subheadline)
                         .foregroundStyle(Color.subdued)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                    if !varisai.sections.isEmpty {
+                        Button {
+                            showingSections = true
+                        } label: {
+                            Text("Section: \(viewModel.practiceSection?.label ?? String(localized: "Whole piece"))")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityHint(Text("Practise one section alone"))
+                    }
                     if showPanel && typeSize.isAccessibilitySize { SingAlongPanel(varisai: varisai) }
                 }))
                 .frame(maxHeight: .infinity)
@@ -96,7 +108,13 @@ struct PlayerView: View {
         .sheet(isPresented: $showingSettings) {
             PracticeSettingsView(settings: $viewModel.settings)
         }
-        .onDisappear { viewModel.stopImmediately() }
+        .onDisappear {
+            viewModel.stopImmediately()
+            viewModel.practiceSection = nil
+        }
+        .sheet(isPresented: $showingSections) {
+            SectionChoices(sections: varisai.sections, selected: $viewModel.practiceSection)
+        }
     }
 }
 
@@ -378,5 +396,40 @@ private struct SaOutOfRange: View {
         .fixedSize(horizontal: false, vertical: true) // never squeezed by the notation below
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
+    }
+}
+
+/// Practise one section alone, or the whole piece: a sheet, so the choice
+/// follows Dynamic Type (menu pickers cap it).
+private struct SectionChoices: View {
+    let sections: [SectionSpan]
+    @Binding var selected: SectionSpan?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                row(nil, String(localized: "Whole piece"))
+                ForEach(sections, id: \.self) { section in row(section, section.label) }
+            }
+            .navigationTitle("Section")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func row(_ section: SectionSpan?, _ label: String) -> some View {
+        Button {
+            selected = section
+            dismiss()
+        } label: {
+            HStack {
+                Text(label).foregroundStyle(Color.primary)
+                Spacer()
+                if selected == section {
+                    Image(systemName: "checkmark").foregroundStyle(Color.accentColor).accessibilityHidden(true)
+                }
+            }
+        }
+        .accessibilityAddTraits(selected == section ? .isSelected : [])
     }
 }

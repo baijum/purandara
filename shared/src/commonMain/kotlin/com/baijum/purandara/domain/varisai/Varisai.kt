@@ -100,6 +100,9 @@ enum class WordsDisplay {
     val showsWords: Boolean get() = this != SWARAS
 }
 
+/** One section of a piece: its heading and its first and last avarta (inclusive). */
+data class SectionSpan(val label: String, val firstAvarta: Int, val lastAvarta: Int)
+
 /** In [Avarta.words]: the previous syllable is held through this akshara. */
 const val HELD: String = "-"
 
@@ -177,6 +180,22 @@ data class Varisai(
         }
         if (ok.isEmpty()) IntRange.EMPTY else ok.first()..ok.last()
     }
+
+    /**
+     * The piece's sections in sung order, each by its first appearance (a
+     * returning pallavi is listed once): what "practise one section" offers.
+     * Empty for exercises without sections.
+     */
+    val sections: List<SectionSpan>
+        get() {
+            val starts = avartas.indices.filter { avartas[it].section != null }
+            val seen = mutableSetOf<String>()
+            return starts.mapIndexedNotNull { k, start ->
+                val label = avartas[start].section!!
+                val end = (starts.getOrNull(k + 1) ?: avartas.size) - 1
+                if (seen.add(label)) SectionSpan(label, start, end) else null
+            }
+        }
 
     /** The playable Sa nearest to [saMidi] (itself when it is playable). */
     fun nearestPlayableSa(saMidi: Int): Int = saMidi.coerceIn(playableSaMidis)

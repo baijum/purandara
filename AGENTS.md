@@ -49,7 +49,7 @@ features speculatively.
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
 | `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` + `FindSaGuide` (Find my Sa) |
 | `shared/.../practice/` | `PracticeHistory`: practised / best sing-along per exercise, continue and next up (stored on device as JSON) |
-| `shared/.../domain/schedule/` | `Schedule`: timed note/beat/cursor events, `cursorAt`/`beatAt` |
+| `shared/.../domain/schedule/` | `Schedule`: timed note/beat/cursor events, `cursorAt`/`beatAt`; `ofSection` plays one section (`Varisai.sections`) with the piece's avarta numbers |
 | `shared/.../audio/` | `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output) |
 | `shared/.../pitch/` | `PitchDetector` (YIN), `AudioResampler`, `NeuralArbitrator`: ported from ukulele-companion with the interpolation sign fix |
 | `shared/.../singalong/` | `PitchPipeline`, `SwaraMapper` (+ `Zone`, `Strictness`), `SingAlongClock`, `BleedModel` (room noise + leakage), `NoteScorer`, `SingAlongSession`: sing-along scoring |

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
@@ -71,6 +72,7 @@ class AccessibilityTest {
 
     private var settings = PracticeSettings()
     private var singAlongToggled = 0
+    private var sectionPicked: String? = null
 
     private fun showPlayer(
         playback: PlaybackState = PlaybackState(),
@@ -87,6 +89,7 @@ class AccessibilityTest {
                         onTogglePlay = {},
                         onSettingsChange = { settings = it(settings) },
                         onToggleSingAlong = { singAlongToggled++ },
+                        onSelectSection = { sectionPicked = it?.label ?: "whole" },
                     ),
                 )
             }
@@ -208,6 +211,21 @@ class AccessibilityTest {
         compose.onNodeWithContentDescription(
             "Avarta 1: S R G P D S′ N D, P D P M G R S, R S low N low D S. Words: ra ra ve nu go pa ba la ra ji ta sad gu na ja ya shi la",
         ).assertIsDisplayed()
+    }
+
+    @Test
+    fun aSectionCanBePractisedAlone() {
+        showPlayer(id = "gitam-1")
+        compose.onNodeWithText("Section: Whole piece").assertHasClickAction().performClick()
+        // The menu item, not the "Pallavi" heading in the notation.
+        compose.onNode(hasText("Pallavi") and hasClickAction()).performClick()
+        assertEquals("Pallavi", sectionPicked)
+    }
+
+    @Test
+    fun exercisesWithoutSectionsDontOfferThem() {
+        showPlayer(id = "sarali-4")
+        compose.onAllNodesWithText("Section: Whole piece").assertCountEquals(0)
     }
 
     @Test

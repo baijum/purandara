@@ -25,6 +25,7 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
   the nearest Sa that fits.
 - **Swarajatis:** Rara Venu Gopa Bala (Bilahari), written four swaras to a
   beat, each charanam sung as swaras and then with its words.
+- **Practise one section** of a gitam or swarajati alone, once or on repeat.
   Choose your Sa (kattai, fine-tune ±50 cents), tempo, speed (kala), tuning
   (just or equal), count-in, tala click and looping.
 - **Sing-along:** sing with an exercise and see your pitch as you go. Each

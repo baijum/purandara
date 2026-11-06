@@ -20,6 +20,13 @@ Progress:
   shivkumar.org cell for cell (all 10 avartas). **Sambasiva waits**:
   karnatik.com's notation has no bars or octave marks, so shivkumar.org is
   its only clean source.
+- V2 done early: **Practise one section** (`Varisai.sections`,
+  `Schedule.ofSection`, keeping the piece's avarta numbers). Both players
+  offer "Section: Whole piece" on pieces with sections; it plays once, or
+  loops with Repeat on; a section alone doesn't count as practising the piece
+  or as its best result.
+- Not built yet, waiting on a varnam source and Q4/Q5: per-section speed
+  (`(pallavi @2)`), rests, the two-kalai strip, swara variants.
 
 These continue the beginner path after the Malahari gitams
 (`docs/plan-alankaram-gitam.md`):

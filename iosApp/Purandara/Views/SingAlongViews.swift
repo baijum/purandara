@@ -163,7 +163,7 @@ struct PitchLane: View {
         }
         guard let avarta else { return }
         let span = schedule.avartaSeconds
-        let start = Double(avarta) * span
+        let start = schedule.avartaStartSeconds(avarta: Int32(avarta))
         func x(_ t: Double) -> CGFloat { labelWidth + (size.width - labelWidth) * (t - start) / span }
         for e in schedule.notes where Int(e.position.avarta) == avarta {
             var path = Path()

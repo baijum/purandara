@@ -70,6 +70,7 @@ import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.schedule.PerformanceSettings
 import com.baijum.purandara.domain.schedule.Schedule
+import com.baijum.purandara.domain.varisai.SectionSpan
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.viewmodel.PlaybackState
 import com.baijum.purandara.viewmodel.PracticeUiState
@@ -102,12 +103,7 @@ fun PlayerScreen(
         bottomBar = { PlayButtonBar(playback.playing, canPlay, actions.onTogglePlay) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            Text(
-                stringResource(R.string.raga_tala, varisai.raga.name, varisai.tala.name),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 4.dp),
-            )
+            RagaTalaLine(varisai, state.section, actions.onSelectSection)
             TalaStrip(
                 beatInAvarta = playback.beatInAvarta,
                 tala = varisai.tala,
@@ -213,6 +209,24 @@ private fun SingAlongPanel(varisai: Varisai, state: PracticeUiState, micDenied: 
  * "Pass n of m" when an exercise repeats within an avarta. Wraps onto two
  * lines at large text sizes rather than clipping.
  */
+/** "Malahari · Rupaka tala", and the section picker for pieces with sections. */
+@Composable
+private fun RagaTalaLine(varisai: Varisai, section: SectionSpan?, onSelectSection: (SectionSpan?) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.raga_tala, varisai.raga.name, varisai.tala.name),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        val sections = varisai.sections
+        if (sections.isNotEmpty()) SectionPicker(sections, section, onSelectSection)
+    }
+}
+
 /** This piece climbs past the harmonium samples at the chosen Sa: say so and offer one that fits. */
 @Composable
 private fun SaOutOfRange(

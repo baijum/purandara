@@ -163,6 +163,19 @@ final class PurandaraUITests: XCTestCase {
         try audit(app, longNotation: true)
     }
 
+    /// Practise one section alone: choose it in a sheet; the button shows it.
+    func testASectionCanBePractisedAlone() throws {
+        let app = launch(["-open", "gitam-1"])
+        XCTAssertTrue(app.navigationBars["Sri Gananatha"].waitForExistence(timeout: 5))
+        let button = app.buttons["Section: Whole piece"]
+        XCTAssertTrue(button.waitForExistence(timeout: 5))
+        button.tap()
+        XCTAssertTrue(app.navigationBars["Section"].waitForExistence(timeout: 3))
+        try audit(app)
+        app.buttons["Pallavi"].tap()
+        XCTAssertTrue(app.buttons["Section: Pallavi"].waitForExistence(timeout: 3))
+    }
+
     func testSettingsSheetPassesAccessibilityAudit() throws {
         let app = launch(["-open", "sarali-4"])
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))

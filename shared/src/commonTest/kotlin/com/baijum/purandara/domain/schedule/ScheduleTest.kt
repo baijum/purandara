@@ -142,6 +142,27 @@ class ScheduleTest {
     }
 
     @Test
+    fun oneSectionKeepsThePieceAvartaNumbers() {
+        val gitam = varisai("gitam-1")
+        assertEquals(
+            listOf("Charanam 1", "Pallavi", "Charanam 2", "Charanam 3"),
+            gitam.sections.map { it.label },
+        )
+        val pallavi = gitam.sections[1]
+        assertEquals(4..9, pallavi.firstAvarta..pallavi.lastAvarta)
+        val s = Schedule.ofSection(gitam, PerformanceSettings(saHz = saC3), pallavi)
+        assertEquals(pallavi, s.section)
+        assertEquals(6 * s.avartaSeconds, s.durationSeconds, 1e-9)
+        assertEquals(4, s.notes.first().position.avarta)
+        assertEquals(9, s.notes.last().position.avarta)
+        assertEquals(0.0, s.avartaStartSeconds(4), 1e-9)
+        assertEquals(2 * s.avartaSeconds, s.avartaStartSeconds(6), 1e-9)
+        assertEquals(null, Schedule.of(gitam, PerformanceSettings(saHz = saC3)).section)
+        // Exercises without sections offer none.
+        assertTrue(varisai("sarali-1").sections.isEmpty())
+    }
+
+    @Test
     fun ragaComesFromTheExercise() {
         val v = VarisaiParser().parse("1\nraga: malahari\ntala: eka-4\nS R G M", VarisaiSet.SARALI).single()
         val s = Schedule.of(v, PerformanceSettings(saHz = saC3))

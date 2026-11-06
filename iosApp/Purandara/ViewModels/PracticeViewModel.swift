@@ -88,6 +88,10 @@ final class PracticeViewModel: ObservableObject {
     @Published private(set) var samplesLoaded = false
     @Published private(set) var loadError = false
     @Published private(set) var playback = PlaybackState()
+    /// One section of the open piece practised alone, or nil for the whole piece (`PlayerView` resets it).
+    @Published var practiceSection: SectionSpan? {
+        didSet { if playback.playing { stop() } }
+    }
     @Published private(set) var singAlong = SingAlongUI()
     /// What has been practised (landing page).
     @Published private(set) var history: PracticeHistory
@@ -164,7 +168,8 @@ final class PracticeViewModel: ObservableObject {
         // The player offers a playable Sa instead; never build a schedule the samples can't play.
         guard saPlayable(varisai) else { return }
         stopTimer()
-        let schedule = Schedule.companion.of(varisai: varisai, settings: settings.performance())
+        let schedule = practiceSection.map { Schedule.companion.ofSection(varisai: varisai, settings: settings.performance(), section: $0) }
+            ?? Schedule.companion.of(varisai: varisai, settings: settings.performance())
         let renderer = SampleRenderer(
             bank: bank,
             schedule: schedule,
@@ -524,7 +529,8 @@ final class PracticeViewModel: ObservableObject {
         guard let renderer, let schedule, let frames = player.positionFrames() else { return }
         if !practisedThisPlay, let current, frames >= Int64(renderer.countInFrames) + Int64(renderer.performanceFrames) {
             practisedThisPlay = true
-            updateHistory { $0.practised(varisaiId: current.id, nowMillis: Self.nowMillis) }
+            // A section alone doesn't count as practising the whole piece.
+            if schedule.section == nil { updateHistory { $0.practised(varisaiId: current.id, nowMillis: Self.nowMillis) } }
         }
         let countInBeat = renderer.countInBeat(frame: frames).map { Int(truncating: $0) }
         let seconds = renderer.passSeconds(frame: frames)
@@ -585,7 +591,7 @@ final class PracticeViewModel: ObservableObject {
     }
 
     private func announce(_ result: PassResult) {
-        if let current {
+        if let current, schedule?.section == nil { // only whole-piece passes are a best result
             updateHistory { $0.scored(varisaiId: current.id, result: result, nowMillis: Self.nowMillis) }
         }
         singAlong.lastSummary = (Int(result.pass) + 1, result.summary)
