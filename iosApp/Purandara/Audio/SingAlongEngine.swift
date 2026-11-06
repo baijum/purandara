@@ -41,7 +41,7 @@ final class SingAlongEngine: @unchecked Sendable {
         print("[singalong] rate \(Int(micRate)) buffers \(diag.buffers) windows \(diag.windows) noTime \(diag.noTime) "
             + "pitched \(diag.pitched) voiced \(diag.voiced) mic \(String(format: "%.4f", diag.peakMic)) "
             + "out \(String(format: "%.4f", diag.peakOut)) leak \(String(format: "%.3f", session.leakageRatio)) "
-            + "calibrated \(session.bleedCalibrated) echoCancel \(player.micOnSpeaker) "
+            + "calibrated \(session.bleedCalibrated) onSpeaker \(player.micOnSpeaker) "
             + "in \(route.inputs.map(\.portType.rawValue)) out \(route.outputs.map(\.portType.rawValue))")
         diag = (0, 0, 0, 0, 0, 0, 0, now)
     }
@@ -79,9 +79,9 @@ final class SingAlongEngine: @unchecked Sendable {
     }
 
     /// The mic request to pass to `VarisaiAudioPlayer.play`, or nil when a synthetic singer replaces the mic.
-    func micRequest() -> VarisaiAudioPlayer.MicRequest? {
+    func micRequest(echoCancellation: Bool) -> VarisaiAudioPlayer.MicRequest? {
         guard syntheticCents == nil else { return nil }
-        return VarisaiAudioPlayer.MicRequest { [weak self] buffer, when in
+        return VarisaiAudioPlayer.MicRequest(echoCancellation: echoCancellation) { [weak self] buffer, when in
             guard let self, let channel = buffer.floatChannelData?[0] else { return }
             let samples = Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
             let rate = buffer.format.sampleRate

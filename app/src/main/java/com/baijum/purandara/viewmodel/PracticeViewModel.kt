@@ -170,7 +170,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
         val singAlong = settings.singAlong && (_state.value.singAlong.micPermitted || debugSyntheticSingerCents != null)
         val newEngine = if (singAlong) {
-            SingAlongEngine(micSource(onSpeaker, r, schedule), player, r, schedule, supervisor) { outcome ->
+            SingAlongEngine(micSource(onSpeaker && settings.echoCancellation, r, schedule), player, r, schedule, supervisor) { outcome ->
                 mainHandler.post { onOutcome(r, outcome) }
             }.also { it.attach() }
         } else {
@@ -200,7 +200,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun micSource(onSpeaker: Boolean, r: SampleRenderer, schedule: Schedule): MicSource {
+    private fun micSource(echoCancellation: Boolean, r: SampleRenderer, schedule: Schedule): MicSource {
         val synthetic = debugSyntheticSingerCents
         return if (synthetic != null) {
             SyntheticSingerMicSource(synthetic) { nanos ->
@@ -210,7 +210,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
                 schedule.notes.lastOrNull { it.startSeconds <= t && t < schedule.durationSeconds }?.frequencyHz
             }
         } else {
-            AudioRecordMicSource(echoCancellation = onSpeaker)
+            AudioRecordMicSource(echoCancellation = echoCancellation)
         }
     }
 

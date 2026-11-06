@@ -72,6 +72,8 @@
     <string name="attention_wrong">%1$s: a different swara (%2$d of %3$d)</string>
     <string name="needs_attention">Needs attention: %1$s</string>
     <string name="harmonium_guide">Harmonium guide</string>
+    <string name="echo_cancellation">Echo cancellation</string>
+    <string name="echo_cancellation_desc">On the speaker, removes the app\'s own sound from what the microphone hears; the volume may drop while it works. Turn it off when using a microphone placed away from the speaker.</string>
     <string name="guide_all">All notes</string>
     <string name="guide_off">Off (drone and click)</string>
     <string name="beat_of">Beat %1$d of %2$d</string>

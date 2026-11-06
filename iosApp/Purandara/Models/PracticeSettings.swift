@@ -23,6 +23,8 @@ struct PracticeSettings: Equatable {
     var singAlong = false
     /// Harmonium plays every note (true) or stays silent so only drone and click guide (false).
     var harmoniumGuide = true
+    /// Sing-along cancels the app's own sound from the mic when playing through the speaker.
+    var echoCancellation = true
 
     static let saRange = Int(Shruti.shared.SA_RANGE.first)...Int(Shruti.shared.SA_RANGE.last)
     static let tempoRange = Int(PerformanceSettings.companion.TEMPO_RANGE.first)...Int(PerformanceSettings.companion.TEMPO_RANGE.last)
@@ -63,6 +65,7 @@ struct PracticeSettingsStore {
         static let droneLevel = "practice.droneLevel"
         static let singAlong = "practice.singAlong"
         static let harmoniumGuide = "practice.harmoniumGuide"
+        static let echoCancellation = "practice.echoCancellation"
     }
 
     func load() -> PracticeSettings {
@@ -78,6 +81,7 @@ struct PracticeSettingsStore {
         if let v = defaults.object(forKey: Key.droneLevel) as? Float, (0...1).contains(v) { s.droneLevel = v }
         if let v = defaults.object(forKey: Key.singAlong) as? Bool { s.singAlong = v }
         if let v = defaults.object(forKey: Key.harmoniumGuide) as? Bool { s.harmoniumGuide = v }
+        if let v = defaults.object(forKey: Key.echoCancellation) as? Bool { s.echoCancellation = v }
         if let raw = defaults.string(forKey: Key.tuning), let v = PracticeSettings.TuningChoice(rawValue: raw) { s.tuning = v }
         return s
     }
@@ -95,5 +99,6 @@ struct PracticeSettingsStore {
         defaults.set(s.tuning.rawValue, forKey: Key.tuning)
         defaults.set(s.singAlong, forKey: Key.singAlong)
         defaults.set(s.harmoniumGuide, forKey: Key.harmoniumGuide)
+        defaults.set(s.echoCancellation, forKey: Key.echoCancellation)
     }
 }

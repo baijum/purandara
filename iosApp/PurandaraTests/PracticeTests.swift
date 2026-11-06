@@ -78,6 +78,7 @@ final class PracticeSettingsStoreTests: XCTestCase {
         s.droneLevel = 0.9
         s.singAlong = true
         s.harmoniumGuide = false
+        s.echoCancellation = false
         store.save(s)
         XCTAssertEqual(store.load(), s)
     }

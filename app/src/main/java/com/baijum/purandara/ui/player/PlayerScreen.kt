@@ -281,6 +281,14 @@ private fun PracticeSettingsSheet(
                 ) { Text(stringResource(label)) }
             }
         }
+        ToggleRow(stringResource(R.string.echo_cancellation), settings.echoCancellation) { on ->
+            onSettingsChange { it.copy(echoCancellation = on) }
+        }
+        Text(
+            stringResource(R.string.echo_cancellation_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         ToggleRow(stringResource(R.string.click), settings.click) { on -> onSettingsChange { it.copy(click = on) } }
         ToggleRow(stringResource(R.string.count_in), settings.countIn) { on -> onSettingsChange { it.copy(countIn = on) } }
         ToggleRow(stringResource(R.string.loop), settings.loop) { on -> onSettingsChange { it.copy(loop = on) } }

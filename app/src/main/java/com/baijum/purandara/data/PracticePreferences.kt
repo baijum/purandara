@@ -22,6 +22,8 @@ data class PracticeSettings(
     val singAlong: Boolean = false,
     /** Harmonium plays every note (true) or stays silent so only drone and click guide (false). */
     val harmoniumGuide: Boolean = true,
+    /** Sing-along cancels the app's own sound from the mic when playing through the speaker. */
+    val echoCancellation: Boolean = true,
 ) {
     fun performance(): PerformanceSettings =
         PerformanceSettings(saHz = Shruti.saHz(saMidi), tempo = tempo, kala = kala, tuning = tuning)
@@ -55,6 +57,7 @@ class PracticePreferences(context: Context) {
             droneLevel = prefs.getFloat(DRONE_LEVEL, d.droneLevel).takeIf { it in 0f..1f } ?: d.droneLevel,
             singAlong = prefs.getBoolean(SING_ALONG, d.singAlong),
             harmoniumGuide = prefs.getBoolean(HARMONIUM_GUIDE, d.harmoniumGuide),
+            echoCancellation = prefs.getBoolean(ECHO_CANCELLATION, d.echoCancellation),
             tuning = Tuning.entries.firstOrNull { it.name == prefs.getString(TUNING, null) } ?: d.tuning,
         )
     }
@@ -73,6 +76,7 @@ class PracticePreferences(context: Context) {
             .putString(TUNING, s.tuning.name)
             .putBoolean(SING_ALONG, s.singAlong)
             .putBoolean(HARMONIUM_GUIDE, s.harmoniumGuide)
+            .putBoolean(ECHO_CANCELLATION, s.echoCancellation)
             .apply()
     }
 
@@ -89,5 +93,6 @@ class PracticePreferences(context: Context) {
         const val DRONE_LEVEL = "drone_level"
         const val SING_ALONG = "sing_along"
         const val HARMONIUM_GUIDE = "harmonium_guide"
+        const val ECHO_CANCELLATION = "echo_cancellation"
     }
 }

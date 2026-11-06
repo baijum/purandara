@@ -158,6 +158,14 @@ struct PracticeSettingsView: View {
                     Text("Harmonium guide").foregroundStyle(Color.subdued)
                 }
                 Section {
+                    Toggle("Echo cancellation", isOn: $settings.echoCancellation)
+                    // In the section rather than its footer: footers cap Dynamic Type.
+                    Text("On the speaker, removes the app's own sound from what the microphone hears; the volume may drop while it works. Turn it off when using a microphone placed away from the speaker.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Section {
                     Toggle("Tanpura drone", isOn: $settings.drone)
 
                     LevelSlider(title: "Drone volume", level: $settings.droneLevel)

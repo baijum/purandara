@@ -132,7 +132,7 @@ final class PracticeViewModel: ObservableObject {
             }) : nil
         engine = newEngine
         do {
-            let mic = newEngine?.micRequest()
+            let mic = newEngine?.micRequest(echoCancellation: settings.echoCancellation)
             try player.play(renderer, mic: mic) { [weak self] in self?.finished(renderer) }
             // Decided by the player once the session is in record mode (the route can change then).
             singAlong.onSpeaker = mic != nil ? player.micOnSpeaker : VarisaiAudioPlayer.outputIsBuiltInSpeaker()

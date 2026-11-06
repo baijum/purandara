@@ -87,6 +87,8 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     /// record mode, because the route can change then (a paired Bluetooth
     /// device may play `.playback` audio but not `.playAndRecord`).
     struct MicRequest {
+        /// The student's setting: cancel the app's own sound when on the speaker.
+        let echoCancellation: Bool
         /// Called on an AVFoundation thread with each captured buffer and its time.
         let onBuffer: (AVAudioPCMBuffer, AVAudioTime) -> Void
     }
@@ -120,7 +122,8 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
             lastReconfigured = CACurrentMediaTime()
         }
         try session.setActive(true)
-        let wantVoiceProcessing = wantRecord && Self.outputIsBuiltInSpeaker()
+        let onSpeaker = wantRecord && Self.outputIsBuiltInSpeaker()
+        let wantVoiceProcessing = onSpeaker && mic?.echoCancellation == true
         if voiceProcessingOn && !wantVoiceProcessing { replaceEngine() }
         if wantVoiceProcessing && !voiceProcessingOn {
             engine.stop()
@@ -129,7 +132,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
             lastReconfigured = CACurrentMediaTime()
             engine.inputNode.isVoiceProcessingAGCEnabled = false
         }
-        micOnSpeaker = wantVoiceProcessing
+        micOnSpeaker = onSpeaker
         #if DEBUG
         print("[player] configure record \(wantRecord) echoCancel \(wantVoiceProcessing) "
             + "out \(session.currentRoute.outputs.map { $0.portType.rawValue })")
@@ -150,7 +153,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     /// category changes. The caller restarts playback, configuring afresh.
     var onRestartNeeded: (@MainActor () -> Void)?
 
-    /// True when the last `play` with a mic sent sound to the built-in speaker (echo cancellation on).
+    /// True when the last `play` with a mic sent sound to the built-in speaker.
     private(set) var micOnSpeaker = false
 
     /// Whether the current route plays through the built-in speaker rather than headphones.

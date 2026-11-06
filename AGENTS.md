@@ -122,7 +122,7 @@ text (use `Color.subdued`); menu pickers and text bar buttons clip or cap Dynami
 Type; visible text must appear in some element's label; translucent bars over
 scrolling content fail contrast; the iOS 26 toolbar glass shadow lowers contrast
 just below it; symbol characters (✓ ↑) fall back to fixed-size fonts, so use SF
-Symbols; at accessibility text sizes move secondary panels into the scrolling
+Symbols; Form section footers cap Dynamic Type, so put explanations in the section; at accessibility text sizes move secondary panels into the scrolling
 content. The audit helper ignores exactly one thing: Dynamic Type warnings on
 single notation swaras (they shrink to fit their column by design). UI tests
 launch with `-resetSettings YES` because settings persist between launches.
