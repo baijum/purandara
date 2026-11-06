@@ -6,7 +6,29 @@ It's named after **Purandara Dasa** (1484–1564), who is revered as the *Pitama
 (grandfather) of Carnatic music. He wrote the graded lessons that students
 still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *gitams*.
 
-> **Status:** Foundation only. No features yet.
+> **Status:** In active development. Everything works offline, with no account,
+> ads or tracking. The first raga is Mayamalavagowla in Adi tala.
+
+## Features
+
+- **Varisai player:** 37 graded exercises (plain scale, Sarali, Madhya Sthayi,
+  Janta, Vakra Janta and Dhattu varisai) played on a harmonium in tala over a
+  real tanpura, with the cursor following the notation and a tala strip.
+  Choose your Sa (kattai, fine-tune ±50 cents), tempo, speed (kala), tuning
+  (just or equal), count-in, tala click and looping.
+- **Sing-along:** sing with an exercise and see your pitch as you go. Each
+  note is marked in tune, close, high, low, an octave off or a different
+  swara, with a summary after every pass. Echo cancellation lets you use the
+  speaker; headphones work best. Strictness can be Gentle, Steady or Precise.
+- **Landing page:** continue where you left off and see what's next, your Sa
+  with a tanpura to tune to, and every set with what it trains, a picture of
+  each exercise's melodic shape, and your progress.
+- **Shruti practice:** sing over the tanpura and watch your pitch against the
+  swara lines; hold Sa, Pa or upper Sa for 10, 20 or 30 seconds.
+- **Find my Sa:** sing your lowest and highest comfortable notes and get a
+  suggested kattai.
+- **Accessibility:** TalkBack and VoiceOver labels throughout, large text
+  supported, checked by automated accessibility tests on both platforms.
 
 ## Tech stack
 
@@ -24,7 +46,9 @@ shared/         Kotlin Multiplatform module (commonMain / androidMain / iosMain 
 app/            Android app (Jetpack Compose)
 iosApp/         iOS app (SwiftUI). project.yml is the XcodeGen spec
 audio/          Bundled samples, shared by both apps (Android assets, iOS bundle folder)
+models/         SwiftF0 pitch model (ONNX), shared by both apps
 tools/samples/  Offline scripts that prepare audio/ from source recordings
+docs/           Feature plans
 ```
 
 ## Sound
@@ -32,8 +56,27 @@ tools/samples/  Offline scripts that prepare audio/ from source recordings
 Swaras are played on a harmonium: one CC0 sample per semitone from C2 to C5,
 pitch-corrected to exact equal temperament. Each swara's just-intonation
 frequency is reached by playing the nearest sample a few cents faster or
-slower (`HarmoniumBank` in `shared/`). See [ATTRIBUTION.md](ATTRIBUTION.md)
-for the recordings' credits, and `tools/samples/prepare_harmonium.py` to rebuild them.
+slower (`HarmoniumBank` in `shared/`).
+
+The drone is a real tanpura tuned pa SA SA sa (Sankalp Gulati's recording,
+CC BY 4.0), cut into seamless loops at four pitches and played at the nearest
+one for your Sa (`TanpuraBank`).
+
+Pitch detection runs on the device: YIN, checked by the SwiftF0 neural pitch
+model through ONNX Runtime (`models/README.md`).
+
+See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
+`tools/samples/` to rebuild the samples.
+
+## Docs
+
+| Doc | What |
+|---|---|
+| [AGENTS.md](AGENTS.md) | Rules, code map, build and test, accessibility lessons |
+| [docs/plan.md](docs/plan.md) | Varisai player |
+| [docs/plan-pitch-monitor.md](docs/plan-pitch-monitor.md) | Sing-along with pitch feedback |
+| [docs/plan-landing.md](docs/plan-landing.md) | Landing page |
+| [docs/plan-shruti.md](docs/plan-shruti.md) | Shruti practice, strictness, choosing Sa |
 
 ## Building
 
@@ -45,6 +88,7 @@ for the recordings' credits, and `tools/samples/prepare_harmonium.py` to rebuild
 ./gradlew assembleDebug
 ./gradlew testDebugUnitTest
 ./gradlew lintDebug detekt
+./gradlew :app:connectedDebugAndroidTest   # accessibility tests (needs an emulator)
 
 # iOS (the Xcode build phase compiles the shared framework automatically)
 bash iosApp/setup_onnxruntime.sh # once: fetches the ONNX Runtime xcframework (checksummed)

@@ -1,7 +1,9 @@
 # Plan: Varisai player (first feature)
 
-Status: **draft for review**. Nothing here is built yet beyond what
-"Already in place" lists. Open decisions are marked **[Decision]**.
+Status: **done** (M1–M5). Decisions below went with the proposed defaults.
+Later changes: the drone is now a real tanpura only (the harmonium drone is a
+silent fallback), and the landing page replaced the plain library list
+(`docs/plan-landing.md`).
 
 ## 1. Goal
 
@@ -250,13 +252,13 @@ Sa, tempo, kala and toggles persist: `SharedPreferences` on Android,
    - Default: just intonation (`Swara.ratio`), which matches a tanpura.
    - Option: equal temperament, to match a keyboard such as the PSS-F30.
    - The two differ by up to about 14 cents for R1, G3, D1 and N3.
-     *Proposed: just by default, equal as a setting.*
+     *Decided: just by default, equal as a setting.*
 2. **Workbook prose.**
    - The workbook README marks it personal and not for redistribution.
-   - *Proposed:* the app's help text is written fresh. The workbook supplies
-     only structure and the traditional exercise sequences.
-   - Confirm, or allow reusing your text.
-3. **Default tempo:** 60 aksharas per minute. The workbook suggests 50–60 for first practice.
+   - *Decided:* the app's help text is written fresh. The workbook supplies
+     only structure and the traditional exercise sequences (the set
+     descriptions on the landing page are short paraphrases).
+3. **Default tempo:** 60 aksharas per minute (decided). The workbook suggests 50–60 for first practice.
 
 ## 10. Milestones
 

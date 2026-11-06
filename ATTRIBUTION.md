@@ -61,6 +61,18 @@ Thank you, Sankalp Gulati, for recording and sharing this tanpura.
   iOS: the ONNX Runtime C xcframework, downloaded at build time by
   `iosApp/setup_onnxruntime.sh` (checksummed).
 
+## Icons
+
+### Material Icons (Android: `ic_check_circle`, `ic_chevron_right`)
+
+- **Author:** [Google](https://github.com/google/material-design-icons)
+- **License:** [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+- **Use:** the "practised" tick and the "next up" chevron on the Android
+  landing page. The path data of the *check_circle* and *chevron_right* icons
+  is copied into vector drawables unchanged.
+
+The iOS app uses Apple's SF Symbols from the system; none are bundled.
+
 ## Code
 
 Pitch detection (`shared/.../pitch/`), the neural supervisors and parts of
