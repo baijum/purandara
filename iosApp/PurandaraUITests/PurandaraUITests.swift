@@ -17,7 +17,10 @@ final class PurandaraUITests: XCTestCase {
 
     func testOpenPlayCountInAndStop() {
         let app = launch()
-        app.buttons["Sarali Varisai 4, S R G M P , S R"].firstMatch.tap()
+        let row = app.buttons["Sarali Varisai 4, S R G M P , S R"].firstMatch
+        // Below the landing page's cards: scroll until the row is on screen.
+        for _ in 0..<8 where !(row.exists && row.isHittable) { app.swipeUp() }
+        row.tap()
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
 
         let avarta = app.otherElements["Avarta 1: S R G M, P hold, S R"]
@@ -39,8 +42,22 @@ final class PurandaraUITests: XCTestCase {
 
     func testLibraryPassesAccessibilityAudit() throws {
         let app = launch()
-        XCTAssertTrue(app.navigationBars["Exercises"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Purandara"].waitForExistence(timeout: 5))
         try audit(app)
+    }
+
+    func testLandingPageStartsHereAndPlaysTheTanpura() {
+        let app = launch()
+        XCTAssertTrue(app.staticTexts["Start here"].waitForExistence(timeout: 5), "first run offers a starting point")
+        XCTAssertTrue(app.buttons["Plain scale"].exists)
+        let play = app.buttons["Play tanpura"]
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: play)
+        wait(for: [enabled], timeout: 10)
+        play.tap()
+        let stop = app.buttons["Stop tanpura"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 3))
+        stop.tap()
+        XCTAssertTrue(app.buttons["Play tanpura"].waitForExistence(timeout: 3))
     }
 
     func testPlayerPassesAccessibilityAudit() throws {

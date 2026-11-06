@@ -66,6 +66,7 @@ struct PracticeSettingsStore {
         static let singAlong = "practice.singAlong"
         static let harmoniumGuide = "practice.harmoniumGuide"
         static let echoCancellation = "practice.echoCancellation"
+        static let history = "practice.history"
     }
 
     func load() -> PracticeSettings {
@@ -84,6 +85,14 @@ struct PracticeSettingsStore {
         if let v = defaults.object(forKey: Key.echoCancellation) as? Bool { s.echoCancellation = v }
         if let raw = defaults.string(forKey: Key.tuning), let v = PracticeSettings.TuningChoice(rawValue: raw) { s.tuning = v }
         return s
+    }
+
+    func loadHistory() -> PracticeHistory {
+        PracticeHistory.companion.decode(text: defaults.string(forKey: Key.history))
+    }
+
+    func saveHistory(_ history: PracticeHistory) {
+        defaults.set(history.encode(), forKey: Key.history)
     }
 
     func save(_ s: PracticeSettings) {

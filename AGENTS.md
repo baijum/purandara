@@ -52,7 +52,7 @@ Do not add features speculatively.
 | `app/.../viewmodel/` | `PracticeViewModel`, `SingAlongState` |
 | `app/.../ui/` | `PurandaraApp` (library ↔ player), `library/`, `player/` |
 | `iosApp/Purandara/Audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (renders ahead on a queue into `AVAudioPlayerNode` buffers; no Kotlin on the real-time thread) |
-| `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel`; `LibraryView`, `PlayerView`, `NotationView` (+ `TalaStripView`), `SingAlongViews` |
+| `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel`; `LibraryView` (landing page: continue, Sa + tanpura, sets with contours), `PlayerView`, `NotationView` (+ `TalaStripView`), `SingAlongViews` |
 | `iosApp/Purandara/Audio/SingAlongEngine.swift` | Mic tap (on the player's engine, for echo cancellation) → windows → shared session; debug synthetic singer |
 | `shared/.../singalong/Display.kt` | Swara labels (R₁, S′) and mark glyphs shared by both apps |
 | `shared/src/iosMain/.../audio/FloatBridge.kt` | Bulk float copies between Swift buffers and Kotlin arrays |
@@ -124,7 +124,7 @@ text (use `Color.subdued`); menu pickers and text bar buttons clip or cap Dynami
 Type; visible text must appear in some element's label; translucent bars over
 scrolling content fail contrast; the iOS 26 toolbar glass shadow lowers contrast
 just below it; symbol characters (✓ ↑) fall back to fixed-size fonts, so use SF
-Symbols; Form section footers cap Dynamic Type, so put explanations in the section; at accessibility text sizes move secondary panels into the scrolling
+Symbols; Form section footers cap Dynamic Type, so put explanations in the section; `Label` in a list row clips its title (use an `HStack` of image and text); at accessibility text sizes move secondary panels into the scrolling
 content. The audit helper ignores exactly one thing: Dynamic Type warnings on
 single notation swaras (they shrink to fit their column by design). UI tests
 launch with `-resetSettings YES` because settings persist between launches.

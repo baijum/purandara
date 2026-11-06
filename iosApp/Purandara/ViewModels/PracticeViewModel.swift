@@ -54,12 +54,17 @@ final class PracticeViewModel: ObservableObject {
             guard settings != oldValue else { return }
             store.save(settings)
             if playback.playing, let current { play(current) }
+            if tanpuraPlaying { playTanpura() }
         }
     }
     @Published private(set) var samplesLoaded = false
     @Published private(set) var loadError = false
     @Published private(set) var playback = PlaybackState()
     @Published private(set) var singAlong = SingAlongUI()
+    /// What has been practised (landing page).
+    @Published private(set) var history: PracticeHistory
+    /// The landing page's tanpura-only drone is sounding.
+    @Published private(set) var tanpuraPlaying = false
 
     let catalog: [Varisai] = VarisaiCatalog.shared.all
 
@@ -72,6 +77,8 @@ final class PracticeViewModel: ObservableObject {
     private var schedule: Schedule?
     private var timer: Timer?
     private var engine: SingAlongEngine?
+    /// The exercise playing now has been heard through one full pass (recorded once per play).
+    private var practisedThisPlay = false
 
     /// Debug builds: launch argument `-singer <cents>` replaces the mic with a synthetic singer.
     let syntheticSingerCents: Double?
@@ -79,6 +86,7 @@ final class PracticeViewModel: ObservableObject {
     init(store: PracticeSettingsStore = .standard, loadSamples: Bool = true) {
         self.store = store
         settings = store.load()
+        history = store.loadHistory()
         #if DEBUG
         syntheticSingerCents = UserDefaults.standard.object(forKey: "singer") != nil
             ? UserDefaults.standard.double(forKey: "singer") : nil
@@ -116,6 +124,8 @@ final class PracticeViewModel: ObservableObject {
             schedule: schedule,
             options: settings.renderOptions())
         current = varisai
+        tanpuraPlaying = false
+        practisedThisPlay = false
         self.schedule = schedule
         self.renderer = renderer
         singAlong.live = nil
@@ -149,6 +159,55 @@ final class PracticeViewModel: ObservableObject {
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
     }
+
+    // MARK: - Tanpura and history (landing page)
+
+    /// The drone alone, at the current Sa, until stopped.
+    func toggleTanpura() {
+        if tanpuraPlaying { stop() } else { playTanpura() }
+    }
+
+    func stopTanpura() {
+        if tanpuraPlaying { stop() }
+    }
+
+    private func playTanpura() {
+        guard let bank, let first = catalog.first else { return }
+        stopTimer()
+        _ = engine?.stop()
+        engine = nil
+        current = nil
+        schedule = nil
+        let renderer = SampleRenderer(
+            bank: bank,
+            schedule: Schedule.companion.of(varisai: first, settings: settings.performance()),
+            options: RenderOptions.companion.droneOnly(droneLevel: settings.droneLevel))
+        self.renderer = renderer
+        do {
+            try player.play(renderer, mic: nil) { [weak self] in self?.finished(renderer) }
+        } catch {
+            finished(renderer)
+            return
+        }
+        tanpuraPlaying = true
+    }
+
+    #if DEBUG
+    /// UI tests start from an empty history (`-resetSettings YES`).
+    func resetHistory() {
+        history = PracticeHistory(records: [])
+        store.saveHistory(history)
+    }
+    #endif
+
+    private func updateHistory(_ transform: (PracticeHistory) -> PracticeHistory) {
+        let next = transform(history)
+        guard next != history else { return }
+        history = next
+        store.saveHistory(next)
+    }
+
+    private static var nowMillis: Int64 { Int64(Date().timeIntervalSince1970 * 1000) }
 
     /// Fades out; the state returns to stopped once the fade has played.
     func stop() {
@@ -185,11 +244,16 @@ final class PracticeViewModel: ObservableObject {
         stopTimer()
         renderer = nil
         schedule = nil
+        tanpuraPlaying = false
         playback = PlaybackState(repetitions: playback.repetitions)
     }
 
     private func tick() {
         guard let renderer, let schedule, let frames = player.positionFrames() else { return }
+        if !practisedThisPlay, let current, frames >= Int64(renderer.countInFrames) + Int64(renderer.performanceFrames) {
+            practisedThisPlay = true
+            updateHistory { $0.practised(varisaiId: current.id, nowMillis: Self.nowMillis) }
+        }
         let countInBeat = renderer.countInBeat(frame: frames).map { Int(truncating: $0) }
         let seconds = renderer.passSeconds(frame: frames)
         let position = countInBeat == nil ? schedule.cursorAt(seconds: seconds) : nil
@@ -249,6 +313,9 @@ final class PracticeViewModel: ObservableObject {
     }
 
     private func announce(_ result: PassResult) {
+        if let current {
+            updateHistory { $0.scored(varisaiId: current.id, result: result, nowMillis: Self.nowMillis) }
+        }
         singAlong.lastSummary = (Int(result.pass) + 1, result.summary)
         // Once per pass, never during it (it would talk over the music).
         UIAccessibility.post(notification: .announcement, argument: SingAlongText.summaryHeadline(Int(result.pass) + 1, result.summary))

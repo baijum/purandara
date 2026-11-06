@@ -1,6 +1,6 @@
 # Plan: a more useful landing page
 
-Status: **approved** (2026-11-06) with the defaults under "Decisions". L1 and L2 done.
+Status: **approved** (2026-11-06) with the defaults under "Decisions". L1–L3 done.
 
 The landing page today is a plain list titled "Exercises", grouped by set,
 with "Mayamalavagowla · Adi tala" above it. Each row shows the title and the
@@ -112,7 +112,7 @@ Plus "n of m practised" beside each set heading.
 |---|---|---|
 | L1 ✅ | Shared: `PracticeHistory` + JSON codec, `Contour`, set descriptions, drone-only render | commonTest |
 | L2 ✅ | Android: landing page, history recording from the player, tanpura card | unit + `AccessibilityTest` |
-| L3 | iOS: the same | XCTest + UI audits |
+| L3 ✅ | iOS: the same | XCTest + UI audits |
 
 ## Decisions (approved defaults)
 

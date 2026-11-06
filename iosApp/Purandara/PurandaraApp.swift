@@ -27,7 +27,10 @@ struct PurandaraApp: App {
     private func openFromLaunchArguments() {
         #if DEBUG
         let defaults = UserDefaults.standard
-        if defaults.bool(forKey: "resetSettings") { viewModel.settings = PracticeSettings() }
+        if defaults.bool(forKey: "resetSettings") {
+            viewModel.settings = PracticeSettings()
+            viewModel.resetHistory()
+        }
         guard let id = defaults.string(forKey: "open") else { return }
         path = [id]
         if defaults.bool(forKey: "singAlong") { viewModel.settings.singAlong = true }

@@ -214,7 +214,7 @@ struct PracticeSettingsView: View {
 }
 
 /// Every Sa choice, current one checked.
-private struct SaChoiceList: View {
+struct SaChoiceList: View {
     @Binding var saMidi: Int
     @Environment(\.dismiss) private var dismiss
 
