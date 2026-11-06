@@ -159,17 +159,19 @@ class Schedule private constructor(
 
         private fun of(varisai: Varisai, settings: PerformanceSettings, range: IntRange): Schedule {
             require(!range.isEmpty() && range.first >= 0 && range.last < varisai.avartas.size) { "avartas $range outside the piece" }
-            val reps = repetitionsToFillAvartas(range.sumOf { varisai.avartas[it].aksharas.size }, varisai, settings)
-            val aksharaSeconds = settings.writtenAksharaSeconds / varisai.beat
+            val reps = repetitionsToFillAvartas(range.count(), settings)
             val notes = mutableListOf<NoteEvent>()
             val cursor = mutableListOf<CursorEvent>()
-            var written = 0 // written aksharas elapsed
+            var time = 0.0 // seconds elapsed
 
             for (rep in 0 until reps) {
                 for (avartaIndex in range) {
                     val avarta = varisai.avartas[avartaIndex]
+                    // A khanda-gati section packs more cells into the same tala beat, so the
+                    // cells are shorter but the avarta still fills the same number of beats.
+                    val aksharaSeconds = settings.writtenAksharaSeconds / varisai.cellsPerBeatIn(avartaIndex)
                     avarta.aksharas.forEachIndexed { aksharaIndex, akshara ->
-                        val aksharaStart = written * aksharaSeconds
+                        val aksharaStart = time
                         when (akshara) {
                             is Akshara.Karvai -> {
                                 // A section can't start on a karvai in practice; if one did, it would be silent.
@@ -189,12 +191,13 @@ class Schedule private constructor(
                                 }
                             }
                         }
-                        written++
+                        time += aksharaSeconds
                     }
                 }
             }
 
-            val totalBeats = written / (settings.aksharasPerBeat * varisai.beat)
+            // Every avarta fills tala.aksharas / aksharasPerBeat beats, whatever its gati.
+            val totalBeats = reps * range.count() * varisai.tala.aksharas / settings.aksharasPerBeat
             val tala = varisai.tala
             val beats = List(totalBeats) { i ->
                 val inAvarta = i % tala.aksharas
@@ -208,19 +211,18 @@ class Schedule private constructor(
                 notes = notes,
                 beats = beats,
                 cursor = cursor,
-                durationSeconds = written * aksharaSeconds,
+                durationSeconds = time,
             )
         }
 
-        /** Smallest number of passes whose written aksharas fill whole tala avartas. */
+        /** Smallest number of passes whose avartas fill whole tala cycles. */
         fun repetitionsToFillAvartas(varisai: Varisai, settings: PerformanceSettings): Int =
-            repetitionsToFillAvartas(varisai.aksharaCount, varisai, settings)
+            repetitionsToFillAvartas(varisai.avartas.size, settings)
 
-        private fun repetitionsToFillAvartas(writtenAksharas: Int, varisai: Varisai, settings: PerformanceSettings): Int {
-            require(writtenAksharas > 0) { "exercise has no aksharas" }
-            val perAvarta = varisai.tala.aksharas * settings.aksharasPerBeat * varisai.beat
+        private fun repetitionsToFillAvartas(avartaCount: Int, settings: PerformanceSettings): Int {
+            require(avartaCount > 0) { "exercise has no aksharas" }
             var reps = 1
-            while ((writtenAksharas * reps) % perAvarta != 0) reps++
+            while ((avartaCount * reps) % settings.aksharasPerBeat != 0) reps++
             return reps
         }
 

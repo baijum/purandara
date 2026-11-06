@@ -17,9 +17,13 @@ Progress:
   (Rara Venu's notation marks none); they come with the Bhairavi and
   Anandabhairavi gitams.
 - S2 (part): Rara Venu Gopa Bala (Bilahari) from karnatik.com, matching
-  shivkumar.org cell for cell (all 10 avartas). **Sambasiva waits**:
-  karnatik.com's notation has no bars or octave marks, so shivkumar.org is
-  its only clean source.
+  shivkumar.org cell for cell (all 10 avartas). **Sambasiva Yenave (Khamas)
+  added** (2026-11-07): from *Sangeeta Bala Padam* Part 1 (pp. 82–84),
+  cross-checked against shivkumar.org and the veenagana.org PDF (the arbitrated
+  spots are listed in `Swarajati.kt`'s header). Its anupallavi is its own
+  section, and its last charanam is in khanda gati — new engine work: a
+  section-scoped `beat: 5` override, per-avarta gati in the schedule and the
+  notation rows (`cellsPerBeatIn`), and `beat: 5` allowed by the parser.
 - V2 done early: **Practise one section** (`Varisai.sections`,
   `Schedule.ofSection`, keeping the piece's avarta numbers). Both players
   offer "Section: Whole piece" on pieces with sections; it plays once, or
@@ -56,7 +60,7 @@ What the two web sources have (checked 2026-11-06):
 | Kamala Sulochana | Anandabhairavi, Adi | ❌ (no notation) | ❌ | Purandara Dasa ✅ |
 | **Swarajatis** | | | | |
 | Rara Venu Gopa Bala | Bilahari, Adi | ✅ notation | ✅ | (not given) |
-| Sambasiva Yenave | Khamas, Adi | ✅ notation (other layout) | ✅ | Chinnakrishna Dasar (dates to check) |
+| Sambasiva Yenave | Khamas, Adi | ✅ notation (other layout) | ✅ (+ *Sangeeta Bala Padam* Part 1, pp. 82–84) | Chinnakrishna Dasar ✅ (dates undocumented; see below) |
 | **Tana varnams** | | | | |
 | Ninnukori | Mohanam, Adi | ❌ | ✅ | Ramnad (Poochi) Srinivasa Iyengar, d. 1919 ✅ |
 | Evvari Bodhana | Abhogi, Adi | ❌ | ✅ | Patnam Subramania Iyer, d. 1902 ✅ |
@@ -65,7 +69,8 @@ What the two web sources have (checked 2026-11-06):
 
 **What this means**
 
-- Only **Analekara, Rara Venu and Sambasiva** have two web sources today.
+- **Analekara, Rara Venu and Sambasiva** have two sources (Sambasiva's second
+  is now *Sangeeta Bala Padam* Part 1, not a web page).
 - Everything else, **including every varnam**, rests on shivkumar.org alone.
   Its pages are Word documents with conventions that vary from page to page.
   Some write octaves by letter case, some put two speeds on one line, some
@@ -74,8 +79,96 @@ What the two web sources have (checked 2026-11-06):
   *Sangeeta Bala Padam* series: Part 1 already confirmed Sri Gananatha (Q1).
 
 Composers: India's copyright lasts 60 years after the composer's death.
-Everyone above died before 1965, except where marked "to check". Credits go
-in ATTRIBUTION.md, as before.
+Everyone above died before 1965. Credits go in ATTRIBUTION.md, as before.
+
+**Sambasiva's composer (checked 2026-11-06, issue #1).** karnatik.com
+identifies Chinnakrishna Dasar as A.K. Chinnakrishna Naidu, also a clarinet
+exponent; his son and pupil was the clarinetist A.K.C. Natarajan (born 1931,
+Sangeetha Kalanidhi 2008), who took up the clarinet after his father's
+death. No birth or death dates are recorded anywhere, but that places the
+death around the early-to-mid 1940s at the latest — well inside the
+public-domain rule either way. (If "Dasar" the composer and the Trichy
+clarinetist are two people, the composer is placed in the post-Trinity 19th
+century, which is also safely public domain.)
+
+**A candidate third web source (found 2026-11-06).** veenagana.org (Vasanthi
+Iyer's veena-teaching site) has a two-page notation PDF of Sambashiva:
+Khamas, Adi, credited to Chinna Krishnadasar, with beat bars, octave marks
+and the words under the swaras, and the same structure as shivkumar.org
+(pallavi, four charanams, the last marked khanda gati, five notes per beat).
+shivkumar.org credits its own Sambasiva notes to "(Rani) www.karnatic.com",
+a different transcriber, so the two are independent. Not yet checked cell by
+cell, and the user decides which sources count.
+
+**Cross-check of the two (done 2026-11-06, cell by cell against both
+originals).** Structure, raga, tala, composer and 24 avartas (16 cells each;
+the khanda-gati avartas 40 cells) agree: pallavi 4, charanam 1: 2, charanam
+2: 4, charanam 3: 2, charanam 4: 10, khanda gati: 2. Twelve cells of 432
+differ, in seven spots:
+
+| # | Where | veenagana PDF | shivkumar.org |
+|---|---|---|---|
+| 1 | Pallavi av1, cells 5–6 | karvai (sA held; "mba" on N at 7) | S re-struck ("mba" on S) |
+| 2 | Charanam 1 av2, cells 7–8 | P M | m g |
+| 3 | Charanam 3 av2, cell 9 | M (re-strikes the held M) | p |
+| 4 | Charanam 4 av2, cell 11 | P | m |
+| 5 | Charanam 4 av3, cell 12 | N | s |
+| 6 | Charanam 4 av4, cells 9–12 | D N D P | p d p m |
+| 7 | Charanam 4 av8, cells 5–7 | N N D | R R S |
+
+(the khanda-gati charanam and all of charanam 2 agree exactly; a few other
+rows differ only in where the karvai sits, with the same pitches.)
+
+**Arbitrated by *Sangeeta Bala Padam* Part 1 (2026-11-06).** The user
+photographed the book's Sambasiva (SWARAJATI-2, pp. 82–84: Khamās, Ādi,
+"Janyam of 28th Mēḷa", credited by the piece's first line, no composer
+named). Re-checked all three sources cell by cell from the photos. The book
+sides with shivkumar.org on every pitch difference above and on two the
+first pass missed — charanam 3 av1 cell 1 (book D, shivkumar d, PDF N) and
+charanam 4 av6 cell 1 (book D, shivkumar d, PDF N). Full picture:
+
+| # | Where | Book (SBP) | shivkumar.org | veenagana PDF |
+|---|---|---|---|---|
+| 1a | Pallavi av1, cell 5 | Ṡ re-struck | S re-struck | karvai (sā held) |
+| 1b | Pallavi av1, words | mba on N at 7 | mba on S at 5 | mba on N at 7 (matches book) |
+| 2 | C1 av2, cells 7–8 | M G | m g | P M |
+| 3 | C3 av1, cell 1 | D | d | N |
+| 4 | C3 av2, cell 9 | P | p | M |
+| 5 | C4 av2, cell 11 | M | m | P |
+| 6 | C4 av3, cell 12 | Ṡ | s | N |
+| 7 | C4 av4, cells 9–12 | P D P M | p d p m | D N D P |
+| 8 | C4 av6, cell 1 | D | d | N |
+| 9 | C4 av8, cells 5–7 | Ṙ(hold) Ṡ | R R s | N(hold) D |
+| 10 | C4 av1, cell 15 | **G** | m | M |
+
+So two independent sources (the book and shivkumar.org) agree on the pitch
+sequence everywhere except **one cell** (charanam 4 av1 cell 15: book G,
+both webs M/m). The veenagana PDF is the outlier at nine of the ten spots —
+still useful as a third check, but not the deciding source. Per the rule
+(two independent sources agree), **Sambasiva is sourced**; the one cell, the
+pallavi word placement, and the notes below go to the user before encoding.
+
+Book-specific notes:
+
+- **Anupallavi is its own section** (pallavi 2 avartas + anupallavi 2), where
+  both web pages fold it into the pallavi. Matches the app's section model.
+- The raga header prints **Ārō: Ṡ M₁ G₂ M₁ P D₂ N₁ Ṡ / Ava: Ṡ N₁ D₂ P M₁ G₂ R₂ S**
+  — G₂ and N₁, while both web sources say G₃/N₂, and a janyam of the 28th
+  mēḷa cannot take G₂/N₁. Almost certainly a misprint; the notation body just
+  writes G and N and cannot settle it. Keep the app's Khamas (G₃/N₂, with N₃
+  as the variant) unless the user's teacher says otherwise.
+- The body dots (above some Ṡ/Ṙ only, never on other letters, not consistent
+  enough to be octave marks — e.g. c2's scalar run S S S S is undotted while
+  neighbouring rows dot their Ṡ/Ṙ) could not be decoded from the photos; they
+  don't change the pitch sequence. The piece reads as one octave, S to N.
+  Worth asking the user what the dots mean in this book.
+- Each section ends with "(sām)" — the (saamba) refrain back to the pallavi,
+  as on shivkumar.org.
+- Charanam 5 is the khanda-gati charanam and matches both web sources
+  exactly. Stage 2's `beat:` needs a per-section override (5 cells per beat
+  there), not just a piece-wide header.
+- Words: the book has "vanucu" (c2), matching shivkumar.org; the PDF garbles
+  it ("ni dhiya nu chu"). Book's sahityam is the cleaner of the three.
 
 ## Stage 1: more gitams (new ragas, little engine work)
 

@@ -28,7 +28,9 @@ class VarisaiParseException(val line: Int, val column: Int, detail: String) :
  * words for the notation line above it, one token per akshara.
  * `beat: <n>` writes n aksharas (cells) to each tala beat, as swarajatis are
  * written; `[charanam 1 +swaram]` sings that section first as swaras, then
- * with its words.
+ * with its words. A `beat:` line inside a piece (after notation has started)
+ * overrides the gati from there on — a khanda-gati charanam writes
+ * `beat: 5` — and the next `[section]` header restores the piece's own beat.
  * Each whitespace-separated token is one akshara; `||` ends an avarta (a
  * closing `||` at the end of a line is optional); `|` is layout only. `′` after a letter is the upper octave, `ˌ` (U+02CC) the
  * lower. The parser never guesses: unknown characters, letters the raga
@@ -42,7 +44,12 @@ class VarisaiParser(
     /** The exercise being read. */
     private class Draft(val number: Int, val line: Int, var tala: Tala, var raga: Raga) {
         var name: String? = null
+
+        /** The active gati: [pieceBeat], or a section's `beat:` override. */
         var beat: Int = 1
+
+        /** The piece's own gati (`beat:` before any notation); a section header restores it. */
+        var pieceBeat: Int = 1
         var shortName: String? = null
         val avartas = mutableListOf<Avarta>()
 
@@ -82,7 +89,7 @@ class VarisaiParser(
             val d = draft ?: return
             d.closeSection()
             if (d.avartas.isEmpty()) throw VarisaiParseException(d.line, 1, "exercise ${d.number} has no notation")
-            result += Varisai(set, d.number, d.avartas.toList(), d.tala, d.raga, d.name, d.beat, d.shortName)
+            result += Varisai(set, d.number, d.avartas.toList(), d.tala, d.raga, d.name, d.pieceBeat, d.shortName)
         }
 
         text.lines().forEachIndexed { index, raw ->
@@ -108,7 +115,10 @@ class VarisaiParser(
                 }
                 header != null -> {
                     val d = draft ?: throw VarisaiParseException(lineNo, 1, "header before the first exercise number")
-                    if (d.avartas.isNotEmpty()) throw VarisaiParseException(lineNo, 1, "header after notation")
+                    // `beat:` may also appear inside a piece, to override a section's gati.
+                    if (d.avartas.isNotEmpty() && header.groupValues[1] != "beat") {
+                        throw VarisaiParseException(lineNo, 1, "header after notation")
+                    }
                     header(d, header.groupValues[1], header.groupValues[2].trim(), lineNo)
                 }
                 else -> {
@@ -132,6 +142,7 @@ class VarisaiParser(
             throw VarisaiParseException(lineNo, 2, "section [$key] appears twice")
         }
         d.closeSection()
+        d.beat = d.pieceBeat // a section's `beat:` override ends with the section
         d.openSection = key to d.avartas.size
         d.openSwaramFirst = swaramFirst
         d.pendingLabel = label(key)
@@ -174,8 +185,12 @@ class VarisaiParser(
             "raga" -> d.raga = Ragas.byKey(value) ?: throw VarisaiParseException(lineNo, column, "unknown raga \"$value\"")
             "title" -> d.name = value
             "short" -> d.shortName = value
-            "beat" -> d.beat = value.toIntOrNull()?.takeIf { it in BEATS }
-                ?: throw VarisaiParseException(lineNo, column, "beat must be one of $BEATS")
+            "beat" -> {
+                val value = value.toIntOrNull()?.takeIf { it in BEATS }
+                    ?: throw VarisaiParseException(lineNo, column, "beat must be one of $BEATS")
+                d.beat = value
+                if (d.avartas.isEmpty()) d.pieceBeat = value
+            }
         }
     }
 
@@ -267,7 +282,7 @@ class VarisaiParser(
         const val MANDRA_MARK = 'ˌ'
 
         val HEADER = Regex("""(tala|raga|title|short|beat):(.*)""")
-        val BEATS = listOf(1, 2, 4)
+        val BEATS = listOf(1, 2, 4, 5)
         const val SWARAM_FIRST = "+swaram"
         val SECTION = Regex("""\[([^\]]+)]""")
         val REPEAT = Regex("""\(([^)]+)\)""")

@@ -28,10 +28,10 @@ class VarisaiCatalogTest {
             VarisaiSet.DHATTU to 6,
             VarisaiSet.ALANKARAM to 7,
             VarisaiSet.GITAM to 5,
-            VarisaiSet.SWARAJATI to 1,
+            VarisaiSet.SWARAJATI to 2,
         )
         assertEquals(expected, VarisaiSet.entries.associateWith { VarisaiCatalog.inSet(it).size })
-        assertEquals(50, VarisaiCatalog.all.size)
+        assertEquals(51, VarisaiCatalog.all.size)
     }
 
     @Test
@@ -45,7 +45,11 @@ class VarisaiCatalogTest {
     @Test
     fun everyAvartaIsOneCycleOfItsTala() {
         VarisaiCatalog.all.forEach { v ->
-            v.avartas.forEach { assertEquals(v.tala.aksharas * v.beat, it.aksharas.size, "${v.id}: $it") }
+            v.avartas.forEachIndexed { i, avarta ->
+                val gati = v.cellsPerBeatIn(i)
+                assertTrue(gati in listOf(1, 2, 4, 5), "${v.id}: gati $gati")
+                assertEquals(v.tala.aksharas * gati, avarta.aksharas.size, "${v.id}: $avarta")
+            }
         }
         // The varisais are all in Adi tala.
         VarisaiCatalog.all.filter { it.set !in setOf(VarisaiSet.ALANKARAM, VarisaiSet.GITAM, VarisaiSet.SWARAJATI) }

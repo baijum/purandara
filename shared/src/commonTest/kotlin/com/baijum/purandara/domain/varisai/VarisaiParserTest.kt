@@ -238,4 +238,35 @@ class VarisaiParserTest {
         assertTrue("needs 8" in e.message!!, e.message)
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nbeat: 3\nS R G M") }
     }
+
+    @Test
+    fun beatInsideASectionOverridesJustThatSection() {
+        // Adi tala: 16-cell avartas at beat 2, then a khanda-gati avarta of 40.
+        val v = parseOne(
+            """
+            1
+            tala: adi
+            beat: 2
+            [pallavi]
+            S , , , S , N , | D , P , , M G , ||
+            [charanam 5 +swaram]
+            beat: 5
+            S , R S , | N , D N , | S , N D , | P , , , , | P , D N , | D , P M , | P , M G , | M , , , , ||
+            [charanam 6]
+            S , , , S , N , | D , P , , M G , ||
+            """,
+        )
+        assertEquals(2, v.beat, "the piece's own beat is untouched")
+        // [charanam 5 +swaram] doubles its avarta (swaram, then sahityam).
+        assertEquals(listOf(16, 40, 40, 16), v.avartas.map { it.aksharas.size })
+        assertEquals(listOf(2, 5, 5, 2), v.avartas.indices.map { v.cellsPerBeatIn(it) })
+        // A beat: line inside a piece still rejects a bad gati...
+        assertFailsWith<VarisaiParseException> {
+            parseOne("1\ntala: adi\nbeat: 2\nS , , , S , N , | D , P , , M G , ||\nbeat: 3\nS , , , S , N , | D , P , , M G , ||")
+        }
+        // ...and other headers still cannot follow notation.
+        assertFailsWith<VarisaiParseException> {
+            parseOne("1\ntala: adi\nbeat: 2\nS , , , S , N , | D , P , , M G , ||\nraga: mohanam\nS , , , S , N , | D , P , , M G , ||")
+        }
+    }
 }

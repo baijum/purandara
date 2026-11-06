@@ -103,7 +103,7 @@ fun NotationView(
                 }
                 AvartaRow(
                     avarta = avarta,
-                    varisai = varisai,
+                    layout = AvartaLayout(varisai, index),
                     active = position?.takeIf { it.avarta == index },
                     rowMarks = rowMarks,
                     words = words,
@@ -116,10 +116,19 @@ fun NotationView(
     }
 }
 
+/** One avarta's row layout: where its rows start and the longest row's cells. */
+private data class AvartaLayout(private val varisai: Varisai, private val avarta: Int) {
+    val rowStarts: List<Int> get() = varisai.rowStartsIn(avarta)
+    val rowCells: Int get() = varisai.rowCellsIn(avarta)
+
+    /** Whether cell [cell] starts an anga (an anga bar goes before it). */
+    fun startsAnga(cell: Int): Boolean = varisai.startsAnga(avarta, cell)
+}
+
 @Composable
 private fun AvartaRow(
     avarta: Avarta,
-    varisai: Varisai,
+    layout: AvartaLayout,
     active: NotationPosition?,
     rowMarks: Map<MarkKey, NoteResult>,
     words: WordsDisplay,
@@ -132,13 +141,13 @@ private fun AvartaRow(
     // Taller rows with larger system text, so swaras grow instead of shrinking to fit.
     val grow = 1f + (LocalDensity.current.fontScale - 1f).coerceAtLeast(0f) * ROW_GROWTH
     val rowHeight = (ROW_HEIGHT_DP + if (rowWords != null && showSwaras) WORDS_HEIGHT_DP else 0).dp * grow
-    val starts = varisai.rowStarts
+    val starts = layout.rowStarts
     val ends = starts.drop(1) + avarta.aksharas.size
     Column(modifier.fillMaxWidth()) {
         starts.zip(ends).forEachIndexed { row, (from, to) ->
             Row(Modifier.fillMaxWidth().height(rowHeight), verticalAlignment = Alignment.CenterVertically) {
                 for (i in from until to) {
-                    if (i > from && varisai.startsAnga(i)) AngaBar()
+                    if (i > from && layout.startsAnga(i)) AngaBar()
                     AksharaCell(
                         akshara = avarta.aksharas[i],
                         active = i == activeAkshara,
@@ -151,7 +160,7 @@ private fun AvartaRow(
                 }
                 if (row == starts.lastIndex) AngaBar(double = true)
                 // Keep the columns of a shorter row in line with the longest.
-                val missing = varisai.rowCells - (to - from)
+                val missing = layout.rowCells - (to - from)
                 if (missing > 0) Spacer(Modifier.weight(missing.toFloat()))
             }
         }
@@ -252,7 +261,7 @@ private fun markedSpoken(avarta: Avarta, index: Int, marks: Map<MarkKey, NoteRes
     val words = avarta.aksharas.mapIndexedNotNull { i, akshara ->
         val text = when (akshara) {
             // Written several to a beat (a swarajati), holds inside a beat aren't read out.
-            Akshara.Karvai -> if (varisai.beat > 1) null else karvaiWord
+            Akshara.Karvai -> if (varisai.cellsPerBeatIn(index) > 1) null else karvaiWord
             is Akshara.Swaras -> akshara.swaras.mapIndexed { slot, swara ->
                 val mark = markWords(marks[MarkKey(index, i, slot)])
                 if (mark == null) swara.spoken() else "${swara.spoken()} $mark"
@@ -261,7 +270,7 @@ private fun markedSpoken(avarta: Avarta, index: Int, marks: Map<MarkKey, NoteRes
         text?.let { i to it }
     }
     return words.mapIndexed { n, (i, text) ->
-        if (n > 0 && varisai.startsAnga(i)) ", $text" else if (n > 0) " $text" else text
+        if (n > 0 && varisai.startsAnga(index, i)) ", $text" else if (n > 0) " $text" else text
     }.joinToString("")
 }
 

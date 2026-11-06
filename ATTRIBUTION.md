@@ -130,7 +130,9 @@ a licence; the authors are to be asked before a store release.
 
 ### Swarajatis (`catalog/Swarajati.kt`)
 
-- **Source:** karnatik.com, Rara Venu Gopa Bala:
+Rara Venu Gopa Bala:
+
+- **Source:** karnatik.com, by Rani:
   [karnatik.com/c1735.shtml](https://karnatik.com/c1735.shtml) (swaras and
   words; composer not given).
 - **Checked against:** Shivkumar Kalyanaraman's archive,
@@ -138,6 +140,25 @@ a licence; the authors are to be asked before a store release.
   cell by cell with `tools/notation/crosscheck_swarajatis.py`.
 - **Changes made:** one octave mark and two holds corrected, words split one
   syllable per cell in simple Latin; listed in the file's header.
+
+Sambasiva Yenave (composer Chinnakrishna Dasar, long in the public domain):
+
+- **Source:** *Sangeeta Bala Padam, Part 1* (English edition, A.S.
+  Panchapakesa Iyer, Giri Trading Agency, ISBN 81-7950-877-3), SWARAJATI-2,
+  pp. 82–84 (swaras, words, section order; the owner's own copy, photographed
+  2026-11-06).
+- **Checked against:** Shivkumar Kalyanaraman's archive,
+  [sambasiva-swarajati.htm](https://www.shivkumar.org/music/varnams/sambasiva-swarajati.htm)
+  (notes courtesy "(Rani) www.karnatic.com"; karnatik.com has the same notes
+  in a layout without beat bars or octave marks), and a notation PDF from
+  [veenagana.org](http://veenagana.org/wp-content/uploads/2017/12/SAMBASHIVA.pdf)
+  (Vasanthi Iyer) — both cell by cell with
+  `tools/notation/crosscheck_swarajatis.py`.
+- **Changes made:** words split one syllable per cell in simple Latin; the
+  book's long syllables written with holds; its raga header's G2/N1 taken as
+  a misprint for the standard Khamas G3/N2 (both web sources agree); a
+  section-scoped `beat: 5` for the khanda-gati charanam. Every choice between
+  the three sources is listed in the file's header.
 
 ## Code
 

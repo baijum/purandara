@@ -35,6 +35,7 @@ struct NotationView: View {
                             }
                             AvartaRow(
                                 avarta: avarta,
+                                avartaIndex: index,
                                 varisai: varisai,
                                 activeAkshara: playback.avarta == index ? playback.akshara : nil,
                                 activeSlot: playback.avarta == index ? playback.slot : nil,
@@ -81,16 +82,17 @@ extension NotationView {
                 }.joined(separator: " "))
             }
             // Written several to a beat (a swarajati), holds inside a beat aren't read out.
-            return varisai.beat > 1 ? nil : (i, hold)
+            return varisai.cellsPerBeatIn(avarta: Int32(index)) > 1 ? nil : (i, hold)
         }
         return pieces.enumerated().map { n, piece in
-            n == 0 ? piece.1 : (varisai.startsAnga(cell: Int32(piece.0)) ? ", " : " ") + piece.1
+            n == 0 ? piece.1 : (varisai.startsAnga(avarta: Int32(index), cell: Int32(piece.0)) ? ", " : " ") + piece.1
         }.joined()
     }
 }
 
 private struct AvartaRow: View {
     let avarta: Avarta
+    let avartaIndex: Int
     let varisai: Varisai
     let activeAkshara: Int?
     let activeSlot: Int?
@@ -98,7 +100,7 @@ private struct AvartaRow: View {
     let words: WordsDisplay
 
     var body: some View {
-        let rows = TalaRows(varisai: varisai)
+        let rows = TalaRows(varisai: varisai, avarta: avarta, index: avartaIndex)
         let rowWords = words.showsWords ? avarta.words : nil
         let showSwaras = rowWords == nil || words.showsSwaras
         VStack(spacing: 4) {
@@ -106,7 +108,7 @@ private struct AvartaRow: View {
                 let range = rows.ranges[row]
                 HStack(spacing: 0) {
                     ForEach(Array(range), id: \.self) { i in
-                        if i > range.lowerBound && varisai.startsAnga(cell: Int32(i)) { AngaBar() }
+                        if i > range.lowerBound && varisai.startsAnga(avarta: Int32(avartaIndex), cell: Int32(i)) { AngaBar() }
                         AksharaCell(
                             akshara: avarta.aksharas[i],
                             active: i == activeAkshara,
@@ -239,12 +241,13 @@ struct TalaRows {
         columns = Int(tala.rowAksharas)
     }
 
-    /// A piece's notation rows: cells, several to a beat in a swarajati (`Varisai.rowStarts`).
-    init(varisai: Varisai) {
-        let starts = varisai.rowStarts.map { $0.intValue }
-        let ends = Array(starts.dropFirst()) + [Int(varisai.tala.aksharas * varisai.beat)]
+    /// A piece's notation rows for one avarta: cells, several to a beat in a
+    /// swarajati (`Varisai.rowStartsIn`) — a khanda-gati avarta has its own.
+    init(varisai: Varisai, avarta: Avarta, index: Int) {
+        let starts = varisai.rowStartsIn(avarta: Int32(index)).map { $0.intValue }
+        let ends = Array(starts.dropFirst()) + [avarta.aksharas.count]
         ranges = zip(starts, ends).map { $0..<$1 }
-        columns = Int(varisai.rowCells)
+        columns = Int(varisai.rowCellsIn(avarta: Int32(index)))
     }
 
     /// Empty columns after row [row], so its cells line up with the longest row.

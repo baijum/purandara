@@ -79,7 +79,8 @@ Copy the text verbatim so it can be compared line by line with the workbook.
 | `raga: <key>` after the number | The exercise's raga (`Ragas`: `mayamalavagowla`, `malahari`). Default `mayamalavagowla`; letters the raga doesn't use are errors. |
 | `title: <text>` after the number | Title of a named piece (a gitam). |
 | `short: <text>` after the number | A shorter title for the phone's top bar. |
-| `beat: <n>` after the number | n aksharas (cells) to each tala beat (1, 2 or 4), as swarajatis are written. |
+| `beat: <n>` after the number | n aksharas (cells) to each tala beat (1, 2, 4 or 5), as swarajatis are written. |
+| `beat: <n>` inside a piece | Overrides the gati from there on (a khanda-gati charanam writes `beat: 5`); the next `[section]` header restores the piece's own beat. |
 | `[name +swaram]` | The section is sung first as swaras (no words), then with its words. |
 | `[pallavi]` | Starts a named section; its first avarta shows the name as a heading. |
 | `(pallavi)` | Sings that section again; expanded by the parser, so playback, scoring and display follow the sung order. |

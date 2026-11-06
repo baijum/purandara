@@ -142,6 +142,36 @@ class ScheduleTest {
     }
 
     @Test
+    fun khandaGatiSectionPacksMoreCellsIntoTheSameBeats() {
+        // One 16-cell avarta (beat 2) then one 40-cell khanda-gati avarta (beat 5).
+        val v = VarisaiParser().parse(
+            "1\ntala: adi\nbeat: 2\n${List(16) { "S" }.joinToString(" ")} ||\n" +
+                "[khanda]\nbeat: 5\n${List(40) { "S" }.joinToString(" ")} ||\n",
+            VarisaiSet.SARALI,
+        ).single()
+        val s = Schedule.of(v, PerformanceSettings(saHz = saC3, tempo = 60))
+        // Both avartas fill 8 beats: the tala beat is unchanged, only the subdivision differs.
+        assertEquals(16, s.beats.size)
+        assertEquals(16.0, s.durationSeconds, 1e-9)
+        assertEquals(16.0, s.beats.size * s.settings.talaAksharaSeconds, 1e-9)
+        assertEquals(8.0, s.avartaSeconds, 1e-9)
+        // The khanda cells are 2/5 the length of the beat-2 cells, starting at 8 s.
+        assertEquals(0.5, s.notes[0].durationSeconds, 1e-9)
+        val khanda = s.notes.first { it.position.avarta == 1 }
+        assertEquals(8.0, khanda.startSeconds, 1e-9)
+        assertEquals(0.2, khanda.durationSeconds, 1e-9)
+        // Notes and beats stay aligned through the khanda avarta.
+        assertEquals(0.0, khanda.startSeconds - s.beats[8].startSeconds, 1e-9)
+        // The khanda section alone also fills whole cycles, at every kala.
+        val khandaSection = v.sections.single()
+        PerformanceSettings.KALA_RANGE.forEach { kala ->
+            val section = Schedule.ofSection(v, PerformanceSettings(saHz = saC3, kala = kala), khandaSection)
+            assertEquals(0, section.beats.size % v.tala.aksharas, "kala $kala ends mid-avarta")
+            assertEquals(section.durationSeconds, section.beats.size * section.settings.talaAksharaSeconds, 1e-9)
+        }
+    }
+
+    @Test
     fun oneSectionKeepsThePieceAvartaNumbers() {
         val gitam = varisai("gitam-1")
         assertEquals(
