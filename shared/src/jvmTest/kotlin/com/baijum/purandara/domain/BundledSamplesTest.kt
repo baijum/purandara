@@ -31,6 +31,18 @@ class BundledSamplesTest {
     }
 
     @Test
+    fun everyTanpuraLoopExistsAndNothingElse() {
+        TanpuraBank.allAssetPaths().forEach { path ->
+            val file = File(audioRoot, path)
+            assertTrue(file.isFile && file.length() > 100_000, "missing or truncated $file")
+            val magic = file.inputStream().use { it.readNBytes(4) }
+            assertEquals("fLaC", String(magic, Charsets.US_ASCII), "$path is not FLAC")
+        }
+        val expected = TanpuraBank.allAssetPaths().map { it.substringAfter('/') }.toSet()
+        assertEquals(expected, File(audioRoot, TanpuraBank.DIRECTORY).list()!!.toSet())
+    }
+
+    @Test
     fun filesAreFlac() {
         HarmoniumBank.allAssetPaths().forEach { path ->
             val magic = File(audioRoot, path).inputStream().use { it.readNBytes(4) }

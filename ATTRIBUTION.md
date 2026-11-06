@@ -24,6 +24,21 @@ here, including public-domain (CC0) ones that do not legally require it.
 
 Thank you, donyaquick and cabled_mess, for sharing these recordings.
 
+### Tanpura drone (`audio/tanpura/`)
+
+- **Recording:** "Acoustic Tanpura 10" by [Sankalp Gulati](https://freesound.org/people/sankalp/)
+  (`sankalp`), recorded at Dhrupad Sansar, IIT Bombay, India, with a Roland
+  Edirol R-09HR; tuning pa SA SA sa, Sa ≈ 233 Hz, jivari thread inserted.
+  [freesound.org/s/155272](https://freesound.org/s/155272/)
+- **License:** [Creative Commons Attribution 4.0 (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/)
+- **Changes made:** converted to mono 44.1 kHz; three plucking cycles
+  (24.70–42.85 s) cut into a seamless loop; pitch-shifted with Rubber Band
+  (tempo and formants preserved) to exact equal-tempered Sa at A♯2, D3, F♯3
+  and A♯3; loudness-normalised; FLAC. See
+  [`tools/samples/prepare_tanpura.py`](tools/samples/prepare_tanpura.py).
+
+Thank you, Sankalp Gulati, for recording and sharing this tanpura.
+
 ## Machine learning model
 
 ### SwiftF0 (`models/swift_f0_model.onnx`)

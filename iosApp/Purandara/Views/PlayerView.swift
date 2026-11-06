@@ -158,7 +158,8 @@ struct PracticeSettingsView: View {
                     Text("Harmonium guide").foregroundStyle(Color.subdued)
                 }
                 Section {
-                    Toggle("Drone (Sa and Pa)", isOn: $settings.drone)
+                    Toggle("Tanpura drone", isOn: $settings.drone)
+
                     LevelSlider(title: "Drone volume", level: $settings.droneLevel)
                         .disabled(!settings.drone)
                     LevelSlider(title: "Harmonium volume", level: $settings.harmoniumLevel)

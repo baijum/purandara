@@ -5,6 +5,7 @@ import com.baijum.purandara.domain.Kriya
 import com.baijum.purandara.domain.Note
 import com.baijum.purandara.domain.Octave
 import com.baijum.purandara.domain.Swara
+import com.baijum.purandara.domain.TanpuraBank
 import com.baijum.purandara.domain.schedule.Schedule
 import kotlin.math.PI
 import kotlin.math.exp
@@ -12,10 +13,20 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
+/** What the drone sounds like. */
+enum class DroneStyle {
+    /** Sustained harmonium Sa, Pa and upper Sa: used only when the tanpura loops are not loaded. */
+    HARMONIUM,
+
+    /** A real tanpura plucking pa SA SA sa (bundled recording): the app's drone. */
+    TANPURA,
+}
+
 /** Mix levels and articulation for [SampleRenderer]. */
 data class RenderOptions(
     val harmoniumGain: Float = 0.6f,
     val drone: Boolean = true,
+    val droneStyle: DroneStyle = DroneStyle.TANPURA,
     val droneGain: Float = 0.2f,
     val click: Boolean = false,
     val clickGain: Float = 0.35f,
@@ -247,6 +258,21 @@ class SampleRenderer(
     private fun buildDrones(): List<Voice> {
         val fade = framesOf(options.droneFadeSeconds, sampleRate)
         val settings = schedule.settings
+        if (options.droneStyle == DroneStyle.TANPURA && bank.hasTanpura) {
+            val playback = requireNotNull(TanpuraBank.playbackFor(settings.saHz)) { "Sa ${settings.saHz} Hz outside the tanpura range" }
+            return listOf(
+                Voice(
+                    clip = bank.tanpuraClip(playback.saMidi),
+                    rate = playback.rate,
+                    gain = options.droneGain * TANPURA_LEVEL,
+                    start = 0,
+                    fadeIn = fade,
+                    end = totalFrames,
+                    fadeOut = if (options.loop) 0 else fade,
+                    sourceOffset = 0.0,
+                ),
+            )
+        }
         return DRONE.map { (note, level, offsetSeconds) ->
             val hz = settings.tuning.frequency(note, settings.saHz)
             val playback = requireNotNull(HarmoniumBank.playbackFor(hz)) { "drone $note outside the bank" }
@@ -295,7 +321,7 @@ class SampleRenderer(
 
     /** One sounding sample: a note or a drone string. Coordinates are frames. */
     private class Voice(
-        val clip: LoopedClip,
+        val clip: Clip,
         val rate: Double,
         val gain: Float,
         val start: Long,
@@ -339,3 +365,6 @@ class SampleRenderer(
         const val COUNT_IN_CLICK_GAIN = 0.4f
     }
 }
+
+/** The tanpura loop is one voice; this matches its level to the three harmonium drone voices. */
+internal const val TANPURA_LEVEL = 1.6f

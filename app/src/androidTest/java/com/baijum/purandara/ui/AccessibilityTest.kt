@@ -124,7 +124,7 @@ class AccessibilityTest {
         showPlayer()
         openSettings()
         val isSwitch = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)
-        compose.onNode(hasText("Drone (Sa and Pa)") and isSwitch).performScrollTo().assertIsOn()
+        compose.onNode(hasText("Tanpura drone") and isSwitch).performScrollTo().assertIsOn()
         compose.onNode(hasText("Count in one avarta") and isSwitch).performScrollTo().assertIsOn()
         compose.onNode(hasText("Tala click") and isSwitch).performScrollTo().performClick()
         assertEquals(true, settings.click)

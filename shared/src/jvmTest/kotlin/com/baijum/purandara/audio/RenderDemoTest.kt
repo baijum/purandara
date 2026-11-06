@@ -26,22 +26,31 @@ class RenderDemoTest {
     fun renderListeningDemos() {
         if (System.getenv("PURANDARA_RENDER_DEMO") != "1") return
         val audio = generateSequence(File("").absoluteFile) { it.parentFile }.map { File(it, "audio") }.first { it.isDirectory }
-        val bank = SampleBank(sampleRate, HarmoniumBank.midiRange.associateWith { decode(File(audio, HarmoniumBank.assetPath(it))) })
+        val bank = SampleBank(
+            sampleRate,
+            HarmoniumBank.midiRange.associateWith { decode(File(audio, HarmoniumBank.assetPath(it))) },
+            com.baijum.purandara.domain.TanpuraBank.SA_MIDIS.associateWith {
+                decode(File(audio, com.baijum.purandara.domain.TanpuraBank.assetPath(it)))
+            },
+        )
         val out = File("build/render-demo").apply { mkdirs() }
 
         val demos = listOf(
-            Triple("plain-scale-1", PerformanceSettings(saHz = Pitch.midiToHz(49), tempo = 75), RenderOptions()),
+            Triple("plain-scale-1", PerformanceSettings(saHz = Pitch.midiToHz(49), tempo = 75), RenderOptions(droneStyle = DroneStyle.HARMONIUM)),
             Triple("plain-scale-1", PerformanceSettings(saHz = Pitch.midiToHz(49), tempo = 75), RenderOptions(drone = false)),
             Triple("sarali-4", PerformanceSettings(saHz = Pitch.midiToHz(49), tempo = 75), RenderOptions(click = true)),
             Triple("plain-scale-1", PerformanceSettings(saHz = Pitch.midiToHz(57), tempo = 60, kala = 3), RenderOptions()),
             Triple("janta-1", PerformanceSettings(saHz = Pitch.midiToHz(57), tempo = 60), RenderOptions(click = true)),
+            Triple("sarali-4", PerformanceSettings(saHz = Pitch.midiToHz(49), tempo = 75), RenderOptions(droneStyle = DroneStyle.TANPURA)),
+            Triple("plain-scale-1", PerformanceSettings(saHz = Pitch.midiToHz(57), tempo = 60), RenderOptions(droneStyle = DroneStyle.TANPURA)),
         )
         for ((id, settings, options) in demos) {
             val renderer = SampleRenderer(bank, Schedule.of(VarisaiCatalog.byId(id)!!, settings), options)
             val pcm = FloatArray(renderer.totalFrames.toInt())
             renderer.render(pcm)
             val name = "$id-sa${Pitch.nearestMidi(settings.saHz)}-kala${settings.kala}" +
-                (if (options.click) "-click" else "") + (if (options.drone) "" else "-nodrone") + ".wav"
+                (if (options.click) "-click" else "") + (if (options.drone) "" else "-nodrone") +
+                (if (options.droneStyle == DroneStyle.TANPURA) "-tanpura" else "") + ".wav"
             writeWav(File(out, name), pcm)
             println("render-demo: ${File(out, name).absolutePath}")
         }

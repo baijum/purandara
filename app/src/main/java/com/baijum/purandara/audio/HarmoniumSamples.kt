@@ -6,6 +6,7 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import com.baijum.purandara.domain.HarmoniumBank
+import com.baijum.purandara.domain.TanpuraBank
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -13,18 +14,21 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.nio.ByteOrder
 
-/** Decodes the bundled harmonium FLAC assets into a [SampleBank]. */
+/** Decodes the bundled harmonium notes and tanpura loops (FLAC assets) into a [SampleBank]. */
 object HarmoniumSamples {
     /** Sample rate of the prepared files (tools/samples/prepare_harmonium.py). */
     const val SAMPLE_RATE = 44_100
 
-    /** Decodes all notes in parallel, off the main thread. */
+    /** Decodes everything in parallel, off the main thread. */
     suspend fun load(assets: AssetManager): SampleBank = withContext(Dispatchers.Default) {
         coroutineScope {
-            val decoded = HarmoniumBank.midiRange.map { midi ->
+            val harmonium = HarmoniumBank.midiRange.map { midi ->
                 async { midi to decode(assets, HarmoniumBank.assetPath(midi)) }
-            }.awaitAll()
-            SampleBank(SAMPLE_RATE, decoded.toMap())
+            }
+            val tanpura = TanpuraBank.SA_MIDIS.map { midi ->
+                async { midi to decode(assets, TanpuraBank.assetPath(midi)) }
+            }
+            SampleBank(SAMPLE_RATE, harmonium.awaitAll().toMap(), tanpura.awaitAll().toMap())
         }
     }
 

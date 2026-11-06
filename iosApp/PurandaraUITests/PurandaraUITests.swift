@@ -54,7 +54,7 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
         app.buttons["Practice settings"].tap()
         XCTAssertTrue(app.navigationBars["Practice settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.switches["Drone (Sa and Pa)"].exists)
+        XCTAssertTrue(app.switches["Tanpura drone"].exists)
         try audit(app)
     }
 

@@ -72,6 +72,11 @@ and `adb shell df -h /data`.
 
 ### Sound model
 
+The drone is a real tanpura (pa SA SA sa): `audio/tanpura/<sa-midi>.flac`, seamless
+loops at Sa A♯2/D3/F♯3/A♯3 prepared by `tools/samples/prepare_tanpura.py`;
+`TanpuraBank.playbackFor(saHz)` picks the nearest and a rate within ±3 semitones.
+The harmonium drone remains only as a fallback if the loops fail to load.
+
 Swaras use the CC0 harmonium bank: `audio/harmonium/<midi>.flac`, MIDI 36–72 (C2–C5),
 each exactly 12-TET at A4 = 440 Hz. `HarmoniumBank.playbackFor(note, saHz)` picks the
 nearest sample and a playback rate (within ±half a semitone) that hits the swara's

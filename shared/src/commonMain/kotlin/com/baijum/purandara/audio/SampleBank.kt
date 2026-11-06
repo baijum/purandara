@@ -12,7 +12,12 @@ import kotlin.math.roundToInt
  * `tools/samples/prepare_harmonium.py`), which lets [LoopedClip] loop it in
  * phase.
  */
-class SampleBank(val sampleRate: Int, samples: Map<Int, FloatArray>) {
+class SampleBank(
+    val sampleRate: Int,
+    samples: Map<Int, FloatArray>,
+    /** Tanpura drone loops keyed by their Sa's MIDI note (see TanpuraBank); may be empty. */
+    tanpura: Map<Int, FloatArray> = emptyMap(),
+) {
     init {
         require(sampleRate > 0) { "sample rate must be positive" }
     }
@@ -20,10 +25,42 @@ class SampleBank(val sampleRate: Int, samples: Map<Int, FloatArray>) {
     internal val clips: Map<Int, LoopedClip> =
         samples.mapValues { (midi, data) -> LoopedClip(data, Pitch.midiToHz(midi), sampleRate) }
 
+    private val tanpuraClips: Map<Int, CircularClip> = tanpura.mapValues { (_, data) -> CircularClip(data) }
+
     operator fun contains(midi: Int): Boolean = midi in clips
+
+    /** True when the tanpura loops are loaded. */
+    val hasTanpura: Boolean get() = tanpuraClips.isNotEmpty()
 
     internal fun clip(midi: Int): LoopedClip =
         clips[midi] ?: throw IllegalArgumentException("sample bank has no MIDI $midi")
+
+    internal fun tanpuraClip(saMidi: Int): CircularClip =
+        tanpuraClips[saMidi] ?: throw IllegalArgumentException("sample bank has no tanpura for Sa MIDI $saMidi")
+}
+
+/** Anything a voice can read at a fractional position. */
+internal interface Clip {
+    fun value(position: Double): Float
+}
+
+/**
+ * A recording prepared as a seamless loop (its end already blended into its
+ * start, see tools/samples/prepare_tanpura.py), read round and round.
+ */
+internal class CircularClip(private val data: FloatArray) : Clip {
+    init {
+        require(data.size > 1) { "loop too short" }
+    }
+
+    override fun value(position: Double): Float {
+        if (position < 0.0) return 0f
+        val p = position % data.size
+        val i = p.toInt()
+        val frac = (p - i).toFloat()
+        val next = if (i + 1 == data.size) 0 else i + 1
+        return data[i] * (1f - frac) + data[next] * frac
+    }
 }
 
 /**
@@ -33,7 +70,7 @@ class SampleBank(val sampleRate: Int, samples: Map<Int, FloatArray>) {
  * a whole number of periods of [frequencyHz], so the two sides of the loop
  * are in phase and a short linear crossfade joins them without a dip or click.
  */
-internal class LoopedClip(private val data: FloatArray, frequencyHz: Double, sampleRate: Int) {
+internal class LoopedClip(private val data: FloatArray, frequencyHz: Double, sampleRate: Int) : Clip {
     private val loopStart: Double = LOOP_START_SECONDS * sampleRate
     private val loopLength: Double
     private val crossfade: Double
@@ -51,7 +88,7 @@ internal class LoopedClip(private val data: FloatArray, frequencyHz: Double, sam
     }
 
     /** Sample value at [position] frames from the start of the clip. */
-    fun value(position: Double): Float {
+    override fun value(position: Double): Float {
         if (position < 0.0) return 0f
         val fadeStart = loopEnd - crossfade
         if (position < fadeStart) return interpolate(position)

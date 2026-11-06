@@ -90,6 +90,12 @@ final class PracticeSettingsStoreTests: XCTestCase {
         XCTAssertEqual(PracticeSettingsStore(defaults: defaults).load(), PracticeSettings())
     }
 
+    func testTanpuraLoopsAreDecodedAndUsed() throws {
+        let bank = try HarmoniumSamples.load()
+        XCTAssertTrue(bank.hasTanpura)
+        XCTAssertEqual(PracticeSettings().renderOptions().droneStyle, .tanpura)
+    }
+
     func testSingAlongForcesCountInAndGuideOffSilencesHarmonium() {
         var s = PracticeSettings()
         s.countIn = false

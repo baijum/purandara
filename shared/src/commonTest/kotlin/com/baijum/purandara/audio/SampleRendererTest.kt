@@ -292,6 +292,40 @@ class SampleRendererTest {
         assertTrue(out.all { abs(it) < 1f }, "peak ${out.maxOf { abs(it) }}")
     }
 
+    /** Synthetic tanpura loops: a pure tone at each loop's Sa, a whole number of periods long (so it wraps seamlessly). */
+    private fun tanpuraBank(): SampleBank {
+        val loops = com.baijum.purandara.domain.TanpuraBank.SA_MIDIS.associateWith { midi ->
+            val hz = Pitch.midiToHz(midi)
+            val periods = (2.0 * hz).toInt()
+            val n = (periods * sr / hz).toInt()
+            val exactHz = periods * sr.toDouble() / n
+            FloatArray(n) { (0.3 * sin(2 * PI * exactHz * it / sr)).toFloat() }
+        }
+        val harmonium = HarmoniumBank.midiRange.associateWith { FloatArray(clipFrames) }
+        return SampleBank(sr, harmonium, loops)
+    }
+
+    @Test
+    fun tanpuraDroneSoundsAtSaAndWrapsSeamlessly() {
+        // Sa = C#3 (49): played from the D3 loop slowed by a semitone.
+        val s = Schedule.of(VarisaiCatalog.byId("plain-scale-1")!!, PerformanceSettings(saHz = Pitch.midiToHz(49)))
+        val r = SampleRenderer(tanpuraBank(), s, RenderOptions(harmoniumGain = 0f, drone = true, droneGain = 1f, droneStyle = DroneStyle.TANPURA))
+        val out = renderAll(r)
+        val hz = frequencyByZeroCrossings(out, sr, 10 * sr)
+        assertTrue(abs(Pitch.cents(Pitch.midiToHz(49), hz)) < 1.0, "tanpura drone at $hz Hz")
+        // The 2 s loop wraps several times; no sample-to-sample jump beyond a sine's slope.
+        val maxStep = 2 * PI * Pitch.midiToHz(49) * 0.3 * TANPURA_LEVEL / sr * 1.2
+        for (t in sr until 10 * sr) assertTrue(abs(out[t] - out[t - 1]) < maxStep, "jump at ${t.toDouble() / sr}s")
+    }
+
+    @Test
+    fun withoutTanpuraLoopsTheHarmoniumDronePlays() {
+        val s = schedule("plain-scale-1")
+        val r = SampleRenderer(sineBank, s, RenderOptions(harmoniumGain = 0f, drone = true, droneGain = 1f))
+        val out = renderAll(r)
+        assertTrue(rmsDb(out, 5 * sr, 10 * sr) > -20.0, "falls back to the harmonium drone")
+    }
+
     @Test
     fun missingSampleIsRejected() {
         val partial = SampleBank(sr, mapOf(48 to FloatArray(clipFrames)))

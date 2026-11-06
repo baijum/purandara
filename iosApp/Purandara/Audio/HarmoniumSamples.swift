@@ -1,7 +1,7 @@
 import AVFoundation
 import shared
 
-/// Decodes the bundled harmonium FLAC files into a shared `SampleBank`.
+/// Decodes the bundled harmonium notes and tanpura loops (FLAC) into a shared `SampleBank`.
 enum HarmoniumSamples {
     /// Sample rate of the prepared files (tools/samples/prepare_harmonium.py).
     static let sampleRate: Double = 44_100
@@ -16,14 +16,21 @@ enum HarmoniumSamples {
         let bankInfo = HarmoniumBank.shared
         var samples: [KotlinInt: KotlinFloatArray] = [:]
         for midi in bankInfo.MIDI_LOW...bankInfo.MIDI_HIGH {
-            samples[KotlinInt(int: midi)] = try decode(midi: midi, bundle: bundle)
+            samples[KotlinInt(int: midi)] = try decode(path: bankInfo.assetPath(midi: midi), bundle: bundle)
         }
-        return SampleBank(sampleRate: Int32(sampleRate), samples: samples)
+        var tanpura: [KotlinInt: KotlinFloatArray] = [:]
+        for midi in TanpuraBank.shared.SA_MIDIS {
+            tanpura[midi] = try decode(path: TanpuraBank.shared.assetPath(saMidi: midi.int32Value), bundle: bundle)
+        }
+        return SampleBank(sampleRate: Int32(sampleRate), samples: samples, tanpura: tanpura)
     }
 
     static func decode(midi: Int32, bundle: Bundle = .main) throws -> KotlinFloatArray {
-        // Same relative path as HarmoniumBank.assetPath(midi:), under the bundle's audio/ folder.
-        let path = HarmoniumBank.shared.assetPath(midi: midi)
+        try decode(path: HarmoniumBank.shared.assetPath(midi: midi), bundle: bundle)
+    }
+
+    /// Decodes `audio/<path>` from the bundle (paths as given by HarmoniumBank / TanpuraBank).
+    static func decode(path: String, bundle: Bundle = .main) throws -> KotlinFloatArray {
         guard let url = bundle.url(forResource: "audio/" + path, withExtension: nil) else {
             throw LoadError.missing(path)
         }
