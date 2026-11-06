@@ -9,6 +9,8 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -16,11 +18,15 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
+import com.baijum.purandara.ui.library.LibraryActions
 import com.baijum.purandara.ui.library.LibraryScreen
+import com.baijum.purandara.ui.library.LibraryState
+import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.ui.player.PlayerActions
 import com.baijum.purandara.ui.player.PlayerScreen
 import com.baijum.purandara.ui.theme.PurandaraTheme
@@ -202,15 +208,62 @@ class AccessibilityTest {
         compose.onNodeWithText("Open settings").assertHasClickAction()
     }
 
-    @Test
-    fun librarySetsAreHeadings() {
+    private var tanpuraToggled = 0
+
+    private fun showLibrary(history: PracticeHistory = PracticeHistory(), tanpuraPlaying: Boolean = false) {
         compose.setContent {
             PurandaraTheme {
-                LibraryScreen(VarisaiCatalog.all, samplesLoaded = true, loadError = false, onSelect = {})
+                LibraryScreen(
+                    catalog = VarisaiCatalog.all,
+                    state = LibraryState(history = history, saMidi = 48, tanpuraPlaying = tanpuraPlaying, samplesLoaded = true),
+                    actions = LibraryActions(onSelect = {}, onToggleTanpura = { tanpuraToggled++ }),
+                    nowMillis = NOW,
+                )
             }
         }
+    }
+
+    @Test
+    fun librarySetsAreHeadings() {
+        showLibrary()
         val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
-        compose.onNode(hasText("Plain scale") and heading).assertExists()
-        compose.onNode(hasText("Sarali Varisai") and heading).assertExists()
+        compose.onNode(hasText("Plain scale", substring = true) and heading).assertExists()
+        compose.onNode(hasText("Your Sa") and heading).assertExists()
+        compose.onNode(hasText("Start here") and heading).assertExists()
+    }
+
+    @Test
+    fun continueCardOffersTheLastAndNextExercises() {
+        val history = PracticeHistory().practised("sarali-5", NOW - DAY)
+        showLibrary(history)
+        assertTouchTarget(
+            compose.onNodeWithContentDescription("Continue Sarali Varisai 5", substring = true).assertHasClickAction(),
+        )
+        assertTouchTarget(compose.onNodeWithContentDescription("Next up: Sarali Varisai 6").assertHasClickAction())
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        compose.onNode(hasText("1 of 16 practised") and heading).assertExists()
+    }
+
+    @Test
+    fun exerciseRowsReadTheirNotationAndProgress() {
+        showLibrary(PracticeHistory().practised("sarali-4", NOW))
+        val row = hasContentDescription("Sarali Varisai 4, S R G M P , S R, Practised")
+        // Off screen in the lazy list: scroll the list to it.
+        compose.onNode(hasScrollAction()).performScrollToNode(row)
+        compose.onNode(row).assertHasClickAction()
+    }
+
+    @Test
+    fun tanpuraButtonIsLabelledAndToggles() {
+        showLibrary()
+        val button = compose.onNodeWithText("Play tanpura").assertHasClickAction()
+        assertTouchTarget(button)
+        button.performClick()
+        assertEquals(1, tanpuraToggled)
+    }
+
+    private companion object {
+        const val DAY = 24 * 60 * 60 * 1000L
+        const val NOW = 1_800_000_000_000L
     }
 }

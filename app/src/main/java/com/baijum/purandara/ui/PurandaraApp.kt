@@ -17,7 +17,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.baijum.purandara.ui.library.LibraryActions
 import com.baijum.purandara.ui.library.LibraryScreen
+import com.baijum.purandara.ui.library.LibraryState
 import com.baijum.purandara.ui.player.PlayerActions
 import com.baijum.purandara.ui.player.PlayerScreen
 import com.baijum.purandara.viewmodel.PracticeViewModel
@@ -44,9 +46,18 @@ fun PurandaraApp(viewModel: PracticeViewModel) {
     if (selected == null) {
         LibraryScreen(
             catalog = viewModel.catalog,
-            samplesLoaded = state.samplesLoaded,
-            loadError = state.loadError,
-            onSelect = viewModel::select,
+            state = LibraryState(
+                history = state.history,
+                saMidi = state.settings.saMidi,
+                tanpuraPlaying = state.tanpuraPlaying,
+                samplesLoaded = state.samplesLoaded,
+                loadError = state.loadError,
+            ),
+            actions = LibraryActions(
+                onSelect = viewModel::select,
+                onToggleTanpura = viewModel::toggleTanpura,
+                onSaChange = { midi -> viewModel.updateSettings { it.copy(saMidi = midi) } },
+            ),
         )
     } else {
         BackHandler { viewModel.select(null) }

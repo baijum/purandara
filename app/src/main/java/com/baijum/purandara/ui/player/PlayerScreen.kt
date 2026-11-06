@@ -312,7 +312,7 @@ private fun PracticeSettingsSheet(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SaPicker(saMidi: Int, onSelect: (Int) -> Unit) {
+internal fun SaPicker(saMidi: Int, onSelect: (Int) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     val label = @Composable { midi: Int -> stringResource(R.string.sa_value, Shruti.noteName(midi), Shruti.kattai(midi)) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {

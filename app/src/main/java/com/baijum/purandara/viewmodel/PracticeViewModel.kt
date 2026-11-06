@@ -12,6 +12,7 @@ import ai.onnxruntime.OrtException
 import com.baijum.purandara.audio.AudioRecordMicSource
 import com.baijum.purandara.audio.HarmoniumSamples
 import com.baijum.purandara.audio.MicSource
+import com.baijum.purandara.audio.RenderOptions
 import com.baijum.purandara.audio.NeuralPitchSupervisor
 import com.baijum.purandara.audio.SampleBank
 import com.baijum.purandara.audio.SampleRenderer
@@ -25,6 +26,7 @@ import com.baijum.purandara.domain.schedule.NotationPosition
 import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
+import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.singalong.FrameOutcome
 import com.baijum.purandara.singalong.NoteMark
 import com.baijum.purandara.singalong.PassResult
@@ -60,6 +62,10 @@ data class PracticeUiState(
     val loadError: Boolean = false,
     val playback: PlaybackState = PlaybackState(),
     val singAlong: SingAlongState = SingAlongState(),
+    /** What has been practised (landing page). */
+    val history: PracticeHistory = PracticeHistory(),
+    /** The landing page's tanpura-only drone is sounding. */
+    val tanpuraPlaying: Boolean = false,
 )
 
 /**
@@ -73,7 +79,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     private val audioManager = application.getSystemService(AudioManager::class.java)
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val _state = MutableStateFlow(PracticeUiState(settings = preferences.load()))
+    private val _state = MutableStateFlow(PracticeUiState(settings = preferences.load(), history = preferences.loadHistory()))
     val state: StateFlow<PracticeUiState> = _state.asStateFlow()
 
     val catalog: List<Varisai> = VarisaiCatalog.all
@@ -85,6 +91,9 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     private var engine: SingAlongEngine? = null
     private var supervisor: NeuralPitchSupervisor? = null
     private var supervisorRequested = false
+
+    /** The exercise playing now has been heard through one full pass (recorded once per play). */
+    private var practisedThisPlay = false
 
     /** Debug builds only: a synthetic singer offset by this many cents replaces the mic. */
     var debugSyntheticSingerCents: Double? = null
@@ -136,16 +145,40 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
 
     fun updateSettings(transform: (PracticeSettings) -> PracticeSettings) {
         val wasPlaying = _state.value.playback.playing
+        val wasTanpura = _state.value.tanpuraPlaying
         val next = transform(_state.value.settings)
         if (next == _state.value.settings) return
         preferences.save(next)
         _state.update { it.copy(settings = next) }
         if (next.singAlong) loadSupervisor()
         if (wasPlaying) play()
+        if (wasTanpura) playTanpura()
     }
 
     fun setMicPermission(granted: Boolean) {
         _state.update { it.copy(singAlong = it.singAlong.copy(micPermitted = granted)) }
+    }
+
+    /** The landing page's drone alone, at the current Sa, until stopped. */
+    fun toggleTanpura() {
+        if (_state.value.tanpuraPlaying) stop() else playTanpura()
+    }
+
+    private fun playTanpura() {
+        val bank = bank ?: return
+        stop()
+        val settings = _state.value.settings
+        val r = SampleRenderer(bank, Schedule.of(catalog.first(), settings.performance()), RenderOptions.droneOnly(settings.droneLevel))
+        renderer = r
+        player.play(r) { mainHandler.post { onPlaybackFinished(r) } }
+        _state.update { it.copy(tanpuraPlaying = true) }
+    }
+
+    private fun updateHistory(transform: (PracticeHistory) -> PracticeHistory) {
+        val next = transform(_state.value.history)
+        if (next == _state.value.history) return
+        preferences.saveHistory(next)
+        _state.update { it.copy(history = next) }
     }
 
     fun togglePlay() {
@@ -161,6 +194,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         val r = SampleRenderer(bank, schedule, settings.renderOptions())
         renderer = r
         this.schedule = schedule
+        practisedThisPlay = false
         val onSpeaker = !headphonesConnected()
         _state.update {
             it.copy(
@@ -181,22 +215,30 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         newEngine?.start()
         ticker = viewModelScope.launch {
             while (isActive) {
-                val frames = player.outputFrameAt(System.nanoTime())
-                if (frames != null && frames >= 0) {
-                    val countInBeat = r.countInBeat(frames)
-                    val seconds = r.passSeconds(frames)
-                    _state.update {
-                        it.copy(
-                            playback = it.playback.copy(
-                                countingIn = countInBeat != null,
-                                position = if (countInBeat != null) null else schedule.cursorAt(seconds),
-                                beatInAvarta = countInBeat ?: schedule.beatAt(seconds)?.beatInAvarta,
-                            ),
-                        )
-                    }
-                }
+                onTick(r, schedule, varisai)
                 delay(FRAME_MS)
             }
+        }
+    }
+
+    /** Follows the heard position: highlight, count-in, and marking the exercise practised. */
+    private fun onTick(r: SampleRenderer, schedule: Schedule, varisai: Varisai) {
+        val frames = player.outputFrameAt(System.nanoTime())
+        if (frames == null || frames < 0) return
+        if (!practisedThisPlay && frames >= r.countInFrames + r.performanceFrames) {
+            practisedThisPlay = true
+            updateHistory { it.practised(varisai.id, System.currentTimeMillis()) }
+        }
+        val countInBeat = r.countInBeat(frames)
+        val seconds = r.passSeconds(frames)
+        _state.update {
+            it.copy(
+                playback = it.playback.copy(
+                    countingIn = countInBeat != null,
+                    position = if (countInBeat != null) null else schedule.cursorAt(seconds),
+                    beatInAvarta = countInBeat ?: schedule.beatAt(seconds)?.beatInAvarta,
+                ),
+            )
         }
     }
 
@@ -217,6 +259,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     private fun onOutcome(r: SampleRenderer, outcome: FrameOutcome) {
         if (renderer !== r) return
         val sa = schedule?.settings?.saHz ?: return
+        outcome.completedPass?.let { recordScore(it) }
         _state.update { s ->
             val live = outcome.live
             var trace = s.singAlong.trace
@@ -238,8 +281,14 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     private fun List<NoteMark>.toMarkEntries(): List<Pair<MarkKey, com.baijum.purandara.singalong.NoteResult>> =
         map { MarkKey(it.event.position.avarta, it.event.position.akshara, it.event.position.slot) to it.result }
 
+    private fun recordScore(result: PassResult) {
+        val id = _state.value.selected?.id ?: return
+        updateHistory { it.scored(id, result, System.currentTimeMillis()) }
+    }
+
     private fun onFinalPass(result: PassResult?) {
         result ?: return
+        recordScore(result)
         _state.update { s ->
             s.copy(
                 singAlong = s.singAlong.copy(
@@ -259,7 +308,10 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         player.stop()
         renderer = null
         _state.update {
-            it.copy(playback = it.playback.copy(playing = false, position = null, beatInAvarta = null, countingIn = false))
+            it.copy(
+                playback = it.playback.copy(playing = false, position = null, beatInAvarta = null, countingIn = false),
+                tanpuraPlaying = false,
+            )
         }
         onFinalPass(finalPass)
     }

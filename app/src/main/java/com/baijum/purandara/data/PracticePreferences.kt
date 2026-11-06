@@ -5,6 +5,7 @@ import com.baijum.purandara.audio.RenderOptions
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.schedule.PerformanceSettings
+import com.baijum.purandara.practice.PracticeHistory
 
 /** The student's practice settings. */
 data class PracticeSettings(
@@ -62,6 +63,12 @@ class PracticePreferences(context: Context) {
         )
     }
 
+    fun loadHistory(): PracticeHistory = PracticeHistory.decode(prefs.getString(HISTORY, null))
+
+    fun saveHistory(history: PracticeHistory) {
+        prefs.edit().putString(HISTORY, history.encode()).apply()
+    }
+
     fun save(s: PracticeSettings) {
         prefs.edit()
             .putInt(SA, s.saMidi)
@@ -94,5 +101,6 @@ class PracticePreferences(context: Context) {
         const val SING_ALONG = "sing_along"
         const val HARMONIUM_GUIDE = "harmonium_guide"
         const val ECHO_CANCELLATION = "echo_cancellation"
+        const val HISTORY = "practice_history"
     }
 }

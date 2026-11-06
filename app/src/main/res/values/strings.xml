@@ -3,7 +3,18 @@
     <string name="app_name">Purandara</string>
 
     <!-- Library -->
-    <string name="library_title">Exercises</string>
+    <string name="library_title">Purandara</string>
+    <string name="continue_heading">Continue</string>
+    <string name="start_heading">Start here</string>
+    <string name="continue_action">Continue %s</string>
+    <string name="next_up">Next up: %s</string>
+    <string name="best_score">best %1$d/%2$d</string>
+    <string name="your_sa">Your Sa</string>
+    <string name="tanpura_play">Play tanpura</string>
+    <string name="tanpura_stop">Stop tanpura</string>
+    <string name="tanpura_hint">Settle your voice on Sa before you practise.</string>
+    <string name="practised_count">%1$d of %2$d practised</string>
+    <string name="practised">Practised</string>
     <string name="library_raga">Mayamalavagowla · Adi tala</string>
     <string name="loading_samples">Preparing the harmonium…</string>
     <string name="load_error">The harmonium sounds could not be loaded.</string>
