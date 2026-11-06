@@ -52,8 +52,8 @@ import com.baijum.purandara.ui.shruti.FindSaActions
 import com.baijum.purandara.ui.shruti.FindSaScreen
 import com.baijum.purandara.ui.shruti.ShrutiActions
 import com.baijum.purandara.ui.shruti.ShrutiScreen
-import com.baijum.purandara.viewmodel.FindSaStep
-import com.baijum.purandara.viewmodel.FindSaUiState
+import com.baijum.purandara.shruti.FindSaProgress
+import com.baijum.purandara.shruti.FindSaStep
 import com.baijum.purandara.viewmodel.ShrutiUiState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -301,7 +301,7 @@ class AccessibilityTest {
     fun shrutiPracticeReadsThePitchAndAnnouncesAReachedHold() {
         val sa = settings.saHz
         val reading = SwaraMapper(sa, VarisaiCatalog.raga, settings.tuning).read(sa)
-        val hold = HoldState(HoldTarget.SA, HoldGoal.SHORT, currentSeconds = 10.4, bestSeconds = 10.4, onTarget = true, reached = true)
+        val hold = HoldState(HoldTarget.SA, HoldGoal.TEN, currentSeconds = 10.4, bestSeconds = 10.4, onTarget = true, reached = true)
         showShruti(ShrutiUiState(open = true, reading = reading, hold = hold))
         compose.onNodeWithContentDescription("Your pitch").assertExists()
         assertTouchTarget(compose.onNodeWithContentDescription("Back").assertHasClickAction())
@@ -324,8 +324,7 @@ class AccessibilityTest {
         compose.setContent {
             PurandaraTheme {
                 FindSaScreen(
-                    FindSaUiState(
-                        open = true,
+                    FindSaProgress(
                         step = FindSaStep.DONE,
                         lowestHz = Pitch.midiToHz(41),
                         highestHz = Pitch.midiToHz(67),

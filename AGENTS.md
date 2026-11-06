@@ -61,7 +61,11 @@ Do not add features speculatively.
 Swift interop notes: Kotlin default arguments are not visible from Swift (use the
 small factories such as `PerformanceSettings.create(...)`, `RenderOptions.practice(...)`);
 Kotlin names starting with `copy`/`new`/`init` get a `do` prefix in Swift, so avoid them
-in API meant for iOS. Debug launch arguments `-open <varisai-id> -autoplay YES` open
+in API meant for iOS. Kotlin enum entries named after Objective-C keywords get a `_` suffix
+(`SHORT` → `short_`); computed properties such as `zone` are methods in Swift (`zone()`).
+Closures that a background queue calls must not be created inside `@MainActor` code (Swift
+traps on the isolation check): build them in a `nonisolated` helper, and pass Kotlin values
+to the main actor in a `Handoff`. Debug launch arguments `-open <varisai-id> -autoplay YES` open
 (and play) an exercise for screenshots; add `-singAlong YES -singer <cents>` for a
 synthetic singer on iOS. On Android (debug builds),
 `adb shell am start -n com.baijum.purandara/.MainActivity --ef singer 0` replaces
@@ -125,7 +129,11 @@ text (use `Color.subdued`); menu pickers and text bar buttons clip or cap Dynami
 Type; visible text must appear in some element's label; translucent bars over
 scrolling content fail contrast; the iOS 26 toolbar glass shadow lowers contrast
 just below it; symbol characters (✓ ↑) fall back to fixed-size fonts, so use SF
-Symbols; Form section footers cap Dynamic Type, so put explanations in the section; `Label` in a list row clips its title (use an `HStack` of image and text); at accessibility text sizes move secondary panels into the scrolling
+Symbols; Form section footers cap Dynamic Type, so put explanations in the section; `Label` in a list row clips its title (use an `HStack` of image and text); rows visible at normal size that larger text pushes
+off screen fail the Dynamic Type check (and a half-visible row at the bottom edge can fail
+contrast), so keep a screen's first view to a few tall rows; buttons sharing a list row
+need their own button style, and navigation links in one row all open the first, so push
+through the path instead; at accessibility text sizes move secondary panels into the scrolling
 content. The audit helper ignores exactly one thing: Dynamic Type warnings on
 single notation swaras (they shrink to fit their column by design). UI tests
 launch with `-resetSettings YES` because settings persist between launches.

@@ -27,6 +27,10 @@ The landing page's **Your Sa (Shruthi)** card gets two buttons:
 
 The current **Play tanpura** button stays.
 
+On iOS the hold choices (note and goal) open in a sheet from a "Hold Sa for 10
+seconds · Change" row, so the screen fits without scrolling (accessibility
+audit) and leaving it doesn't stop the tanpura; Android shows them inline.
+
 ## Decisions (defaults)
 
 | Topic | Default |
@@ -44,4 +48,4 @@ The current **Play tanpura** button stays.
 |---|---|---|
 | P1 ✅ | Shared: `Strictness` threaded through zones and scoring; `HoldTracker`; `ShrutiSession` (room check, readings, hold); `NoteCatcher` + `SaFinder`; Sa fine-tune; voice ranges | commonTest |
 | P2 ✅ | Android: Shruti practice screen, Find my Sa, strictness and fine-tune settings, grouped Sa list | unit + `AccessibilityTest` |
-| P3 | iOS: the same (mic windowing shared with the sing-along engine) | XCTest + UI audits |
+| P3 ✅ | iOS: the same (mic windowing shared with the sing-along engine) | XCTest + UI audits |

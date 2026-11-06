@@ -29,7 +29,7 @@ struct PlayerView: View {
                 header: showPanel && typeSize.isAccessibilitySize ? AnyView(SingAlongPanel(varisai: varisai)) : nil)
                 .frame(maxHeight: .infinity)
             if viewModel.playback.playing {
-                PlaybackStatus(playback: viewModel.playback, saMidi: viewModel.settings.saMidi)
+                PlaybackStatus(playback: viewModel.playback, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents)
             }
             Divider()
             QuickControls(settings: $viewModel.settings)
@@ -83,6 +83,7 @@ struct PlayerView: View {
 private struct PlaybackStatus: View {
     let playback: PlaybackState
     let saMidi: Int
+    var saCents = 0
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
@@ -96,7 +97,7 @@ private struct PlaybackStatus: View {
     }
 
     private var sa: some View {
-        Text("Sa: \(PracticeSettingsView.saLabel(saMidi))").fontWeight(.medium).foregroundStyle(Color.subdued)
+        Text("Sa: \(PracticeSettingsView.saLabel(saMidi, cents: saCents))").fontWeight(.medium).foregroundStyle(Color.subdued)
     }
 
     @ViewBuilder private var status: some View {
@@ -146,12 +147,12 @@ struct PracticeSettingsView: View {
                     // A custom list: the system picker's grey value text fails contrast,
                     // and menus clip at large text sizes.
                     NavigationLink {
-                        SaChoiceList(saMidi: $settings.saMidi)
+                        SaChoiceList(saMidi: $settings.saMidi, saCents: $settings.saCents)
                     } label: {
                         HStack {
                             Text("Sa")
                             Spacer()
-                            Text(Self.saLabel(settings.saMidi)).foregroundStyle(Color.subdued)
+                            Text(Self.saLabel(settings.saMidi, cents: settings.saCents)).foregroundStyle(Color.subdued)
                         }
                     }
                 }
@@ -195,6 +196,21 @@ struct PracticeSettingsView: View {
                     Toggle("Count in one avarta", isOn: $settings.countIn)
                     Toggle("Repeat continuously", isOn: $settings.loop)
                 }
+                Section {
+                    Picker("Strictness", selection: $settings.strictness) {
+                        Text("Gentle").tag(PracticeSettings.StrictnessChoice.gentle)
+                        Text("Steady").tag(PracticeSettings.StrictnessChoice.steady)
+                        Text("Precise").tag(PracticeSettings.StrictnessChoice.precise)
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                    Text("In tune within ±\(Int(settings.strictness.kotlin.inTuneCents)) cents, close within ±\(Int(settings.strictness.kotlin.closeCents)).")
+                        .font(.footnote)
+                        .foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                } header: {
+                    Text("Strictness").foregroundStyle(Color.subdued)
+                }
             }
             .navigationTitle("Practice settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -208,31 +224,66 @@ struct PracticeSettingsView: View {
         }
     }
 
-    static func saLabel(_ midi: Int) -> String {
+    /// "C3 · 1 kattai", with " +12¢" when fine-tuned.
+    static func saLabel(_ midi: Int, cents: Int = 0) -> String {
         "\(Shruti.shared.noteName(midi: Int32(midi))) · \(Shruti.shared.kattai(midi: Int32(midi))) kattai"
+            + Shruti.shared.fineTuneSuffix(cents: Int32(cents))
     }
 }
 
 /// Every Sa choice, current one checked.
 struct SaChoiceList: View {
     @Binding var saMidi: Int
+    @Binding var saCents: Int
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        List(PracticeSettings.saRange, id: \.self) { midi in
-            Button {
-                saMidi = midi
-                dismiss()
-            } label: {
-                HStack {
-                    Text(PracticeSettingsView.saLabel(midi)).foregroundStyle(Color.primary)
-                    Spacer()
-                    if midi == saMidi { Image(systemName: "checkmark") }
+        // Grouped by the voices that usually use each Sa (docs/plan-shruti.md).
+        List {
+            Section {
+                FineTuneControl(cents: $saCents)
+            }
+            ForEach(VoiceRange.entries, id: \.name) { range in
+                Section {
+                    ForEach(PracticeSettings.saRange.filter { Int32($0) >= range.midis.first && Int32($0) <= range.midis.last }, id: \.self) { midi in
+                        Button {
+                            saMidi = midi
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Text(PracticeSettingsView.saLabel(midi)).foregroundStyle(Color.primary)
+                                Spacer()
+                                if midi == saMidi { Image(systemName: "checkmark") }
+                            }
+                        }
+                        .accessibilityAddTraits(midi == saMidi ? .isSelected : [])
+                    }
+                } header: {
+                    Text(range.title).foregroundStyle(Color.subdued).accessibilityAddTraits(.isHeader)
                 }
             }
-            .accessibilityAddTraits(midi == saMidi ? .isSelected : [])
         }
         .navigationTitle("Sa")
+    }
+}
+
+/// Sa fine-tune in cents, in one-cent steps (hold the button to step quickly).
+private struct FineTuneControl: View {
+    @Binding var cents: Int
+
+    private var valueText: String {
+        cents == 0 ? String(localized: "exact") : "\(cents > 0 ? "+" : "−")\(abs(cents))¢"
+    }
+
+    var body: some View {
+        Stepper(value: $cents, in: PracticeSettings.fineTuneRange) {
+            Text("Fine tune: \(valueText)").fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityValue(Text("\(cents) cents"))
+        Text("Nudge Sa up or down to match a teacher's shruti box or a recording.")
+            .font(.footnote)
+            .foregroundStyle(Color.subdued)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 

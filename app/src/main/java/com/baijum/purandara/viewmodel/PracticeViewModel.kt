@@ -28,6 +28,7 @@ import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.practice.PracticeHistory
+import com.baijum.purandara.shruti.FindSaGuide
 import com.baijum.purandara.shruti.HoldGoal
 import com.baijum.purandara.shruti.HoldTarget
 import com.baijum.purandara.shruti.ShrutiOutcome
@@ -272,7 +273,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         ) { frame ->
             val hz = frame.frequencyHz?.takeIf { frame.rms >= BleedModel.MIN_VOICE_RMS }
             val next = guide.onFrame(frame.timeSeconds, hz)
-            mainHandler.post { if (_state.value.findSa.open) _state.update { it.copy(findSa = next) } }
+            mainHandler.post { if (_state.value.findSa.open) _state.update { it.copy(findSa = FindSaUiState(open = true, progress = next)) } }
         }.also { it.start() }
     }
 
@@ -282,7 +283,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun useSuggestedSa() {
-        val suggestion = _state.value.findSa.suggestion ?: return
+        val suggestion = _state.value.findSa.progress.suggestion ?: return
         closeFindSa()
         updateSettings { it.copy(saMidi = suggestion.saMidi, saCents = 0) }
     }

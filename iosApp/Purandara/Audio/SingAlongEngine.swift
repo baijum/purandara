@@ -1,71 +1,30 @@
 import AVFoundation
 import shared
 
-/// Sing-along for one playback: mic buffers → windows → (SwiftF0 every few
-/// windows) → YIN pipeline → the shared `SingAlongSession`. Mirrors Android's
-/// `SingAlongEngine`.
+/// Sing-along for one playback: a `PitchListener` feeding the shared
+/// `SingAlongSession`. Mirrors Android's `SingAlongEngine`.
 ///
-/// Mic buffers arrive on an AVFoundation thread and are copied straight to a
-/// serial queue, where all Kotlin work happens. Each window's capture host
-/// time is mapped through `VarisaiAudioPlayer.outputFrame(atHostTime:)` to the
-/// rendered frame the singer was hearing, so the shared clock runs with zero
-/// extra latency. `onOutcome` runs on that queue.
+/// Each window's capture host time is mapped through
+/// `VarisaiAudioPlayer.outputFrame(atHostTime:)` to the rendered frame the
+/// singer was hearing, so the shared clock runs with zero extra latency.
+/// `onOutcome` runs on the listener's queue.
 final class SingAlongEngine: @unchecked Sendable {
     private let player: VarisaiAudioPlayer
-    private let renderer: SampleRenderer
     private let session: SingAlongSession
-    private let supervisorFactory: (Int32) -> NeuralPitchSupervisor?
-    private let syntheticCents: Double?
-    private let schedule: Schedule
-    private let onOutcome: (FrameOutcome) -> Void
-    private let queue = DispatchQueue(label: "purandara.sing-along", qos: .userInitiated)
-
-    // Queue-confined.
-    private var pipeline: PitchPipeline?
-    private var supervisor: NeuralPitchSupervisor?
-    private var ring: [Float] = []
-    private var ringStartHost: UInt64 = 0
-    private var micRate: Double = 44_100
-    private var sinceLastWindow = 0
-    private var synthetic: DispatchSourceTimer?
-    private var phase = 0.0
-    private var stopped = false
-
-    #if DEBUG
-    /// Once-a-second console line for device checks: `devicectl device process launch --console`.
-    private var diag = (buffers: 0, windows: 0, noTime: 0, pitched: 0, voiced: 0, peakMic: Float(0), peakOut: Float(0), last: 0.0)
-    private func logDiagnostics() {
-        let now = CACurrentMediaTime()
-        guard now - diag.last >= 1 else { return }
-        let route = AVAudioSession.sharedInstance().currentRoute
-        print("[singalong] rate \(Int(micRate)) buffers \(diag.buffers) windows \(diag.windows) noTime \(diag.noTime) "
-            + "pitched \(diag.pitched) voiced \(diag.voiced) mic \(String(format: "%.4f", diag.peakMic)) "
-            + "out \(String(format: "%.4f", diag.peakOut)) leak \(String(format: "%.3f", session.leakageRatio)) "
-            + "calibrated \(session.bleedCalibrated) onSpeaker \(player.micOnSpeaker) "
-            + "in \(route.inputs.map(\.portType.rawValue)) out \(route.outputs.map(\.portType.rawValue))")
-        diag = (0, 0, 0, 0, 0, 0, 0, now)
-    }
-    #endif
-
-    private static let window = Int(PitchPipeline.companion.WINDOW_SIZE)
-    private static let hop = Int(PitchPipeline.companion.HOP_SIZE)
+    private var listener: PitchListener!
 
     init(
         player: VarisaiAudioPlayer,
         renderer: SampleRenderer,
         schedule: Schedule,
+        strictness: Strictness,
         syntheticCents: Double?,
         supervisorFactory: @escaping (Int32) -> NeuralPitchSupervisor?,
         onOutcome: @escaping (FrameOutcome) -> Void
     ) {
         self.player = player
-        self.renderer = renderer
-        self.schedule = schedule
-        self.syntheticCents = syntheticCents
-        self.supervisorFactory = supervisorFactory
-        self.onOutcome = onOutcome
         let rate = Double(renderer.sampleRate)
-        session = SingAlongSession(
+        let session = SingAlongSession(
             schedule: schedule,
             clock: SingAlongClock(
                 countInSeconds: Double(renderer.countInFrames) / rate,
@@ -74,136 +33,45 @@ final class SingAlongEngine: @unchecked Sendable {
                 outputLatencySeconds: 0,
                 inputLatencySeconds: 0),
             sampleRate: renderer.sampleRate,
-            outputLevels: OutputLevels(capacity: 512))
-        player.onRendered = { [session] start, rms in session.outputLevels.record(startFrame: start, rms: rms) }
+            outputLevels: OutputLevels(capacity: 512),
+            strictness: strictness)
+        self.session = session
+        // The debug synthetic singer sings the note being heard, silent in the count-in.
+        let synthetic = syntheticCents.map { cents in
+            PitchListener.SyntheticSinger(cents: cents) { [weak player] host in
+                guard let frame = player?.outputFrame(atHostTime: host), frame >= 0,
+                      renderer.countInBeat(frame: frame) == nil else { return nil }
+                let t = renderer.passSeconds(frame: frame)
+                guard t < schedule.durationSeconds else { return nil }
+                return schedule.notes.last { $0.startSeconds <= t }?.frequencyHz
+            }
+        }
+        listener = PitchListener(
+            timeOf: { [weak player] host in player?.outputFrame(atHostTime: host).map { Double($0) / rate } },
+            synthetic: synthetic,
+            supervisorFactory: supervisorFactory
+        ) { frame in onOutcome(session.onFrame(frame: frame)) }
+        #if DEBUG
+        listener.diagnostics = { [weak player] in
+            "leak \(String(format: "%.3f", session.leakageRatio)) calibrated \(session.bleedCalibrated) onSpeaker \(player?.micOnSpeaker ?? false)"
+        }
+        #endif
+        player.onRendered = { start, rms in session.outputLevels.record(startFrame: start, rms: rms) }
     }
 
     /// The mic request to pass to `VarisaiAudioPlayer.play`, or nil when a synthetic singer replaces the mic.
     func micRequest(echoCancellation: Bool) -> VarisaiAudioPlayer.MicRequest? {
-        guard syntheticCents == nil else { return nil }
-        return VarisaiAudioPlayer.MicRequest(echoCancellation: echoCancellation) { [weak self] buffer, when in
-            guard let self, let channel = buffer.floatChannelData?[0] else { return }
-            let samples = Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
-            let rate = buffer.format.sampleRate
-            let host = when.isHostTimeValid ? when.hostTime : mach_absolute_time()
-            self.queue.async { self.append(samples, rate: rate, hostTime: host) }
-        }
+        listener.micRequest(echoCancellation: echoCancellation)
     }
 
     /// Call right after playback starts.
-    func start() {
-        queue.async { [self] in
-            if let cents = syntheticCents { startSynthetic(cents: cents) }
-        }
-    }
+    func start() { listener.start() }
 
     /// Stops listening; returns the scored final pass, if one was in progress.
     func stop() -> PassResult? {
-        queue.sync {
-            stopped = true
-            synthetic?.cancel()
-            synthetic = nil
+        listener.stop { [self] in
             player.onRendered = nil
             return session.finish()
         }
-    }
-
-    // MARK: - Queue
-
-    private func append(_ samples: [Float], rate: Double, hostTime: UInt64) {
-        guard !stopped else { return }
-        #if DEBUG
-        diag.buffers += 1
-        logDiagnostics()
-        #endif
-        if pipeline == nil || rate != micRate {
-            micRate = rate
-            pipeline = PitchPipeline(sampleRate: Int32(rate))
-            supervisor = supervisorFactory(Int32(rate))
-            ring.removeAll()
-            sinceLastWindow = 0
-        }
-        if ring.isEmpty {
-            ringStartHost = hostTime - AVAudioTime.hostTime(forSeconds: AVAudioSession.sharedInstance().inputLatency)
-        }
-        ring.append(contentsOf: samples)
-        // Windows can only end where a full window of history precedes them,
-        // so audio that arrived before the first full window doesn't count.
-        sinceLastWindow = min(sinceLastWindow + samples.count, max(0, ring.count - Self.window))
-        while ring.count >= Self.window && sinceLastWindow >= Self.hop {
-            sinceLastWindow -= Self.hop
-            // Window ends `sinceLastWindow` samples before the newest sample.
-            let end = ring.count - sinceLastWindow
-            let start = end - Self.window
-            let centreOffset = Double(start + Self.window / 2) / micRate
-            let captureHost = ringStartHost + AVAudioTime.hostTime(forSeconds: centreOffset)
-            process(Array(ring[start..<end]), captureHost: captureHost)
-        }
-        // Keep the history the next window needs.
-        let excess = ring.count - Self.window - sinceLastWindow
-        if excess > Self.hop * 4 {
-            ring.removeFirst(excess)
-            ringStartHost += AVAudioTime.hostTime(forSeconds: Double(excess) / micRate)
-        }
-    }
-
-    private func process(_ samples: [Float], captureHost: UInt64) {
-        #if DEBUG
-        diag.windows += 1
-        #endif
-        guard let pipeline, let heard = player.outputFrame(atHostTime: captureHost) else {
-            #if DEBUG
-            diag.noTime += 1
-            #endif
-            return
-        }
-        let window = samples.withUnsafeBufferPointer {
-            FloatBridge.shared.toFloatArray(source: UnsafeMutableRawPointer(mutating: $0.baseAddress!), count: Int32(samples.count))
-        }
-        if pipeline.beginFrame() { pipeline.onNeuralResult(result: supervisor?.estimate(window)) }
-        let frame = pipeline.process(window: window, timeSeconds: Double(heard) / Double(renderer.sampleRate))
-        let outcome = session.onFrame(frame: frame)
-        #if DEBUG
-        diag.peakMic = max(diag.peakMic, frame.rms)
-        diag.peakOut = max(diag.peakOut, session.outputLevels.rmsAt(frame: heard))
-        if frame.frequencyHz != nil { diag.pitched += 1 }
-        if outcome.live.reading != nil { diag.voiced += 1 }
-        #endif
-        onOutcome(outcome)
-    }
-
-    // MARK: - Debug synthetic singer
-
-    private func startSynthetic(cents: Double) {
-        micRate = 44_100
-        pipeline = PitchPipeline(sampleRate: 44_100)
-        supervisor = supervisorFactory(44_100)
-        let timer = DispatchSource.makeTimerSource(queue: queue)
-        timer.schedule(deadline: .now(), repeating: Double(Self.hop) / micRate)
-        var window = [Float](repeating: 0, count: Self.window)
-        timer.setEventHandler { [weak self] in
-            guard let self, !self.stopped else { return }
-            let now = mach_absolute_time()
-            let hz = self.syntheticFrequency(atHostTime: now).map { $0 * pow(2, cents / 1200) }
-            window.removeFirst(Self.hop)
-            for _ in 0..<Self.hop {
-                guard let hz else { window.append(0); continue }
-                self.phase += 2 * Double.pi * hz / self.micRate
-                var v = 0.0
-                for h in 1...6 { v += sin(Double(h) * self.phase) / Double(h) }
-                window.append(Float(0.2 * v / 2.45))
-            }
-            self.process(window, captureHost: now)
-        }
-        timer.resume()
-        synthetic = timer
-    }
-
-    private func syntheticFrequency(atHostTime host: UInt64) -> Double? {
-        guard let frame = player.outputFrame(atHostTime: host), frame >= 0,
-              renderer.countInBeat(frame: frame) == nil else { return nil }
-        let t = renderer.passSeconds(frame: frame)
-        guard t < schedule.durationSeconds else { return nil }
-        return schedule.notes.last { $0.startSeconds <= t }?.frequencyHz
     }
 }

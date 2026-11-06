@@ -76,7 +76,7 @@ private fun ShrutiRoute(viewModel: PracticeViewModel, state: PracticeUiState, al
 private fun FindSaRoute(viewModel: PracticeViewModel, state: PracticeUiState, allowMic: () -> Unit) {
     BackHandler { viewModel.closeFindSa() }
     FindSaScreen(
-        state.findSa,
+        state.findSa.progress,
         micPermitted = state.singAlong.micPermitted || viewModel.debugSyntheticSingerCents != null,
         actions = FindSaActions(
             onBack = viewModel::closeFindSa,

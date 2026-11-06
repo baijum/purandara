@@ -19,7 +19,7 @@ enum SingAlongText {
     static func live(_ reading: SwaraReading?) -> String {
         guard let reading else { return String(localized: "Not hearing you yet") }
         let cents = Int(reading.centsOff.rounded())
-        return "\(label(reading.swara, octave: Int(reading.octave))) · \(zoneWord(Zone.companion.of(cents: reading.centsOff), cents: Double(cents))) · \(cents >= 0 ? "+" : "")\(cents)¢ · \(reading.westernName)"
+        return "\(label(reading.swara, octave: Int(reading.octave))) · \(zoneWord(reading.zone(), cents: Double(cents))) · \(cents >= 0 ? "+" : "")\(cents)¢ · \(reading.westernName)"
     }
 
     /// Words for a mark ("in tune", "high", "not heard"…), or nil.

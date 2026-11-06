@@ -13,9 +13,9 @@ enum class HoldTarget(val swara: Swara, val octave: Int) {
 
 /** How long one hold should last. */
 enum class HoldGoal(val seconds: Double) {
-    SHORT(10.0),
-    MEDIUM(20.0),
-    LONG(30.0),
+    TEN(10.0),
+    TWENTY(20.0),
+    THIRTY(30.0),
 }
 
 /**

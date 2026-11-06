@@ -79,6 +79,8 @@ final class PracticeSettingsStoreTests: XCTestCase {
         s.singAlong = true
         s.harmoniumGuide = false
         s.echoCancellation = false
+        s.strictness = .gentle
+        s.saCents = -12
         store.save(s)
         XCTAssertEqual(store.load(), s)
     }

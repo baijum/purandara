@@ -33,13 +33,13 @@ import com.baijum.purandara.domain.Pitch
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.shruti.SaSuggestion
 import com.baijum.purandara.ui.saLabel
-import com.baijum.purandara.viewmodel.FindSaStep
-import com.baijum.purandara.viewmodel.FindSaUiState
+import com.baijum.purandara.shruti.FindSaProgress
+import com.baijum.purandara.shruti.FindSaStep
 
 /** Find my Sa: catch the lowest and highest comfortable notes, then suggest a Sa (docs/plan-shruti.md). */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun FindSaScreen(state: FindSaUiState, micPermitted: Boolean, actions: FindSaActions) {
+fun FindSaScreen(state: FindSaProgress, micPermitted: Boolean, actions: FindSaActions) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -71,8 +71,8 @@ fun FindSaScreen(state: FindSaUiState, micPermitted: Boolean, actions: FindSaAct
                         liveRegion = LiveRegionMode.Polite
                     },
                 )
-                LinearProgressIndicator(progress = { state.progress.toFloat() }, modifier = Modifier.fillMaxWidth())
-                state.hearing?.let { Text(stringResource(R.string.find_sa_hearing, it), style = MaterialTheme.typography.bodyLarge) }
+                LinearProgressIndicator(progress = { state.holding.toFloat() }, modifier = Modifier.fillMaxWidth())
+                state.hearingHz?.let { Text(stringResource(R.string.find_sa_hearing, noteName(it)), style = MaterialTheme.typography.bodyLarge) }
                 if (state.notHigher) {
                     Text(stringResource(R.string.find_sa_not_higher), color = MaterialTheme.colorScheme.error)
                 }
@@ -85,7 +85,7 @@ fun FindSaScreen(state: FindSaUiState, micPermitted: Boolean, actions: FindSaAct
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FindSaResult(state: FindSaUiState, suggestion: SaSuggestion, actions: FindSaActions) {
+private fun FindSaResult(state: FindSaProgress, suggestion: SaSuggestion, actions: FindSaActions) {
             Text(
                 stringResource(R.string.find_sa_result, saLabel(suggestion.saMidi)),
                 style = MaterialTheme.typography.headlineSmall,

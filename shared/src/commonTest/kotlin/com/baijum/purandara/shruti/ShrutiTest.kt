@@ -45,7 +45,7 @@ class HoldTrackerTest {
 
     @Test
     fun holdGrowsWhileOnTargetAndReachesTheGoal() {
-        val t = HoldTracker(HoldTarget.SA, HoldGoal.SHORT)
+        val t = HoldTracker(HoldTarget.SA, HoldGoal.TEN)
         var state = t.state
         for (i in 0..1050) state = t.onFrame(i * 0.01, at(5.0)) // 10.5 s on Sa
         assertTrue(state.reached)
@@ -55,7 +55,7 @@ class HoldTrackerTest {
 
     @Test
     fun shortBreaksAreForgivenLongOnesEndTheHold() {
-        val t = HoldTracker(HoldTarget.SA, HoldGoal.SHORT)
+        val t = HoldTracker(HoldTarget.SA, HoldGoal.TEN)
         for (i in 0..200) t.onFrame(i * 0.01, at(0.0)) // 2 s
         for (i in 201..220) t.onFrame(i * 0.01, null) // 0.2 s breath
         for (i in 221..400) t.onFrame(i * 0.01, at(0.0))
@@ -68,12 +68,12 @@ class HoldTrackerTest {
 
     @Test
     fun wrongSwaraWrongOctaveOrOffPitchIsNotOnTarget() {
-        val t = HoldTracker(HoldTarget.SA, HoldGoal.SHORT)
+        val t = HoldTracker(HoldTarget.SA, HoldGoal.TEN)
         assertFalse(t.onFrame(0.0, at(0.0, ratio = 1.5)).onTarget, "Pa is not Sa")
         assertFalse(t.onFrame(0.01, at(0.0, ratio = 2.0)).onTarget, "upper Sa is not Sa")
         assertFalse(t.onFrame(0.02, at(40.0)).onTarget, "40 cents sharp is off at Precise")
-        assertTrue(HoldTracker(HoldTarget.UPPER_SA, HoldGoal.SHORT).onFrame(0.0, at(0.0, ratio = 2.0)).onTarget)
-        assertTrue(HoldTracker(HoldTarget.PA, HoldGoal.SHORT).onFrame(0.0, at(-20.0, ratio = 1.5)).onTarget)
+        assertTrue(HoldTracker(HoldTarget.UPPER_SA, HoldGoal.TEN).onFrame(0.0, at(0.0, ratio = 2.0)).onTarget)
+        assertTrue(HoldTracker(HoldTarget.PA, HoldGoal.TEN).onFrame(0.0, at(-20.0, ratio = 1.5)).onTarget)
     }
 }
 
@@ -103,7 +103,7 @@ class ShrutiSessionTest {
         val levels = OutputLevels()
         levels.record(0, 0.1f)
         val s = session(levels)
-        s.startHold(HoldTarget.SA, HoldGoal.SHORT)
+        s.startHold(HoldTarget.SA, HoldGoal.TEN)
         for (i in 0 until 200) s.onFrame(PitchFrame(i * 0.01, null, 0.004f))
         var last = s.hold
         for (i in 200..1300) last = s.onFrame(PitchFrame(i * 0.01, sa, 0.1f)).hold
@@ -167,5 +167,27 @@ class FineTuneAndVoiceRangeTest {
         for (midi in Shruti.SA_RANGE) Shruti.voiceRange(midi)
         assertEquals(VoiceRange.MEN, Shruti.voiceRange(48))
         assertEquals(VoiceRange.WOMEN, Shruti.voiceRange(55))
+    }
+}
+
+class FindSaGuideTest {
+    private fun hz(midi: Int) = Pitch.midiToHz(midi)
+
+    @Test
+    fun lowestThenAClearlyHigherNoteGiveASuggestion() {
+        val guide = FindSaGuide()
+        var p = guide.onFrame(0.0, null)
+        var t = 0.0
+        while (p.step == FindSaStep.LOWEST) { t += 0.01; p = guide.onFrame(t, hz(43)) }
+        assertEquals(43, Pitch.nearestMidi(p.lowestHz!!))
+        // Still holding the low note: not counted as the highest.
+        repeat(300) { t += 0.01; p = guide.onFrame(t, hz(44)) }
+        assertEquals(FindSaStep.HIGHEST, p.step)
+        assertTrue(p.notHigher)
+        while (p.step == FindSaStep.HIGHEST) { t += 0.01; p = guide.onFrame(t, hz(67)) }
+        assertEquals(FindSaStep.DONE, p.step)
+        assertEquals(67, Pitch.nearestMidi(p.highestHz!!))
+        assertEquals(SaFinder.suggest(hz(43), hz(67)), p.suggestion)
+        assertEquals(1.0, p.holding)
     }
 }

@@ -45,6 +45,33 @@ struct SingAlongUI {
     var lastSummary: (pass: Int, summary: PassSummary)?
 }
 
+/// One point of Shruti practice's free pitch trace.
+struct FreeTracePoint {
+    let seconds: Double
+    let centsFromSa: Double
+    let zone: Zone
+}
+
+/// Hands a value made on a listener queue to the main actor. Safe because the
+/// value is created there once and only read afterwards (Kotlin objects aren't `Sendable`).
+struct Handoff<T>: @unchecked Sendable {
+    let value: T
+    init(_ value: T) { self.value = value }
+}
+
+/// What the Shruti practice screen shows (docs/plan-shruti.md). Mirrors Android's `ShrutiUiState`.
+struct ShrutiUI {
+    var open = false
+    /// The opening room check: the student should stay quiet.
+    var listeningToRoom = false
+    var reading: SwaraReading?
+    /// About the last ten seconds.
+    var trace: [FreeTracePoint] = []
+    var target: HoldTarget = .sa
+    var goal: HoldGoal = .ten
+    var hold: HoldState?
+}
+
 /// Holds practice settings, the samples and playback. Mirrors Android's `PracticeViewModel`.
 /// Changing a setting while playing restarts the exercise with the new settings.
 @MainActor
@@ -55,6 +82,7 @@ final class PracticeViewModel: ObservableObject {
             store.save(settings)
             if playback.playing, let current { play(current) }
             if tanpuraPlaying { playTanpura() }
+            if shruti.open { startShruti() }
         }
     }
     @Published private(set) var samplesLoaded = false
@@ -65,6 +93,10 @@ final class PracticeViewModel: ObservableObject {
     @Published private(set) var history: PracticeHistory
     /// The landing page's tanpura-only drone is sounding.
     @Published private(set) var tanpuraPlaying = false
+    @Published private(set) var shruti = ShrutiUI()
+    /// Find my Sa: open, and its progress (nil until the first frame).
+    @Published private(set) var findSaOpen = false
+    @Published private(set) var findSa: FindSaProgress?
 
     let catalog: [Varisai] = VarisaiCatalog.shared.all
 
@@ -79,6 +111,9 @@ final class PracticeViewModel: ObservableObject {
     private var engine: SingAlongEngine?
     /// The exercise playing now has been heard through one full pass (recorded once per play).
     private var practisedThisPlay = false
+    /// Shruti practice or Find my Sa listening.
+    private var listener: PitchListener?
+    private var shrutiSession: ShrutiSession?
 
     /// Debug builds: launch argument `-singer <cents>` replaces the mic with a synthetic singer.
     let syntheticSingerCents: Double?
@@ -102,6 +137,9 @@ final class PracticeViewModel: ObservableObject {
                 await MainActor.run {
                     self.bank = bank
                     self.samplesLoaded = true
+                    // Opened before the samples were ready (e.g. a launch argument).
+                    if self.shruti.open { self.startShruti() }
+                    if self.findSaOpen { self.startFindSa() }
                 }
             } catch {
                 await MainActor.run { self.loadError = true }
@@ -135,7 +173,8 @@ final class PracticeViewModel: ObservableObject {
         let listening = settings.singAlong && (singAlong.micPermitted || syntheticSingerCents != nil)
         let sa = schedule.settings.saHz
         let newEngine = listening ? SingAlongEngine(
-            player: player, renderer: renderer, schedule: schedule, syntheticCents: syntheticSingerCents,
+            player: player, renderer: renderer, schedule: schedule, strictness: settings.strictness.kotlin,
+            syntheticCents: syntheticSingerCents,
             supervisorFactory: { NeuralPitchSupervisor(captureSampleRate: $0) },
             onOutcome: { [weak self] outcome in
                 DispatchQueue.main.async { self?.apply(outcome, from: renderer, saHz: sa) }
@@ -192,6 +231,225 @@ final class PracticeViewModel: ObservableObject {
         tanpuraPlaying = true
     }
 
+    // MARK: - Shruti practice and Find my Sa (docs/plan-shruti.md)
+
+    private var listeningAllowed: Bool { singAlong.micPermitted || syntheticSingerCents != nil }
+
+    func openShruti() {
+        shruti = ShrutiUI(open: true, target: shruti.target, goal: shruti.goal)
+        startShruti()
+    }
+
+    func closeShruti() {
+        guard shruti.open else { return }
+        shruti.open = false
+        stopImmediately()
+        shruti.reading = nil
+        shruti.trace = []
+        shruti.hold = nil
+    }
+
+    func setHold(target: HoldTarget, goal: HoldGoal) {
+        shrutiSession?.startHold(target: target, goal: goal)
+        shruti.target = target
+        shruti.goal = goal
+        shruti.hold = nil
+    }
+
+    /// Asks for the microphone, then restarts the open Shruti practice or Find my Sa.
+    func allowMic() {
+        Self.requestMic { [weak self] granted in
+            Task { @MainActor in
+                guard let self else { return }
+                self.singAlong.micPermitted = granted
+                self.singAlong.micDenied = !granted
+                if granted, self.shruti.open { self.startShruti() }
+                if granted, self.findSaOpen { self.startFindSa() }
+            }
+        }
+    }
+
+    /// The tanpura plus, with the mic allowed, a `ShrutiSession` listening to the student.
+    private func startShruti() {
+        guard let bank, let first = catalog.first else { return }
+        stopEverything()
+        let renderer = SampleRenderer(
+            bank: bank,
+            schedule: Schedule.companion.of(varisai: first, settings: settings.performance()),
+            options: RenderOptions.companion.droneOnly(droneLevel: settings.droneLevel))
+        self.renderer = renderer
+        let rate = Double(renderer.sampleRate)
+        let room = ShrutiSession.companion.DEFAULT_ROOM_CHECK_SECONDS
+        let session = ShrutiSession(
+            saHz: settings.saHz, raga: VarisaiCatalog.shared.raga, tuning: settings.tuning.kotlin,
+            strictness: settings.strictness.kotlin, sampleRate: renderer.sampleRate,
+            outputLevels: OutputLevels(capacity: 512), roomCheckSeconds: room)
+        session.startHold(target: shruti.target, goal: shruti.goal)
+        var mic: VarisaiAudioPlayer.MicRequest?
+        if listeningAllowed {
+            let listener = Self.shrutiListener(
+                player: player, session: session, rate: rate, room: room, saHz: settings.saHz,
+                syntheticCents: syntheticSingerCents
+            ) { [weak self, id = ObjectIdentifier(renderer)] outcome, seconds in
+                let box = Handoff(outcome)
+                Task { @MainActor in self?.apply(box.value, at: seconds, from: id) }
+            }
+            self.listener = listener
+            shrutiSession = session
+            player.onRendered = { start, rms in session.outputLevels.record(startFrame: start, rms: rms) }
+            mic = listener.micRequest(echoCancellation: settings.echoCancellation)
+        }
+        do {
+            try player.play(renderer, mic: mic) { [weak self] in self?.finished(renderer) }
+            singAlong.onSpeaker = mic != nil ? player.micOnSpeaker : VarisaiAudioPlayer.outputIsBuiltInSpeaker()
+        } catch {
+            finished(renderer)
+            return
+        }
+        listener?.start()
+        shruti.listeningToRoom = listeningAllowed
+        shruti.reading = nil
+        shruti.trace = []
+        shruti.hold = nil
+    }
+
+    /// Frames from a listener whose playback has since been replaced are ignored.
+    private func isCurrent(_ id: ObjectIdentifier) -> Bool { renderer.map(ObjectIdentifier.init) == id }
+
+    private func apply(_ outcome: ShrutiOutcome, at seconds: Double, from id: ObjectIdentifier) {
+        guard isCurrent(id), shruti.open else { return }
+        let wasReached = shruti.hold?.reached ?? false
+        shruti.listeningToRoom = outcome.listeningToRoom
+        shruti.reading = outcome.reading
+        shruti.hold = outcome.hold
+        if let reading = outcome.reading {
+            shruti.trace.append(FreeTracePoint(
+                seconds: seconds, centsFromSa: 1200 * log2(reading.frequencyHz / settings.saHz), zone: reading.zone()))
+        }
+        if let first = shruti.trace.firstIndex(where: { $0.seconds >= seconds - 10 }), first > 0 {
+            shruti.trace.removeFirst(first)
+        }
+        if !wasReached, let hold = outcome.hold, hold.reached {
+            UIAccessibility.post(notification: .announcement, argument: ShrutiText.reached(hold))
+        }
+    }
+
+    func openFindSa() {
+        findSaOpen = true
+        findSa = nil
+        startFindSa()
+    }
+
+    func closeFindSa() {
+        guard findSaOpen else { return }
+        findSaOpen = false
+        stopImmediately()
+    }
+
+    func useSuggestedSa() {
+        guard let suggestion = findSa?.suggestion else { return }
+        settings.saMidi = Int(suggestion.saMidi)
+        settings.saCents = 0
+    }
+
+    /// Listens without sound (a silent drone keeps the engine, and its mic, running).
+    private func startFindSa() {
+        guard let bank, let first = catalog.first else { return }
+        stopEverything()
+        findSa = nil
+        guard listeningAllowed else { return }
+        let renderer = SampleRenderer(
+            bank: bank,
+            schedule: Schedule.companion.of(varisai: first, settings: settings.performance()),
+            options: RenderOptions.companion.droneOnly(droneLevel: 0))
+        self.renderer = renderer
+        let listener = Self.findSaListener(syntheticCents: syntheticSingerCents) { [weak self, id = ObjectIdentifier(renderer)] progress in
+            let box = Handoff(progress)
+            Task { @MainActor in self?.apply(box.value, from: id) }
+        }
+        self.listener = listener
+        do {
+            try player.play(renderer, mic: listener.micRequest(echoCancellation: false)) { [weak self] in self?.finished(renderer) }
+        } catch {
+            finished(renderer)
+            return
+        }
+        listener.start()
+    }
+
+    private func apply(_ progress: FindSaProgress, from id: ObjectIdentifier) {
+        guard isCurrent(id), findSaOpen else { return }
+        let wasDone = findSa?.step == .done
+        findSa = progress
+        if !wasDone, progress.step == .done, let suggestion = progress.suggestion {
+            UIAccessibility.post(notification: .announcement, argument: ShrutiText.suggestion(suggestion))
+        }
+    }
+
+    // Built outside the main actor: the listener calls these closures on its own queue.
+
+    nonisolated private static func shrutiListener(
+        player: VarisaiAudioPlayer, session: ShrutiSession, rate: Double, room: Double, saHz: Double,
+        syntheticCents: Double?, deliver: @escaping @Sendable (ShrutiOutcome, Double) -> Void
+    ) -> PitchListener {
+        // The debug synthetic singer sings Sa after the room check, like a student would.
+        let synthetic = syntheticCents.map { cents in
+            PitchListener.SyntheticSinger(cents: cents) { [weak player] host in
+                guard let frame = player?.outputFrame(atHostTime: host), Double(frame) / rate >= room else { return nil }
+                return saHz
+            }
+        }
+        return PitchListener(
+            timeOf: { [weak player] host in
+                guard let frame = player?.outputFrame(atHostTime: host), frame >= 0 else { return nil }
+                return Double(frame) / rate
+            },
+            synthetic: synthetic,
+            supervisorFactory: { NeuralPitchSupervisor(captureSampleRate: $0) }
+        ) { frame in deliver(session.onFrame(frame: frame), frame.timeSeconds) }
+    }
+
+    nonisolated private static func findSaListener(
+        syntheticCents: Double?, deliver: @escaping @Sendable (FindSaProgress) -> Void
+    ) -> PitchListener {
+        let guide = FindSaGuide()
+        let start = AVAudioTime.seconds(forHostTime: mach_absolute_time())
+        let minVoice = BleedModel.companion.MIN_VOICE_RMS
+        // The debug synthetic singer sings G2, then G4.
+        let synthetic = syntheticCents.map { cents in
+            PitchListener.SyntheticSinger(cents: cents) { host in
+                AVAudioTime.seconds(forHostTime: host) - start < 4 ? 98 : 392
+            }
+        }
+        return PitchListener(
+            timeOf: { host in AVAudioTime.seconds(forHostTime: host) - start },
+            synthetic: synthetic,
+            supervisorFactory: { NeuralPitchSupervisor(captureSampleRate: $0) }
+        ) { frame in
+            let hz = frame.rms >= minVoice ? frame.frequencyHz : nil
+            deliver(guide.onFrame(timeSeconds: frame.timeSeconds, frequencyHz: hz))
+        }
+    }
+
+    /// Stops any exercise, drone or listening at once.
+    private func stopEverything() {
+        stopTimer()
+        _ = engine?.stop()
+        engine = nil
+        stopListening()
+        current = nil
+        schedule = nil
+        tanpuraPlaying = false
+        player.stopImmediately()
+    }
+
+    private func stopListening() {
+        listener?.stop {}
+        listener = nil
+        if shrutiSession != nil { player.onRendered = nil }
+        shrutiSession = nil
+    }
+
     #if DEBUG
     /// UI tests start from an empty history (`-resetSettings YES`).
     func resetHistory() {
@@ -222,6 +480,8 @@ final class PracticeViewModel: ObservableObject {
     /// or iOS rebuilt the audio engine): start again so echo cancellation and
     /// the count-in leakage measurement match. At most a few times in quick succession.
     private func restartPlayback() {
+        if shruti.open { startShruti(); return }
+        if findSaOpen { startFindSa(); return }
         guard let current, playback.playing else { return }
         let now = Date()
         recentRestarts = recentRestarts.filter { now.timeIntervalSince($0) < 10 } + [now]
@@ -241,6 +501,7 @@ final class PracticeViewModel: ObservableObject {
         guard which === renderer else { return }
         if let final = engine?.stop() { applyFinal(final) }
         engine = nil
+        stopListening()
         stopTimer()
         renderer = nil
         schedule = nil
@@ -294,7 +555,7 @@ final class PracticeViewModel: ObservableObject {
         if let reading = live.reading, let pass = live.pass, let t = live.secondsInPass {
             singAlong.trace.append(TraceSample(
                 pass: Int(truncating: pass), secondsInPass: Double(truncating: t),
-                centsFromSa: 1200 * log2(reading.frequencyHz / saHz), zone: Zone.companion.of(cents: reading.centsOff)))
+                centsFromSa: 1200 * log2(reading.frequencyHz / saHz), zone: reading.zone()))
             if singAlong.trace.count > 1500 { singAlong.trace.removeFirst(singAlong.trace.count - 1500) }
         }
         for mark in outcome.newMarks { record(mark) }

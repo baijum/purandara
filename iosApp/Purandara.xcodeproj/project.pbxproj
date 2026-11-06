@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0296579E3B2E308DB06B5A52 /* HarmoniumSamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */; };
+		10224C95DA12A396F0417243 /* PitchListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCCDC87BD7D51343B42D8B7F /* PitchListener.swift */; };
 		124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27118B7E3E2165E03506755 /* LibraryView.swift */; };
 		1AF67FF2548AEBD63FC3668E /* NeuralPitchSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */; };
 		20652ABAADD16B8AEC84E47A /* VarisaiAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */; };
@@ -25,6 +26,7 @@
 		B8EB36EB6F794A62C7CDFF7E /* PracticeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A18B2D52EAB6EBCA1269A1B /* PracticeTests.swift */; };
 		BF08A74FECBA0408C6B1285C /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483E84CDF43D5F521EB0595D /* Colors.swift */; };
 		D9FA91204D0D5862998418F9 /* PurandaraUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5FBDB9CFC6E06CA052AF937 /* PurandaraUITests.swift */; };
+		DE2B259645CB04BB365A98C8 /* ShrutiView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9197E6D30958F4BB3EF8BC1 /* ShrutiView.swift */; };
 		FC3F796F00AA989D622B24F0 /* NotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E08763E5702FC198877A4751 /* NotationView.swift */; };
 /* End PBXBuildFile section */
 
@@ -62,11 +64,13 @@
 		C27118B7E3E2165E03506755 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		C4C4F762B6B0F60ADE2A6A72 /* onnxruntime.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = onnxruntime.xcframework; path = Frameworks/onnxruntime.xcframework; sourceTree = "<group>"; };
 		C5FBDB9CFC6E06CA052AF937 /* PurandaraUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurandaraUITests.swift; sourceTree = "<group>"; };
+		C9197E6D30958F4BB3EF8BC1 /* ShrutiView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShrutiView.swift; sourceTree = "<group>"; };
 		DC4E97700204636916DBA862 /* PracticeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeViewModel.swift; sourceTree = "<group>"; };
 		DDFC0C5EDFBE869CD6F297C5 /* PurandaraUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PurandaraUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E08763E5702FC198877A4751 /* NotationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotationView.swift; sourceTree = "<group>"; };
 		E9E3789F99C97FAB0759E82A /* PurandaraTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PurandaraTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarmoniumSamples.swift; sourceTree = "<group>"; };
+		FCCDC87BD7D51343B42D8B7F /* PitchListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PitchListener.swift; sourceTree = "<group>"; };
 		FE49BD3C45C04B12B704AEB6 /* Purandara.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Purandara.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -100,6 +104,7 @@
 			children = (
 				F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */,
 				95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */,
+				FCCDC87BD7D51343B42D8B7F /* PitchListener.swift */,
 				27C642EBB842FC0EB61A4F50 /* SingAlongEngine.swift */,
 				6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */,
 			);
@@ -130,6 +135,7 @@
 				C27118B7E3E2165E03506755 /* LibraryView.swift */,
 				E08763E5702FC198877A4751 /* NotationView.swift */,
 				9DE6BE56662F27C8F99F8397 /* PlayerView.swift */,
+				C9197E6D30958F4BB3EF8BC1 /* ShrutiView.swift */,
 				04B6B95EFED9FE818FAD3842 /* SingAlongViews.swift */,
 			);
 			path = Views;
@@ -351,10 +357,12 @@
 				124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */,
 				1AF67FF2548AEBD63FC3668E /* NeuralPitchSupervisor.swift in Sources */,
 				FC3F796F00AA989D622B24F0 /* NotationView.swift in Sources */,
+				10224C95DA12A396F0417243 /* PitchListener.swift in Sources */,
 				7E5B9A9F2648990917F1D608 /* PlayerView.swift in Sources */,
 				7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */,
 				3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */,
 				814E479F470E51F9091B5BB3 /* PurandaraApp.swift in Sources */,
+				DE2B259645CB04BB365A98C8 /* ShrutiView.swift in Sources */,
 				9B580BACB857D2886E78AD0B /* SingAlongEngine.swift in Sources */,
 				4327EF87BA3A4AA73E3D8BA9 /* SingAlongViews.swift in Sources */,
 				20652ABAADD16B8AEC84E47A /* VarisaiAudioPlayer.swift in Sources */,

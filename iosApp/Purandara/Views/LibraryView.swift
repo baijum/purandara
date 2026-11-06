@@ -6,6 +6,8 @@ import shared
 /// (docs/plan-landing.md). Mirrors Android's `LibraryScreen`.
 struct LibraryView: View {
     @EnvironmentObject private var viewModel: PracticeViewModel
+    /// The navigation path, for the Sa card's buttons (links in a shared row would all open the first).
+    @Binding var path: [String]
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var sections: [(set: VarisaiSet, exercises: [Varisai])] {
@@ -46,7 +48,11 @@ struct LibraryView: View {
         }
         .navigationTitle("Purandara")
         .navigationDestination(for: String.self) { id in
-            if let varisai = VarisaiCatalog.shared.byId(id: id) {
+            if id == "shruti" {
+                ShrutiView()
+            } else if id == "find-sa" {
+                FindSaView()
+            } else if let varisai = VarisaiCatalog.shared.byId(id: id) {
                 PlayerView(varisai: varisai)
                     .onAppear { viewModel.stopTanpura() }
             }
@@ -123,12 +129,12 @@ struct LibraryView: View {
     private var saSection: some View {
         Section {
             NavigationLink {
-                SaChoiceList(saMidi: $viewModel.settings.saMidi)
+                SaChoiceList(saMidi: $viewModel.settings.saMidi, saCents: $viewModel.settings.saCents)
             } label: {
                 HStack {
                     Text("Sa")
                     Spacer()
-                    Text(PracticeSettingsView.saLabel(viewModel.settings.saMidi)).foregroundStyle(Color.subdued)
+                    Text(PracticeSettingsView.saLabel(viewModel.settings.saMidi, cents: viewModel.settings.saCents)).foregroundStyle(Color.subdued)
                 }
             }
             VStack(alignment: .leading, spacing: 6) {
@@ -145,6 +151,14 @@ struct LibraryView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(!viewModel.samplesLoaded)
+                // In this one row with the tanpura: separate list rows push each
+                // other out of the accessibility audit's view at large text sizes.
+                Button { path.append("shruti") } label: { iconText("Practise Sa", systemImage: "waveform") }
+                    .buttonStyle(.bordered)
+                    .disabled(!viewModel.samplesLoaded)
+                Button { path.append("find-sa") } label: { iconText("Find my Sa", systemImage: "person.wave.2") }
+                    .buttonStyle(.bordered)
+                    .disabled(!viewModel.samplesLoaded)
                 Text("Settle your voice on Sa before you practise.")
                     .font(.footnote)
                     .foregroundStyle(Color.subdued)
@@ -156,6 +170,14 @@ struct LibraryView: View {
                 .foregroundStyle(Color.subdued)
                 .accessibilityAddTraits(.isHeader)
         }
+    }
+}
+
+/// An image and a title that wraps (Label clips its title in list rows).
+private func iconText(_ title: LocalizedStringKey, systemImage: String) -> some View {
+    HStack(alignment: .firstTextBaseline, spacing: 8) {
+        Image(systemName: systemImage).accessibilityHidden(true)
+        Text(title).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
     }
 }
 

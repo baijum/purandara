@@ -9,6 +9,19 @@ struct PracticeSettings: Equatable {
         var kotlin: Tuning { self == .just ? .just : .equal }
     }
 
+    /// What counts as in tune and close (docs/plan-shruti.md).
+    enum StrictnessChoice: String, CaseIterable {
+        case gentle, steady, precise
+
+        var kotlin: Strictness {
+            switch self {
+            case .gentle: return .gentle
+            case .steady: return .steady
+            case .precise: return .precise
+            }
+        }
+    }
+
     var saMidi: Int = Int(Shruti.shared.DEFAULT_SA_MIDI)
     var tempo: Int = Int(PerformanceSettings.companion.DEFAULT_TEMPO)
     var kala: Int = 1
@@ -25,14 +38,21 @@ struct PracticeSettings: Equatable {
     var harmoniumGuide = true
     /// Sing-along cancels the app's own sound from the mic when playing through the speaker.
     var echoCancellation = true
+    var strictness: StrictnessChoice = .precise
+    /// Fine-tune of Sa in cents (`Shruti.FINE_TUNE_RANGE`).
+    var saCents = 0
 
     static let saRange = Int(Shruti.shared.SA_RANGE.first)...Int(Shruti.shared.SA_RANGE.last)
     static let tempoRange = Int(PerformanceSettings.companion.TEMPO_RANGE.first)...Int(PerformanceSettings.companion.TEMPO_RANGE.last)
     static let kalaRange = Int(PerformanceSettings.companion.KALA_RANGE.first)...Int(PerformanceSettings.companion.KALA_RANGE.last)
 
+    static let fineTuneRange = Int(Shruti.shared.FINE_TUNE_RANGE.first)...Int(Shruti.shared.FINE_TUNE_RANGE.last)
+
+    var saHz: Double { Shruti.shared.saHz(midi: Int32(saMidi), cents: Int32(saCents)) }
+
     func performance() -> PerformanceSettings {
         PerformanceSettings.companion.create(
-            saHz: Shruti.shared.saHz(midi: Int32(saMidi)),
+            saHz: saHz,
             tempo: Int32(tempo),
             kala: Int32(kala),
             tuning: tuning.kotlin)
@@ -67,6 +87,8 @@ struct PracticeSettingsStore {
         static let harmoniumGuide = "practice.harmoniumGuide"
         static let echoCancellation = "practice.echoCancellation"
         static let history = "practice.history"
+        static let strictness = "practice.strictness"
+        static let saCents = "practice.saCents"
     }
 
     func load() -> PracticeSettings {
@@ -83,6 +105,8 @@ struct PracticeSettingsStore {
         if let v = defaults.object(forKey: Key.singAlong) as? Bool { s.singAlong = v }
         if let v = defaults.object(forKey: Key.harmoniumGuide) as? Bool { s.harmoniumGuide = v }
         if let v = defaults.object(forKey: Key.echoCancellation) as? Bool { s.echoCancellation = v }
+        if let raw = defaults.string(forKey: Key.strictness), let v = PracticeSettings.StrictnessChoice(rawValue: raw) { s.strictness = v }
+        if let v = defaults.object(forKey: Key.saCents) as? Int, PracticeSettings.fineTuneRange.contains(v) { s.saCents = v }
         if let raw = defaults.string(forKey: Key.tuning), let v = PracticeSettings.TuningChoice(rawValue: raw) { s.tuning = v }
         return s
     }
@@ -109,5 +133,7 @@ struct PracticeSettingsStore {
         defaults.set(s.singAlong, forKey: Key.singAlong)
         defaults.set(s.harmoniumGuide, forKey: Key.harmoniumGuide)
         defaults.set(s.echoCancellation, forKey: Key.echoCancellation)
+        defaults.set(s.strictness.rawValue, forKey: Key.strictness)
+        defaults.set(s.saCents, forKey: Key.saCents)
     }
 }

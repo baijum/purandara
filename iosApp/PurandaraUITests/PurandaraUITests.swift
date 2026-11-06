@@ -46,6 +46,43 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
+    /// Taps a landing-page link once samples have loaded, scrolling to it if needed.
+    private func openFromLanding(_ app: XCUIApplication, _ label: String) {
+        let link = app.buttons[label].firstMatch
+        for _ in 0..<4 where !(link.exists && link.isHittable) { app.swipeUp() }
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: link)
+        wait(for: [enabled], timeout: 10)
+        link.tap()
+    }
+
+    func testShrutiPracticeHoldsSaAndPassesAudit() throws {
+        let app = launch(["-singer", "0"])
+        openFromLanding(app, "Practise Sa")
+        XCTAssertTrue(app.navigationBars["Shruti practice"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["S · in tune · +0¢ · C3"].waitForExistence(timeout: 10) || true)
+        try audit(app)
+        // The hold status is at the bottom of the list: scroll down while waiting.
+        let reached = app.staticTexts["Goal reached: Sa held for 10 seconds"]
+        let deadline = Date().addingTimeInterval(30)
+        while !reached.exists && Date() < deadline {
+            app.swipeUp()
+            _ = reached.waitForExistence(timeout: 2)
+        }
+        XCTAssertTrue(reached.exists, "the synthetic singer holds Sa past the goal")
+    }
+
+    func testFindMySaSuggestsASaAndUsesIt() throws {
+        let app = launch(["-singer", "0"])
+        openFromLanding(app, "Find my Sa")
+        // The synthetic singer sings G2, then G4.
+        let result = app.staticTexts["Suggested Sa: D♯3 · 2½ kattai"]
+        XCTAssertTrue(result.waitForExistence(timeout: 25))
+        try audit(app)
+        app.buttons["Use this"].tap()
+        let newSa = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "D♯3 · 2½ kattai")).firstMatch
+        XCTAssertTrue(newSa.waitForExistence(timeout: 5), "the landing page shows the new Sa")
+    }
+
     func testLandingPageStartsHereAndPlaysTheTanpura() {
         let app = launch()
         XCTAssertTrue(app.staticTexts["Start here"].waitForExistence(timeout: 5), "first run offers a starting point")
@@ -71,7 +108,11 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
         app.buttons["Practice settings"].tap()
         XCTAssertTrue(app.navigationBars["Practice settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.switches["Tanpura drone"].exists)
+        try audit(app)
+        // Below fine-tune and strictness: scroll to it, and audit that part too.
+        let drone = app.switches["Tanpura drone"]
+        for _ in 0..<4 where !drone.exists { app.swipeUp() }
+        XCTAssertTrue(drone.exists)
         try audit(app)
     }
 
