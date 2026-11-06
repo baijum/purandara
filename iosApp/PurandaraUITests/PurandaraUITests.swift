@@ -9,7 +9,8 @@ final class PurandaraUITests: XCTestCase {
 
     private func launch(_ arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = arguments
+        // Settings persist between launches; every test starts from the defaults.
+        app.launchArguments = ["-resetSettings", "YES"] + arguments
         app.launch()
         return app
     }
@@ -57,10 +58,40 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
+    func testSingAlongWithASharpSingerMarksEveryNoteHigh() {
+        // Debug synthetic singer 35 cents sharp on the 16-note plain scale (8 s count-in + 16 s).
+        let app = launch(["-open", "plain-scale-1", "-autoplay", "YES", "-singAlong", "YES", "-singer", "35"])
+        let summary = app.staticTexts["Pass 1: 0 of 16 notes in tune or close"]
+        XCTAssertTrue(summary.waitForExistence(timeout: 40), "pass summary")
+        XCTAssertTrue(app.otherElements["Avarta 1: S high R high G high M high, P high D high, N high S′ high"].exists)
+        XCTAssertTrue(app.buttons["Sing along"].exists)
+        XCTAssertEqual(app.buttons["Sing along"].value as? String, "On")
+    }
+
+    func testSingAlongInTuneAndAudit() throws {
+        let app = launch(["-open", "plain-scale-1", "-autoplay", "YES", "-singAlong", "YES", "-singer", "0"])
+        XCTAssertTrue(app.staticTexts["Pass 1: 16 of 16 notes in tune or close"].waitForExistence(timeout: 40))
+        XCTAssertTrue(app.otherElements["Your pitch"].exists)
+        // Audit the settled screen, after the release and the final beat highlight have finished.
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 5))
+        try audit(app)
+    }
+
     /// Runs the audit and names each offending element in the failure.
+    ///
+    /// One deliberate exception: Dynamic Type warnings on single notation
+    /// swaras ("S", "R", "S′"…). Eight columns must fit across the screen, so a
+    /// swara grows with the text size until it fills its column, then shrinks
+    /// rather than being cut off (a design decision: clipped notation dropped
+    /// swaras on Android). Verified by screenshot at the largest accessibility
+    /// size. Everything else, including these cells' contrast, stays strict.
     private func audit(_ app: XCUIApplication) throws {
         try app.performAccessibilityAudit { issue in
-            let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)'" } ?? "?"
+            if issue.auditType == .dynamicType, let label = issue.element?.label,
+               label.range(of: #"^[SRGMPDN]′?$"#, options: .regularExpression) != nil {
+                return true // ignored, see above
+            }
+            let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)' at \($0.frame)" } ?? "?"
             print("AUDIT: \(issue.compactDescription) — \(element)")
             return false
         }

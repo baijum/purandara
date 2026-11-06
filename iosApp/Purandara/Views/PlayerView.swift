@@ -7,13 +7,26 @@ struct PlayerView: View {
     let varisai: Varisai
     @EnvironmentObject private var viewModel: PracticeViewModel
     @State private var showingSettings = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(spacing: 0) {
             TalaStripView(beatInAvarta: viewModel.playback.beatInAvarta)
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-            NotationView(varisai: varisai, playback: viewModel.playback)
+                // Extra top space: the toolbar's glass shadow otherwise lowers the
+                // contrast of the right-most beat (flagged by the accessibility audit).
+                .padding(.top, 16)
+                .padding(.bottom, 8)
+            let showPanel = viewModel.settings.singAlong || (viewModel.singAlong.micDenied && !viewModel.singAlong.micPermitted)
+            // At accessibility text sizes the panel scrolls with the notation so nothing is pushed off screen.
+            if showPanel && !typeSize.isAccessibilitySize {
+                SingAlongPanel(varisai: varisai)
+            }
+            NotationView(
+                varisai: varisai,
+                playback: viewModel.playback,
+                marks: viewModel.settings.singAlong ? viewModel.singAlong.marks : [:],
+                header: showPanel && typeSize.isAccessibilitySize ? AnyView(SingAlongPanel(varisai: varisai)) : nil)
                 .frame(maxHeight: .infinity)
             if viewModel.playback.countingIn {
                 Text("Count-in…")
@@ -51,6 +64,15 @@ struct PlayerView: View {
         .navigationTitle(varisai.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    viewModel.toggleSingAlong()
+                } label: {
+                    Image(systemName: viewModel.settings.singAlong ? "mic.fill" : "mic")
+                }
+                .accessibilityLabel(Text("Sing along"))
+                .accessibilityValue(Text(viewModel.settings.singAlong ? "On" : "Off"))
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     showingSettings = true
@@ -124,6 +146,16 @@ struct PracticeSettingsView: View {
                     .labelsHidden()
                 } header: {
                     Text("Tuning").foregroundStyle(Color.subdued)
+                }
+                Section {
+                    Picker("Harmonium guide", selection: $settings.harmoniumGuide) {
+                        Text("All notes").tag(true)
+                        Text("Off (drone and click)").tag(false)
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                } header: {
+                    Text("Harmonium guide").foregroundStyle(Color.subdued)
                 }
                 Section {
                     Toggle("Drone (Sa and Pa)", isOn: $settings.drone)

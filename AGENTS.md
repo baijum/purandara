@@ -50,14 +50,17 @@ Do not add features speculatively.
 | `app/.../viewmodel/` | `PracticeViewModel`, `SingAlongState` |
 | `app/.../ui/` | `PurandaraApp` (library ↔ player), `library/`, `player/` |
 | `iosApp/Purandara/Audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (renders ahead on a queue into `AVAudioPlayerNode` buffers; no Kotlin on the real-time thread) |
-| `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel`; `LibraryView`, `PlayerView`, `NotationView` (+ `TalaStripView`) |
+| `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel`; `LibraryView`, `PlayerView`, `NotationView` (+ `TalaStripView`), `SingAlongViews` |
+| `iosApp/Purandara/Audio/SingAlongEngine.swift` | Mic tap (on the player's engine, for echo cancellation) → windows → shared session; debug synthetic singer |
+| `shared/.../singalong/Display.kt` | Swara labels (R₁, S′) and mark glyphs shared by both apps |
 | `shared/src/iosMain/.../audio/FloatBridge.kt` | Bulk float copies between Swift buffers and Kotlin arrays |
 
 Swift interop notes: Kotlin default arguments are not visible from Swift (use the
 small factories such as `PerformanceSettings.create(...)`, `RenderOptions.practice(...)`);
 Kotlin names starting with `copy`/`new`/`init` get a `do` prefix in Swift, so avoid them
 in API meant for iOS. Debug launch arguments `-open <varisai-id> -autoplay YES` open
-(and play) an exercise for screenshots. On Android (debug builds),
+(and play) an exercise for screenshots; add `-singAlong YES -singer <cents>` for a
+synthetic singer on iOS. On Android (debug builds),
 `adb shell am start -n com.baijum.purandara/.MainActivity --ef singer 0` replaces
 the microphone with a synthetic singer (the value is cents off target), so
 sing-along can be exercised on an emulator.
@@ -108,4 +111,9 @@ xcodebuild ... test                        # includes PurandaraUITests: performA
 Lessons from the iOS audit: the system `.secondary` grey fails contrast for small
 text (use `Color.subdued`); menu pickers and text bar buttons clip or cap Dynamic
 Type; visible text must appear in some element's label; translucent bars over
-scrolling content fail contrast.
+scrolling content fail contrast; the iOS 26 toolbar glass shadow lowers contrast
+just below it; symbol characters (✓ ↑) fall back to fixed-size fonts, so use SF
+Symbols; at accessibility text sizes move secondary panels into the scrolling
+content. The audit helper ignores exactly one thing: Dynamic Type warnings on
+single notation swaras (they shrink to fit their column by design). UI tests
+launch with `-resetSettings YES` because settings persist between launches.

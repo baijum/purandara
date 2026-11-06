@@ -19,6 +19,10 @@ struct PracticeSettings: Equatable {
     var harmoniumLevel: Float = RenderOptions.companion.DEFAULT_HARMONIUM_LEVEL
     var droneLevel: Float = RenderOptions.companion.DEFAULT_DRONE_LEVEL
     var tuning: TuningChoice = .just
+    /// Sing along with pitch feedback (needs the microphone).
+    var singAlong = false
+    /// Harmonium plays every note (true) or stays silent so only drone and click guide (false).
+    var harmoniumGuide = true
 
     static let saRange = Int(Shruti.shared.SA_RANGE.first)...Int(Shruti.shared.SA_RANGE.last)
     static let tempoRange = Int(PerformanceSettings.companion.TEMPO_RANGE.first)...Int(PerformanceSettings.companion.TEMPO_RANGE.last)
@@ -32,10 +36,11 @@ struct PracticeSettings: Equatable {
             tuning: tuning.kotlin)
     }
 
+    /// Sing-along forces the count-in (leakage is measured while the student is silent).
     func renderOptions() -> RenderOptions {
         RenderOptions.companion.practice(
-            drone: drone, click: click, loop: loop, countIn: countIn,
-            harmoniumLevel: harmoniumLevel, droneLevel: droneLevel)
+            drone: drone, click: click, loop: loop, countIn: countIn || singAlong,
+            harmoniumLevel: singAlong && !harmoniumGuide ? 0 : harmoniumLevel, droneLevel: droneLevel)
     }
 }
 
@@ -56,6 +61,8 @@ struct PracticeSettingsStore {
         static let countIn = "practice.countIn"
         static let harmoniumLevel = "practice.harmoniumLevel"
         static let droneLevel = "practice.droneLevel"
+        static let singAlong = "practice.singAlong"
+        static let harmoniumGuide = "practice.harmoniumGuide"
     }
 
     func load() -> PracticeSettings {
@@ -69,6 +76,8 @@ struct PracticeSettingsStore {
         if let v = defaults.object(forKey: Key.countIn) as? Bool { s.countIn = v }
         if let v = defaults.object(forKey: Key.harmoniumLevel) as? Float, (0...1).contains(v) { s.harmoniumLevel = v }
         if let v = defaults.object(forKey: Key.droneLevel) as? Float, (0...1).contains(v) { s.droneLevel = v }
+        if let v = defaults.object(forKey: Key.singAlong) as? Bool { s.singAlong = v }
+        if let v = defaults.object(forKey: Key.harmoniumGuide) as? Bool { s.harmoniumGuide = v }
         if let raw = defaults.string(forKey: Key.tuning), let v = PracticeSettings.TuningChoice(rawValue: raw) { s.tuning = v }
         return s
     }
@@ -84,5 +93,7 @@ struct PracticeSettingsStore {
         defaults.set(s.harmoniumLevel, forKey: Key.harmoniumLevel)
         defaults.set(s.droneLevel, forKey: Key.droneLevel)
         defaults.set(s.tuning.rawValue, forKey: Key.tuning)
+        defaults.set(s.singAlong, forKey: Key.singAlong)
+        defaults.set(s.harmoniumGuide, forKey: Key.harmoniumGuide)
     }
 }

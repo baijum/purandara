@@ -13,12 +13,14 @@
 		20652ABAADD16B8AEC84E47A /* VarisaiAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */; };
 		3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC4E97700204636916DBA862 /* PracticeViewModel.swift */; };
 		40BDEF4DD4F2AB7BFFA9A483 /* SharedFrameworkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */; };
+		4327EF87BA3A4AA73E3D8BA9 /* SingAlongViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B6B95EFED9FE818FAD3842 /* SingAlongViews.swift */; };
 		517D5DDFB720C0F8694AA932 /* models in Resources */ = {isa = PBXBuildFile; fileRef = B293CC2A0F44DA8FA17324B2 /* models */; };
 		6E156FF71407AFDB27CB73C6 /* onnxruntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C4C4F762B6B0F60ADE2A6A72 /* onnxruntime.xcframework */; };
 		7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C9FF674A7F91662569737F /* PracticeSettings.swift */; };
 		7E5B9A9F2648990917F1D608 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE6BE56662F27C8F99F8397 /* PlayerView.swift */; };
 		80064C7F88A31F3EA3D5E83D /* audio in Resources */ = {isa = PBXBuildFile; fileRef = 88C8E5DD4E7C3B504D0222BD /* audio */; };
 		814E479F470E51F9091B5BB3 /* PurandaraApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74015C2759451D3EC808AFD0 /* PurandaraApp.swift */; };
+		9B580BACB857D2886E78AD0B /* SingAlongEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27C642EBB842FC0EB61A4F50 /* SingAlongEngine.swift */; };
 		AB6CC5F96BEB624359C2D520 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 51ADA9130DD6170AD77733F3 /* Assets.xcassets */; };
 		B8EB36EB6F794A62C7CDFF7E /* PracticeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A18B2D52EAB6EBCA1269A1B /* PracticeTests.swift */; };
 		BF08A74FECBA0408C6B1285C /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483E84CDF43D5F521EB0595D /* Colors.swift */; };
@@ -44,6 +46,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		04B6B95EFED9FE818FAD3842 /* SingAlongViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingAlongViews.swift; sourceTree = "<group>"; };
+		27C642EBB842FC0EB61A4F50 /* SingAlongEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingAlongEngine.swift; sourceTree = "<group>"; };
 		483E84CDF43D5F521EB0595D /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		49C9FF674A7F91662569737F /* PracticeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeSettings.swift; sourceTree = "<group>"; };
 		51ADA9130DD6170AD77733F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -96,6 +100,7 @@
 			children = (
 				F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */,
 				95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */,
+				27C642EBB842FC0EB61A4F50 /* SingAlongEngine.swift */,
 				6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */,
 			);
 			path = Audio;
@@ -125,6 +130,7 @@
 				C27118B7E3E2165E03506755 /* LibraryView.swift */,
 				E08763E5702FC198877A4751 /* NotationView.swift */,
 				9DE6BE56662F27C8F99F8397 /* PlayerView.swift */,
+				04B6B95EFED9FE818FAD3842 /* SingAlongViews.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -348,6 +354,8 @@
 				7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */,
 				3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */,
 				814E479F470E51F9091B5BB3 /* PurandaraApp.swift in Sources */,
+				9B580BACB857D2886E78AD0B /* SingAlongEngine.swift in Sources */,
+				4327EF87BA3A4AA73E3D8BA9 /* SingAlongViews.swift in Sources */,
 				20652ABAADD16B8AEC84E47A /* VarisaiAudioPlayer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -475,6 +483,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Purandara;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Sing along listens to your voice to show how close each swara is. Audio stays on this device and is never recorded.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -613,6 +622,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Purandara;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Sing along listens to your voice to show how close each swara is. Audio stays on this device and is never recorded.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

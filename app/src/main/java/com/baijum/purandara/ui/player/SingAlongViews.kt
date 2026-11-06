@@ -33,6 +33,7 @@ import com.baijum.purandara.domain.Octave
 import com.baijum.purandara.domain.SwaraLetter
 import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.singalong.Attention
+import com.baijum.purandara.singalong.Display
 import com.baijum.purandara.singalong.NoteResult
 import com.baijum.purandara.singalong.PassSummary
 import com.baijum.purandara.singalong.SwaraReading
@@ -118,18 +119,8 @@ private fun DrawScope.drawTrace(lane: Lane, trace: List<TraceSample>, colors: La
     }
 }
 
-/** Carnatic display name with the variant as a subscript, e.g. "R₁"; tara with ′. */
-fun swaraLabel(swara: com.baijum.purandara.domain.Swara, octave: Int = 0): String {
-    val sub = swara.symbol.drop(1).map { SUBSCRIPTS[it - '0'] }.joinToString("")
-    val mark = when {
-        octave < 0 -> "̣"
-        octave > 0 -> "′"
-        else -> ""
-    }
-    return swara.symbol.take(1) + sub + mark
-}
-
-private val SUBSCRIPTS = listOf('₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉')
+/** Carnatic label, e.g. "R₁" (shared with iOS). */
+fun swaraLabel(swara: com.baijum.purandara.domain.Swara, octave: Int = 0): String = Display.swaraLabel(swara, octave)
 
 /** "P · in tune · +3¢ · G3", or "Not hearing you yet". */
 @Composable
@@ -148,29 +139,16 @@ private fun zoneWord(zone: Zone, cents: Double): String = when {
     else -> stringResource(R.string.zone_low)
 }
 
-/** Glyph shown under a judged swara in the notation, or null for no mark. */
-fun markGlyph(result: NoteResult?): String? = when (result) {
-    null, NoteResult.TooShort -> null
-    NoteResult.NoVoice -> "○"
-    is NoteResult.Judged -> when {
-        result.sung != null -> "✕"
-        result.octaveShift < 0 -> "⇣"
-        result.octaveShift > 0 -> "⇡"
-        result.zone == Zone.IN_TUNE -> "✓"
-        result.high -> "↑"
-        else -> "↓"
-    }
-}
+/** Glyph shown under a judged swara (shared with iOS). */
+fun markGlyph(result: NoteResult?): String? = Display.markGlyph(result)
 
 /** Colour for a mark glyph. */
 @Composable
-fun markColor(result: NoteResult?): Color = when (result) {
-    is NoteResult.Judged -> when {
-        result.sung == null && result.octaveShift == 0 && result.zone == Zone.IN_TUNE -> MaterialTheme.colorScheme.primary
-        result.sung == null && result.octaveShift == 0 && result.zone == Zone.CLOSE -> MaterialTheme.colorScheme.secondary
-        else -> MaterialTheme.colorScheme.error
-    }
-    else -> MaterialTheme.colorScheme.onSurfaceVariant
+fun markColor(result: NoteResult?): Color = when (Display.markTone(result)) {
+    Display.MarkTone.GOOD -> MaterialTheme.colorScheme.primary
+    Display.MarkTone.NEAR -> MaterialTheme.colorScheme.secondary
+    Display.MarkTone.OFF -> MaterialTheme.colorScheme.error
+    Display.MarkTone.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 /** Words for a mark, for screen readers ("in tune", "high", "not heard"…). */

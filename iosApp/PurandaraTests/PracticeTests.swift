@@ -76,6 +76,8 @@ final class PracticeSettingsStoreTests: XCTestCase {
         s.countIn = false
         s.harmoniumLevel = 0.3
         s.droneLevel = 0.9
+        s.singAlong = true
+        s.harmoniumGuide = false
         store.save(s)
         XCTAssertEqual(store.load(), s)
     }
@@ -86,6 +88,16 @@ final class PracticeSettingsStoreTests: XCTestCase {
         defaults.set(9, forKey: "practice.kala")
         defaults.set("bogus", forKey: "practice.tuning")
         XCTAssertEqual(PracticeSettingsStore(defaults: defaults).load(), PracticeSettings())
+    }
+
+    func testSingAlongForcesCountInAndGuideOffSilencesHarmonium() {
+        var s = PracticeSettings()
+        s.countIn = false
+        s.singAlong = true
+        s.harmoniumGuide = false
+        let options = s.renderOptions()
+        XCTAssertTrue(options.countIn)
+        XCTAssertEqual(options.harmoniumGain, 0)
     }
 
     func testPerformanceSettingsUseSaFrequency() {

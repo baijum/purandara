@@ -1,5 +1,7 @@
+import AVFoundation
 import Foundation
 import shared
+import UIKit
 
 /// What the player shows while an exercise sounds.
 struct PlaybackState: Equatable {
@@ -16,6 +18,33 @@ struct PlaybackState: Equatable {
     var countingIn = false
 }
 
+/// Where a mark goes in the notation.
+struct MarkKey: Hashable {
+    let avarta: Int
+    let akshara: Int
+    let slot: Int
+}
+
+/// One point of the pitch lane.
+struct TraceSample {
+    let pass: Int
+    let secondsInPass: Double
+    let centsFromSa: Double
+    let zone: Zone
+}
+
+/// What the player shows for sing-along. Mirrors Android's `SingAlongState`.
+struct SingAlongUI {
+    var micPermitted = false
+    var micDenied = false
+    var onSpeaker = true
+    var live: SwaraReading?
+    var trace: [TraceSample] = []
+    var marks: [MarkKey: NoteResult] = [:]
+    /// Last completed pass (1-based) and its summary.
+    var lastSummary: (pass: Int, summary: PassSummary)?
+}
+
 /// Holds practice settings, the samples and playback. Mirrors Android's `PracticeViewModel`.
 /// Changing a setting while playing restarts the exercise with the new settings.
 @MainActor
@@ -30,6 +59,7 @@ final class PracticeViewModel: ObservableObject {
     @Published private(set) var samplesLoaded = false
     @Published private(set) var loadError = false
     @Published private(set) var playback = PlaybackState()
+    @Published private(set) var singAlong = SingAlongUI()
 
     let catalog: [Varisai] = VarisaiCatalog.shared.all
 
@@ -40,10 +70,21 @@ final class PracticeViewModel: ObservableObject {
     private var renderer: SampleRenderer?
     private var schedule: Schedule?
     private var timer: Timer?
+    private var engine: SingAlongEngine?
+
+    /// Debug builds: launch argument `-singer <cents>` replaces the mic with a synthetic singer.
+    let syntheticSingerCents: Double?
 
     init(store: PracticeSettingsStore = .standard, loadSamples: Bool = true) {
         self.store = store
         settings = store.load()
+        #if DEBUG
+        syntheticSingerCents = UserDefaults.standard.object(forKey: "singer") != nil
+            ? UserDefaults.standard.double(forKey: "singer") : nil
+        #else
+        syntheticSingerCents = nil
+        #endif
+        singAlong.micPermitted = Self.micAuthorized()
         guard loadSamples else { return }
         Task.detached(priority: .userInitiated) {
             do {
@@ -75,12 +116,29 @@ final class PracticeViewModel: ObservableObject {
         current = varisai
         self.schedule = schedule
         self.renderer = renderer
+        let onSpeaker = Self.onBuiltInSpeaker()
+        singAlong.onSpeaker = onSpeaker
+        singAlong.live = nil
+        singAlong.trace = []
+        singAlong.marks = [:]
+        singAlong.lastSummary = nil
+        let listening = settings.singAlong && (singAlong.micPermitted || syntheticSingerCents != nil)
+        let sa = schedule.settings.saHz
+        let newEngine = listening ? SingAlongEngine(
+            player: player, renderer: renderer, schedule: schedule, syntheticCents: syntheticSingerCents,
+            supervisorFactory: { NeuralPitchSupervisor(captureSampleRate: $0) },
+            onOutcome: { [weak self] outcome in
+                DispatchQueue.main.async { self?.apply(outcome, from: renderer, saHz: sa) }
+            }) : nil
+        engine = newEngine
         do {
-            try player.play(renderer) { [weak self] in self?.finished(renderer) }
+            try player.play(renderer, mic: newEngine?.micRequest(voiceProcessing: onSpeaker)) { [weak self] in self?.finished(renderer) }
         } catch {
+            engine = nil
             stop()
             return
         }
+        newEngine?.start()
         playback = PlaybackState(playing: true, repetitions: Int(schedule.repetitions))
         let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
@@ -106,6 +164,8 @@ final class PracticeViewModel: ObservableObject {
 
     private func finished(_ which: SampleRenderer?) {
         guard which === renderer else { return }
+        if let final = engine?.stop() { applyFinal(final) }
+        engine = nil
         stopTimer()
         renderer = nil
         schedule = nil
@@ -125,6 +185,75 @@ final class PracticeViewModel: ObservableObject {
         next.slot = position.map { Int($0.slot) }
         next.beatInAvarta = countInBeat ?? schedule.beatAt(seconds: seconds).map { Int($0.beatInAvarta) }
         if next != playback { playback = next }
+    }
+
+    // MARK: - Sing along
+
+    /// Turn sing-along on or off; asks for the microphone the first time.
+    func toggleSingAlong() {
+        if settings.singAlong {
+            settings.singAlong = false
+        } else if singAlong.micPermitted || syntheticSingerCents != nil {
+            settings.singAlong = true
+        } else {
+            Self.requestMic { [weak self] granted in
+                Task { @MainActor in
+                    guard let self else { return }
+                    self.singAlong.micPermitted = granted
+                    self.singAlong.micDenied = !granted
+                    if granted { self.settings.singAlong = true }
+                }
+            }
+        }
+    }
+
+    private func apply(_ outcome: FrameOutcome, from which: SampleRenderer, saHz: Double) {
+        guard which === renderer else { return }
+        let live = outcome.live
+        singAlong.live = live.reading
+        if let reading = live.reading, let pass = live.pass, let t = live.secondsInPass {
+            singAlong.trace.append(TraceSample(
+                pass: Int(truncating: pass), secondsInPass: Double(truncating: t),
+                centsFromSa: 1200 * log2(reading.frequencyHz / saHz), zone: Zone.companion.of(cents: reading.centsOff)))
+            if singAlong.trace.count > 1500 { singAlong.trace.removeFirst(singAlong.trace.count - 1500) }
+        }
+        for mark in outcome.newMarks { record(mark) }
+        if let pass = outcome.completedPass { announce(pass) }
+    }
+
+    private func applyFinal(_ result: PassResult) {
+        singAlong.live = nil
+        for mark in result.marks { record(mark) }
+        announce(result)
+    }
+
+    private func record(_ mark: NoteMark) {
+        let p = mark.event.position
+        singAlong.marks[MarkKey(avarta: Int(p.avarta), akshara: Int(p.akshara), slot: Int(p.slot))] = mark.result
+    }
+
+    private func announce(_ result: PassResult) {
+        singAlong.lastSummary = (Int(result.pass) + 1, result.summary)
+        // Once per pass, never during it (it would talk over the music).
+        UIAccessibility.post(notification: .announcement, argument: SingAlongText.summaryHeadline(Int(result.pass) + 1, result.summary))
+    }
+
+    private static func micAuthorized() -> Bool {
+        if #available(iOS 17.0, *) { return AVAudioApplication.shared.recordPermission == .granted }
+        return AVAudioSession.sharedInstance().recordPermission == .granted
+    }
+
+    private static func requestMic(_ completion: @escaping @Sendable (Bool) -> Void) {
+        if #available(iOS 17.0, *) {
+            AVAudioApplication.requestRecordPermission(completionHandler: completion)
+        } else {
+            AVAudioSession.sharedInstance().requestRecordPermission(completion)
+        }
+    }
+
+    private static func onBuiltInSpeaker() -> Bool {
+        let headphones: Set<AVAudioSession.Port> = [.headphones, .bluetoothA2DP, .bluetoothLE, .bluetoothHFP, .usbAudio]
+        return !AVAudioSession.sharedInstance().currentRoute.outputs.contains { headphones.contains($0.portType) }
     }
 
     private func stopTimer() {

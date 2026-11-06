@@ -227,7 +227,7 @@ In the player (both platforms):
 | S2 ✅ | `PitchTracker` + `NoteScorer` + pass summary (shared) | Done as `PitchPipeline`, `SwaraMapper`, `SingAlongClock`, `BleedModel`, `NoteScorer`, `SingAlongSession`: 21 unit + 4 end-to-end audio tests pass; a silent student with harmonium leakage scores "no voice" |
 | S3 ✅ | Neural runtime on both platforms: bundle SwiftF0, ONNX Runtime AAR and iOS xcframework script, supervisors, CI | Done: model runs on emulator and simulator (within a semitone, 98–659 Hz, 44.1/48 kHz); release APK limited to ARM ABIs (60.7 MB universal, 31.5 MB AAB, was ~5 MB before ONNX Runtime) |
 | S4 ✅ | Android sing-along: permission, capture with echo cancellation, pitch lane, cell marks, summary, guide setting | Done: verified on the Pixel 9 emulator with the debug synthetic singer (in tune → ✓ marks; +35 cents → all ↑ and the right summary); permission refusal flow; 14 instrumented tests. **Pending: on-device check with a real voice and the speaker vs headphones** |
-| S5 | iOS sing-along: same | Same, plus accessibility audit passes |
+| S5 ✅ | iOS sing-along: same | Done: mic on the player's own `AVAudioEngine` (voice processing on the speaker for echo cancellation), simulator runs with the synthetic singer (16/16 in tune; +35 cents all high), 4 accessibility audits pass incl. sing-along; large-text layout reworked. **Pending: on-device check with a real voice** |
 | S6 | Accessibility and latency polish; device testing | TalkBack/VoiceOver pass; scoring windows verified on at least one physical device per platform |
 
 ## 9. Risks

@@ -45,6 +45,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Purandara
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Sing along listens to your voice to show how close each swara is. Audio stays on this device and is never recorded."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
