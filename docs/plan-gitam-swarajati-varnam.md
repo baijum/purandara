@@ -11,6 +11,15 @@ Progress:
   upper Ma. `Varisai.playableSaMidis`; both players explain and offer the
   nearest Sa, and Play stays off until then.
 - Vara Veena, Kamala Jadala and Re Re Sri Ramachandra wait for a second source.
+- S1 (part): `beat:` (cells per tala beat), cell-based rows
+  (`Tala.rowStartsFor`), `[name +swaram]` sections, `short:` titles. **Swara
+  variants (`N2`) are not built yet**: no sourced piece needs them so far
+  (Rara Venu's notation marks none); they come with the Bhairavi and
+  Anandabhairavi gitams.
+- S2 (part): Rara Venu Gopa Bala (Bilahari) from karnatik.com, matching
+  shivkumar.org cell for cell (all 10 avartas). **Sambasiva waits**:
+  karnatik.com's notation has no bars or octave marks, so shivkumar.org is
+  its only clean source.
 
 These continue the beginner path after the Malahari gitams
 (`docs/plan-alankaram-gitam.md`):

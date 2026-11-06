@@ -30,6 +30,7 @@ GUIDE = [
     ("varisai-player.html", "Play a varisai"),
     ("alankarams.html", "Alankarams"),
     ("gitams.html", "Gitams"),
+    ("swarajatis.html", "Swarajatis"),
     ("sing-along.html", "Sing along"),
     ("shruti-practice.html", "Shruti practice"),
     ("find-my-sa.html", "Find my Sa"),

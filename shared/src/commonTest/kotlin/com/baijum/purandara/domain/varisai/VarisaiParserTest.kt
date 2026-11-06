@@ -215,4 +215,27 @@ class VarisaiParserTest {
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nS R G M\n(pallavi)") }
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\n[p]\nS R G M\n[p]\nS R G M") }
     }
+
+    @Test
+    fun beatWritesSeveralAksharasToATalaBeatAndSwaramComesFirst() {
+        val v = parseOne(
+            """
+            1
+            tala: eka-4
+            beat: 2
+            [charanam 1 +swaram]
+            S , R G | M , P S′ ||
+            " sa - ri ga | ma - pa sa ||
+            """,
+        )
+        assertEquals(2, v.beat)
+        assertEquals(listOf("Charanam 1 · swaram", "Charanam 1 · sahityam"), v.avartas.map { it.section })
+        assertEquals(null, v.avartas[0].words)
+        assertEquals(v.avartas[0].aksharas, v.avartas[1].aksharas)
+        // Holds inside a beat aren't read out; angas still are.
+        assertEquals("S R G M P S′", v.avartas[0].spoken(v.tala, "hold"))
+        val e = assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nbeat: 2\nS R G M") }
+        assertTrue("needs 8" in e.message!!, e.message)
+        assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nbeat: 3\nS R G M") }
+    }
 }

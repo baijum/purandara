@@ -7,6 +7,7 @@ import com.baijum.purandara.domain.varisai.catalog.GITAM_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.JANTA_VARISAI_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.MADHYA_STHAYI_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.SARALI_VARISAI_NOTATION
+import com.baijum.purandara.domain.varisai.catalog.SWARAJATI_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.VAKRA_JANTA_VARISAI_NOTATION
 
 /**
@@ -37,6 +38,7 @@ S′ N D P M G R S
             VarisaiSet.DHATTU to DHATTU_VARISAI_NOTATION,
             VarisaiSet.ALANKARAM to ALANKARAM_NOTATION,
             VarisaiSet.GITAM to GITAM_NOTATION,
+            VarisaiSet.SWARAJATI to SWARAJATI_NOTATION,
         ).flatMap { (set, text) -> parser.parse(text, set) }
     }
 

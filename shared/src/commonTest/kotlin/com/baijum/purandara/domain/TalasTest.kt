@@ -65,4 +65,17 @@ class TalasTest {
         assertEquals(listOf(0, 5), Talas.ATA.rowStarts)
         assertEquals(9, Talas.ATA.rowAksharas)
     }
+
+    @Test
+    fun severalCellsToABeatWrapByAngaAndBeat() {
+        assertEquals(Tala.ADI.rowStarts, Tala.ADI.rowStartsFor(1))
+        // Adi two to a beat: laghu | drutam drutam.
+        assertEquals(listOf(0, 8), Tala.ADI.rowStartsFor(2))
+        assertEquals(8, Tala.ADI.rowCellsFor(2))
+        // Four to a beat: the laghu in two rows of two beats, then each drutam.
+        assertEquals(listOf(0, 8, 16, 24), Tala.ADI.rowStartsFor(4))
+        assertEquals(true, Tala.ADI.startsAngaAt(16, 4))
+        assertEquals(false, Tala.ADI.startsAngaAt(8, 4))
+        assertEquals(false, Tala.ADI.startsAngaAt(17, 4))
+    }
 }

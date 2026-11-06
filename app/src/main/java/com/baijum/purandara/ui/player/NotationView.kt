@@ -89,7 +89,7 @@ fun NotationView(
     LazyColumn(state = listState, modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         itemsIndexed(varisai.avartas) { index, avarta ->
             val rowMarks = marks.filterKeys { it.avarta == index }
-            val swaras = if (rowMarks.isEmpty()) avarta.spoken(tala, karvaiWord) else markedSpoken(avarta, index, rowMarks, tala, karvaiWord)
+            val swaras = if (rowMarks.isEmpty()) avarta.spoken(tala, karvaiWord) else markedSpoken(avarta, index, rowMarks, varisai, karvaiWord)
             val spoken = avarta.spokenWords()?.let { stringResource(R.string.avarta_words, swaras, it) } ?: swaras
             val description = stringResource(R.string.avarta_description, index + 1, spoken)
             Column {
@@ -103,7 +103,7 @@ fun NotationView(
                 }
                 AvartaRow(
                     avarta = avarta,
-                    tala = tala,
+                    varisai = varisai,
                     active = position?.takeIf { it.avarta == index },
                     rowMarks = rowMarks,
                     words = words,
@@ -119,7 +119,7 @@ fun NotationView(
 @Composable
 private fun AvartaRow(
     avarta: Avarta,
-    tala: Tala,
+    varisai: Varisai,
     active: NotationPosition?,
     rowMarks: Map<MarkKey, NoteResult>,
     words: WordsDisplay,
@@ -132,13 +132,13 @@ private fun AvartaRow(
     // Taller rows with larger system text, so swaras grow instead of shrinking to fit.
     val grow = 1f + (LocalDensity.current.fontScale - 1f).coerceAtLeast(0f) * ROW_GROWTH
     val rowHeight = (ROW_HEIGHT_DP + if (rowWords != null && showSwaras) WORDS_HEIGHT_DP else 0).dp * grow
-    val starts = tala.rowStarts
+    val starts = varisai.rowStarts
     val ends = starts.drop(1) + avarta.aksharas.size
     Column(modifier.fillMaxWidth()) {
         starts.zip(ends).forEachIndexed { row, (from, to) ->
             Row(Modifier.fillMaxWidth().height(rowHeight), verticalAlignment = Alignment.CenterVertically) {
                 for (i in from until to) {
-                    if (i > from && tala.beats[i].startsAnga) AngaBar()
+                    if (i > from && varisai.startsAnga(i)) AngaBar()
                     AksharaCell(
                         akshara = avarta.aksharas[i],
                         active = i == activeAkshara,
@@ -151,7 +151,7 @@ private fun AvartaRow(
                 }
                 if (row == starts.lastIndex) AngaBar(double = true)
                 // Keep the columns of a shorter row in line with the longest.
-                val missing = tala.rowAksharas - (to - from)
+                val missing = varisai.rowCells - (to - from)
                 if (missing > 0) Spacer(Modifier.weight(missing.toFloat()))
             }
         }
@@ -248,18 +248,21 @@ private fun MarkGlyphs(akshara: Akshara.Swaras, marks: Map<Int, NoteResult>) {
 
 /** Row sentence with each swara's mark, e.g. "S in tune R high G in tune, …". */
 @Composable
-private fun markedSpoken(avarta: Avarta, index: Int, marks: Map<MarkKey, NoteResult>, tala: Tala, karvaiWord: String): String {
-    val words = avarta.aksharas.mapIndexed { i, akshara ->
+private fun markedSpoken(avarta: Avarta, index: Int, marks: Map<MarkKey, NoteResult>, varisai: Varisai, karvaiWord: String): String {
+    val words = avarta.aksharas.mapIndexedNotNull { i, akshara ->
         val text = when (akshara) {
-            Akshara.Karvai -> karvaiWord
+            // Written several to a beat (a swarajati), holds inside a beat aren't read out.
+            Akshara.Karvai -> if (varisai.beat > 1) null else karvaiWord
             is Akshara.Swaras -> akshara.swaras.mapIndexed { slot, swara ->
                 val mark = markWords(marks[MarkKey(index, i, slot)])
                 if (mark == null) swara.spoken() else "${swara.spoken()} $mark"
             }.joinToString(" ")
         }
-        if (i > 0 && tala.beats[i].startsAnga) ", $text" else if (i > 0) " $text" else text
+        text?.let { i to it }
     }
-    return words.joinToString("")
+    return words.mapIndexed { n, (i, text) ->
+        if (n > 0 && varisai.startsAnga(i)) ", $text" else if (n > 0) " $text" else text
+    }.joinToString("")
 }
 
 @Composable

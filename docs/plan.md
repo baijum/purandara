@@ -78,6 +78,9 @@ Copy the text verbatim so it can be compared line by line with the workbook.
 | `tala: <key>` after the number | The exercise's tala (`Talas`: `adi`, `dhruva-4`, `matya-4`, `rupaka-4`, `jhampa-7`, `triputa-3`, `ata-5`, `eka-4`). Default `adi`. |
 | `raga: <key>` after the number | The exercise's raga (`Ragas`: `mayamalavagowla`, `malahari`). Default `mayamalavagowla`; letters the raga doesn't use are errors. |
 | `title: <text>` after the number | Title of a named piece (a gitam). |
+| `short: <text>` after the number | A shorter title for the phone's top bar. |
+| `beat: <n>` after the number | n aksharas (cells) to each tala beat (1, 2 or 4), as swarajatis are written. |
+| `[name +swaram]` | The section is sung first as swaras (no words), then with its words. |
 | `[pallavi]` | Starts a named section; its first avarta shows the name as a heading. |
 | `(pallavi)` | Sings that section again; expanded by the parser, so playback, scoring and display follow the sung order. |
 | A line starting with `"` | Words for the notation line above: one token per akshara, `-` where a syllable is held, two joined by `·` when an akshara has two swaras. |

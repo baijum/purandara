@@ -128,6 +128,17 @@ a licence; the authors are to be asked before a store release.
   Latin; one missing upper-octave mark in Kunda Gaura and one word typo in
   Padumanabha corrected. Every change is listed in the file's header.
 
+### Swarajatis (`catalog/Swarajati.kt`)
+
+- **Source:** karnatik.com, Rara Venu Gopa Bala:
+  [karnatik.com/c1735.shtml](https://karnatik.com/c1735.shtml) (swaras and
+  words; composer not given).
+- **Checked against:** Shivkumar Kalyanaraman's archive,
+  [raravenu-swarajati.htm](https://www.shivkumar.org/music/varnams/raravenu-swarajati.htm),
+  cell by cell with `tools/notation/crosscheck_swarajatis.py`.
+- **Changes made:** one octave mark and two holds corrected, words split one
+  syllable per cell in simple Latin; listed in the file's header.
+
 ## Code
 
 Pitch detection (`shared/.../pitch/`), the neural supervisors and parts of

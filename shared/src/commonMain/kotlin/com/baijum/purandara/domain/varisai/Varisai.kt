@@ -70,18 +70,23 @@ data class Avarta(
      * Text for screen readers: angas separated by commas, a karvai spoken as
      * [karvaiWord] (localised by the caller), e.g. "S R G M, P hold, S R".
      */
-    fun spoken(tala: Tala, karvaiWord: String): String =
-        aksharas.mapIndexed { i, a ->
+    fun spoken(tala: Tala, karvaiWord: String): String {
+        // Written several to a beat (a swarajati), holds inside a beat aren't read out.
+        val perBeat = maxOf(1, aksharas.size / tala.aksharas)
+        return aksharas.mapIndexedNotNull { i, a ->
             val word = when (a) {
-                Akshara.Karvai -> karvaiWord
+                Akshara.Karvai -> if (perBeat > 1) null else karvaiWord
                 is Akshara.Swaras -> a.spoken()
             }
+            word?.let { i to it }
+        }.mapIndexed { n, (i, word) ->
             when {
-                i == 0 -> word
-                tala.beats[i].startsAnga -> ", $word"
+                n == 0 -> word
+                tala.startsAngaAt(i, perBeat) -> ", $word"
                 else -> " $word"
             }
         }.joinToString("")
+    }
 }
 
 /** What the notation of a piece with words (a gitam) shows: a practice setting. */
@@ -107,7 +112,8 @@ enum class VarisaiSet(val title: String, val description: String, val shortTitle
     VAKRA_JANTA("Vakra Janta Varisai", "Paired notes in zigzags: find the next note without sliding.", "Vakra Janta"),
     DHATTU("Dhattu Varisai", "Leaps over a note and back: reach a distant pitch without sliding."),
     ALANKARAM("Alankaram", "One climbing figure in each of the seven suladi talas: keep the tala as you sing."),
-    GITAM("Gitam", "First songs, with words: Purandara Dasa's gitams in raga Malahari."),
+    GITAM("Gitam", "First songs, with words: Purandara Dasa's gitams in raga Malahari, then others."),
+    SWARAJATI("Swarajati", "Longer songs written four swaras to a beat: each charanam sung as swaras, then with words."),
 }
 
 /**
@@ -121,13 +127,24 @@ data class Varisai(
     val tala: Tala = Tala.ADI,
     val raga: Raga = Raga.MAYAMALAVAGOWLA,
     val name: String? = null,
+    /** Written aksharas (notation cells) per tala beat: 1, or 2 or 4 for a swarajati (`beat:`). */
+    val beat: Int = 1,
+    /** A shorter [name] for the top bar (`short:`), e.g. "Rara Venu". */
+    val shortName: String? = null,
 ) {
+    /** Where each avarta's notation starts a new row (cells), and the cells in the longest row. */
+    val rowStarts: List<Int> get() = tala.rowStartsFor(beat)
+    val rowCells: Int get() = tala.rowCellsFor(beat)
+
+    /** Whether notation cell [cell] of an avarta starts an anga (an anga bar goes before it). */
+    fun startsAnga(cell: Int): Boolean = tala.startsAngaAt(cell, beat)
+
     /**
      * Title short enough for a phone's top bar, e.g. "Alankaram 1" or
      * "Vakra Janta 2" (the screen shows the tala and raga separately).
      */
     val shortTitle: String
-        get() = name ?: when (set) {
+        get() = shortName ?: name ?: when (set) {
             VarisaiSet.PLAIN_SCALE -> set.title
             else -> "${set.shortTitle} $number"
         }

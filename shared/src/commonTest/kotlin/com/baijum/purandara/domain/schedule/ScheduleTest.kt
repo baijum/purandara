@@ -128,6 +128,20 @@ class ScheduleTest {
     }
 
     @Test
+    fun severalAksharasToABeatShareTheBeat() {
+        val line = List(16) { "S" }.joinToString(" ")
+        val v = VarisaiParser().parse("1\nbeat: 2\n$line", VarisaiSet.SARALI).single()
+        val s = Schedule.of(v, PerformanceSettings(saHz = saC3, tempo = 60))
+        assertEquals(0.5, s.aksharaSeconds, 1e-9)
+        assertEquals(8.0, s.avartaSeconds, 1e-9)
+        assertEquals(8.0, s.durationSeconds, 1e-9)
+        assertEquals(8, s.beats.size)
+        val second = Schedule.of(v, PerformanceSettings(saHz = saC3, tempo = 60, kala = 2))
+        assertEquals(2, second.repetitions) // fills one whole avarta of beats
+        assertEquals(8, second.beats.size)
+    }
+
+    @Test
     fun ragaComesFromTheExercise() {
         val v = VarisaiParser().parse("1\nraga: malahari\ntala: eka-4\nS R G M", VarisaiSet.SARALI).single()
         val s = Schedule.of(v, PerformanceSettings(saHz = saC3))
@@ -166,7 +180,8 @@ class ScheduleTest {
 
     @Test
     fun playableSaRangeIsWholeForTheExercisesAndCappedWhereAPieceClimbs() {
-        VarisaiCatalog.all.filter { it.set != VarisaiSet.GITAM }.forEach { assertEquals(Shruti.SA_RANGE, it.playableSaMidis, it.id) }
+        VarisaiCatalog.all.filter { it.set !in setOf(VarisaiSet.GITAM, VarisaiSet.SWARAJATI) }
+            .forEach { assertEquals(Shruti.SA_RANGE, it.playableSaMidis, it.id) }
         VarisaiCatalog.all.forEach { v ->
             assertTrue(Shruti.DEFAULT_SA_MIDI in v.playableSaMidis, "${v.id}: the default Sa must be playable")
             assertEquals(v.playableSaMidis.last, v.nearestPlayableSa(Shruti.SA_RANGE.last))

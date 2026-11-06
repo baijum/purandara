@@ -155,6 +155,14 @@ final class PurandaraUITests: XCTestCase {
         wait(for: [enabled], timeout: 10)
     }
 
+    /// A swarajati: four cells to a beat, wrapped into rows; each avarta still one sentence.
+    func testSwarajatiPlayerPassesAccessibilityAudit() throws {
+        let app = launch(["-open", "swarajati-1"])
+        XCTAssertTrue(app.navigationBars["Rara Venu"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.otherElements["Avarta 1: S R G P D S′ N D, P D P M G R S, R S low N low D S. Words: ra ra ve nu go pa ba la ra ji ta sad gu na ja ya shi la"].exists)
+        try audit(app, longNotation: true)
+    }
+
     func testSettingsSheetPassesAccessibilityAudit() throws {
         let app = launch(["-open", "sarali-4"])
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
@@ -200,8 +208,8 @@ final class PurandaraUITests: XCTestCase {
     /// on rows outside the visible notation area are ignored: the list keeps
     /// rows just past the fold loaded, clipped from view, and the audit samples
     /// the controls drawn over them (false contrast failures) or loses rows
-    /// that larger text pushes below the fold (a Dynamic Type warning with no
-    /// element), and Dynamic Type warnings on text inside the notation area
+    /// that larger text pushes below the fold (a Dynamic Type or clipping
+    /// warning with no element), and Dynamic Type warnings on text inside the notation area
     /// (section headings, the raga line), which larger text pushes below the
     /// fold in the same way; every such text uses a scaling text style, checked
     /// by screenshot at the largest size. Contrast, labels and everything outside
@@ -215,7 +223,9 @@ final class PurandaraUITests: XCTestCase {
             }
             if longNotation {
                 guard let element = issue.element else {
-                    if issue.auditType == .dynamicType { return true } // a row unloaded below the fold
+                    // A row unloaded below the fold at a larger text size: "may be clipped at
+                    // larger Dynamic Type sizes" or "unsupported", with no element to inspect.
+                    if issue.auditType == .dynamicType || issue.auditType == .textClipped { return true }
                     return false
                 }
                 if visibleNotation.intersects(element.frame) && !visibleNotation.contains(element.frame) {

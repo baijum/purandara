@@ -162,7 +162,7 @@ struct PitchLane: View {
             context.draw(Text(name).font(.system(size: 10)), at: CGPoint(x: 8, y: yy), anchor: .leading)
         }
         guard let avarta else { return }
-        let span = Double(schedule.tala.aksharas) * schedule.settings.writtenAksharaSeconds
+        let span = schedule.avartaSeconds
         let start = Double(avarta) * span
         func x(_ t: Double) -> CGFloat { labelWidth + (size.width - labelWidth) * (t - start) / span }
         for e in schedule.notes where Int(e.position.avarta) == avarta {

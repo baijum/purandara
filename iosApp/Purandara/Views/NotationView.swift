@@ -35,7 +35,7 @@ struct NotationView: View {
                             }
                             AvartaRow(
                                 avarta: avarta,
-                                tala: tala,
+                                varisai: varisai,
                                 activeAkshara: playback.avarta == index ? playback.akshara : nil,
                                 activeSlot: playback.avarta == index ? playback.slot : nil,
                                 marks: rowMarks,
@@ -73,32 +73,32 @@ extension NotationView {
     func spokenSwaras(_ avarta: Avarta, index: Int, marks: [MarkKey: NoteResult]) -> String {
         let hold = String(localized: "hold")
         guard !marks.isEmpty else { return avarta.spoken(tala: tala, karvaiWord: hold) }
-        return avarta.aksharas.enumerated().map { i, akshara -> String in
-            let text: String
+        let pieces: [(Int, String)] = avarta.aksharas.enumerated().compactMap { i, akshara in
             if let swaras = (akshara as? AksharaSwaras)?.swaras {
-                text = swaras.enumerated().map { slot, swara in
+                return (i, swaras.enumerated().map { slot, swara in
                     let word = SingAlongText.markWords(marks[MarkKey(avarta: index, akshara: i, slot: slot)])
                     return word.map { "\(swara.spoken()) \($0)" } ?? swara.spoken()
-                }.joined(separator: " ")
-            } else {
-                text = hold
+                }.joined(separator: " "))
             }
-            if i == 0 { return text }
-            return (tala.beats[i].startsAnga ? ", " : " ") + text
+            // Written several to a beat (a swarajati), holds inside a beat aren't read out.
+            return varisai.beat > 1 ? nil : (i, hold)
+        }
+        return pieces.enumerated().map { n, piece in
+            n == 0 ? piece.1 : (varisai.startsAnga(cell: Int32(piece.0)) ? ", " : " ") + piece.1
         }.joined()
     }
 }
 
 private struct AvartaRow: View {
     let avarta: Avarta
-    let tala: Tala
+    let varisai: Varisai
     let activeAkshara: Int?
     let activeSlot: Int?
     let marks: [MarkKey: NoteResult]
     let words: WordsDisplay
 
     var body: some View {
-        let rows = TalaRows(tala: tala)
+        let rows = TalaRows(varisai: varisai)
         let rowWords = words.showsWords ? avarta.words : nil
         let showSwaras = rowWords == nil || words.showsSwaras
         VStack(spacing: 4) {
@@ -106,7 +106,7 @@ private struct AvartaRow: View {
                 let range = rows.ranges[row]
                 HStack(spacing: 0) {
                     ForEach(Array(range), id: \.self) { i in
-                        if i > range.lowerBound && tala.beats[i].startsAnga { AngaBar() }
+                        if i > range.lowerBound && varisai.startsAnga(cell: Int32(i)) { AngaBar() }
                         AksharaCell(
                             akshara: avarta.aksharas[i],
                             active: i == activeAkshara,
@@ -139,6 +139,10 @@ private struct AksharaCell: View {
 
     private var swaras: [WrittenSwara] { (akshara as? AksharaSwaras)?.swaras ?? [] }
 
+    /// A lone lower-octave swara: its dot is drawn as a shape under the letter
+    /// (a combining dot below falls outside the text's frame and is clipped).
+    private var singleMandra: Bool { swaras.count == 1 && swaras[0].octave == .mandra }
+
     /// SF Symbol for each shared mark glyph.
     static func symbol(for glyph: String?) -> String? {
         switch glyph {
@@ -161,6 +165,12 @@ private struct AksharaCell: View {
                     .font(swaras.count > 2 ? .callout : swaras.count == 2 ? .title3 : .title2)
                     .lineLimit(1)
                     .minimumScaleFactor(0.3) // shrink rather than truncate a swara with large text
+                    .overlay(alignment: .bottom) {
+                        if singleMandra {
+                            Circle().frame(width: 4, height: 4).offset(y: 5).accessibilityHidden(true)
+                        }
+                    }
+                    .padding(.bottom, singleMandra ? 6 : 0)
                     .layoutPriority(1) // the swara keeps its size; its mark yields first
             }
             if let word {
@@ -198,7 +208,7 @@ private struct AksharaCell: View {
     private var text: Text {
         if akshara is AksharaKarvai { return Text(",") }
         return swaras.enumerated().reduce(Text("")) { result, item in
-            let piece = Text(item.element.description())
+            let piece = Text(singleMandra ? item.element.letter.name : item.element.description())
             return result + (item.offset == activeSlot ? piece.bold().foregroundColor(.accentColor) : piece)
         }
     }
@@ -227,6 +237,14 @@ struct TalaRows {
         let ends = Array(starts.dropFirst()) + [Int(tala.aksharas)]
         ranges = zip(starts, ends).map { $0..<$1 }
         columns = Int(tala.rowAksharas)
+    }
+
+    /// A piece's notation rows: cells, several to a beat in a swarajati (`Varisai.rowStarts`).
+    init(varisai: Varisai) {
+        let starts = varisai.rowStarts.map { $0.intValue }
+        let ends = Array(starts.dropFirst()) + [Int(varisai.tala.aksharas * varisai.beat)]
+        ranges = zip(starts, ends).map { $0..<$1 }
+        columns = Int(varisai.rowCells)
     }
 
     /// Empty columns after row [row], so its cells line up with the longest row.

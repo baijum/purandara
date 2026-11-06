@@ -82,6 +82,38 @@ class Tala(
     val rowAksharas: Int
         get() = (rowStarts + aksharas).zipWithNext { a, b -> b - a }.max()
 
+    /** Whether notation cell [cell] starts an anga when each beat holds [cellsPerBeat] cells. */
+    fun startsAngaAt(cell: Int, cellsPerBeat: Int): Boolean =
+        cell % cellsPerBeat == 0 && beats[cell / cellsPerBeat].startsAnga
+
+    /**
+     * [rowStarts] for notation written [cellsPerBeat] cells to a beat (a
+     * swarajati's `beat: 4`). One cell per beat is [rowStarts]. Otherwise each
+     * anga becomes one or more rows of at most [ROW_AKSHARAS] cells, split at
+     * beats, and neighbouring short rows are joined: Adi at two to a beat is
+     * laghu | drutam drutam; at four to a beat, four rows of eight.
+     */
+    fun rowStartsFor(cellsPerBeat: Int): List<Int> {
+        if (cellsPerBeat == 1) return rowStarts
+        val beatsPerChunk = maxOf(1, ROW_AKSHARAS / cellsPerBeat)
+        val pieces = mutableListOf<Int>() // cell counts
+        angas.forEach { length ->
+            var left = length
+            while (left > 0) {
+                val take = minOf(left, beatsPerChunk)
+                pieces += take * cellsPerBeat
+                left -= take
+            }
+        }
+        val rows = mutableListOf<Int>()
+        pieces.forEach { cells -> if (rows.isNotEmpty() && rows.last() + cells <= ROW_AKSHARAS) rows[rows.lastIndex] += cells else rows += cells }
+        return rows.runningFold(0) { a, b -> a + b }.dropLast(1)
+    }
+
+    /** Cells in the longest row of [rowStartsFor]. */
+    fun rowCellsFor(cellsPerBeat: Int): Int =
+        (rowStartsFor(cellsPerBeat) + aksharas * cellsPerBeat).zipWithNext { a, b -> b - a }.max()
+
     override fun toString(): String = name
 
     companion object {

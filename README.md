@@ -23,6 +23,8 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
   their words under the swaras, section headings, and a choice of swaras,
   words or both. A piece that climbs past the harmonium at a high Sa offers
   the nearest Sa that fits.
+- **Swarajatis:** Rara Venu Gopa Bala (Bilahari), written four swaras to a
+  beat, each charanam sung as swaras and then with its words.
   Choose your Sa (kattai, fine-tune ±50 cents), tempo, speed (kala), tuning
   (just or equal), count-in, tala click and looping.
 - **Sing-along:** sing with an exercise and see your pitch as you go. Each

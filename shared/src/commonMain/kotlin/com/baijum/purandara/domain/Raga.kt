@@ -118,6 +118,22 @@ class Raga(
             avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.P, Swara.D2).reversed(),
         )
 
+        /** Janya of Shankarabharanam (29): ascent S R2 G3 P D2 S′, descent S′ N3 D2 P M1 G3 R2 S. */
+        val BILAHARI: Raga = Raga(
+            "Bilahari",
+            mapOf(
+                SwaraLetter.S to Swara.S,
+                SwaraLetter.R to Swara.R2,
+                SwaraLetter.G to Swara.G3,
+                SwaraLetter.M to Swara.M1,
+                SwaraLetter.P to Swara.P,
+                SwaraLetter.D to Swara.D2,
+                SwaraLetter.N to Swara.N3,
+            ),
+            arohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.P, Swara.D2),
+            avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M1, Swara.P, Swara.D2, Swara.N3).reversed(),
+        )
+
         /** [swaras] in the middle octave, then upper Sa. */
         private fun scale(vararg swaras: Swara): List<Note> =
             swaras.map { Note(it) } + Note(Swara.S, Octave.TARA)
@@ -126,7 +142,7 @@ class Raga(
 
 /** The ragas notation can name (`raga: malahari`). */
 object Ragas {
-    val all: List<Raga> = listOf(Raga.MAYAMALAVAGOWLA, Raga.MALAHARI, Raga.SUDDHA_SAVERI, Raga.MOHANAM)
+    val all: List<Raga> = listOf(Raga.MAYAMALAVAGOWLA, Raga.MALAHARI, Raga.SUDDHA_SAVERI, Raga.MOHANAM, Raga.BILAHARI)
 
     fun byKey(key: String): Raga? = all.firstOrNull { it.key == key }
 }

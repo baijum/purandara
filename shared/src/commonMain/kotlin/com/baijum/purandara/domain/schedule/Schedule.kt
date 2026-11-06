@@ -103,6 +103,12 @@ class Schedule private constructor(
     /** The exercise's raga. */
     val raga: Raga get() = varisai.raga
 
+    /** Seconds per written akshara (notation cell): a swarajati writes several to a beat. */
+    val aksharaSeconds: Double get() = settings.writtenAksharaSeconds / varisai.beat
+
+    /** Seconds per written avarta (one row block of notation). */
+    val avartaSeconds: Double get() = aksharaSeconds * varisai.tala.aksharas * varisai.beat
+
     /** Notation position sounding at [seconds], or null before the start or after the end. */
     fun cursorAt(seconds: Double): NotationPosition? {
         if (seconds < 0.0 || seconds >= durationSeconds) return null
@@ -138,7 +144,7 @@ class Schedule private constructor(
          */
         fun of(varisai: Varisai, settings: PerformanceSettings): Schedule {
             val reps = repetitionsToFillAvartas(varisai, settings)
-            val aksharaSeconds = settings.writtenAksharaSeconds
+            val aksharaSeconds = settings.writtenAksharaSeconds / varisai.beat
             val notes = mutableListOf<NoteEvent>()
             val cursor = mutableListOf<CursorEvent>()
             var written = 0 // written aksharas elapsed
@@ -168,7 +174,7 @@ class Schedule private constructor(
                 }
             }
 
-            val totalBeats = written / settings.aksharasPerBeat
+            val totalBeats = written / (settings.aksharasPerBeat * varisai.beat)
             val tala = varisai.tala
             val beats = List(totalBeats) { i ->
                 val inAvarta = i % tala.aksharas
@@ -189,7 +195,7 @@ class Schedule private constructor(
         fun repetitionsToFillAvartas(varisai: Varisai, settings: PerformanceSettings): Int {
             val writtenAksharas = varisai.aksharaCount
             require(writtenAksharas > 0) { "exercise has no aksharas" }
-            val perAvarta = varisai.tala.aksharas * settings.aksharasPerBeat
+            val perAvarta = varisai.tala.aksharas * settings.aksharasPerBeat * varisai.beat
             var reps = 1
             while ((writtenAksharas * reps) % perAvarta != 0) reps++
             return reps

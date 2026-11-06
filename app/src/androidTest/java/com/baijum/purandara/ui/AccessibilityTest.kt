@@ -202,6 +202,15 @@ class AccessibilityTest {
     }
 
     @Test
+    fun swarajatiAvartasWrapButReadAsOneSentenceWithoutInnerHolds() {
+        showPlayer(id = "swarajati-1")
+        compose.onNodeWithText("Bilahari · Adi tala").assertIsDisplayed()
+        compose.onNodeWithContentDescription(
+            "Avarta 1: S R G P D S′ N D, P D P M G R S, R S low N low D S. Words: ra ra ve nu go pa ba la ra ji ta sad gu na ja ya shi la",
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun gitamNotationChoiceIsInTheSettings() {
         showPlayer(id = "gitam-1")
         openSettings()
