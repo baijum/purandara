@@ -40,6 +40,8 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
             self, selector: #selector(audioInterrupted), name: AVAudioSession.interruptionNotification, object: nil)
         NotificationCenter.default.addObserver(
             self, selector: #selector(audioInterrupted), name: .AVAudioEngineConfigurationChange, object: engine)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(routeChanged), name: AVAudioSession.routeChangeNotification, object: nil)
     }
 
     /// Starts `renderer` from the beginning. `onFinished` runs on the main
@@ -63,9 +65,11 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     }
 
     /// Microphone capture on this same engine (needed for echo cancellation).
+    /// Echo cancellation (voice processing) is switched on when the sound goes
+    /// to the built-in speaker; that is decided after the session enters
+    /// record mode, because the route can change then (a paired Bluetooth
+    /// device may play `.playback` audio but not `.playAndRecord`).
     struct MicRequest {
-        /// Cancel the app's own output from the mic (use on the built-in speaker).
-        let voiceProcessing: Bool
         /// Called on an AVFoundation thread with each captured buffer and its time.
         let onBuffer: (AVAudioPCMBuffer, AVAudioTime) -> Void
     }
@@ -80,33 +84,49 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         reconfiguring = true
         defer { reconfiguring = false }
         let session = AVAudioSession.sharedInstance()
-        let wantVoiceProcessing = mic?.voiceProcessing ?? false
         if micTapInstalled {
             engine.inputNode.removeTap(onBus: 0)
             micTapInstalled = false
         }
-        if engine.inputNode.isVoiceProcessingEnabled != wantVoiceProcessing || (mic != nil) != (session.category == .playAndRecord) {
+        let wantRecord = mic != nil
+        if wantRecord != (session.category == .playAndRecord) {
             engine.stop()
-            if mic != nil {
+            if wantRecord {
                 try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
             } else {
                 try session.setCategory(.playback, mode: .default)
             }
-            try session.setActive(true)
-            if engine.inputNode.isVoiceProcessingEnabled != wantVoiceProcessing {
-                try engine.inputNode.setVoiceProcessingEnabled(wantVoiceProcessing)
-                if wantVoiceProcessing { engine.inputNode.isVoiceProcessingAGCEnabled = false }
-            }
-        } else {
-            try session.setActive(true)
         }
-        if let mic {
-            let input = engine.inputNode
-            let format = input.outputFormat(forBus: 0)
-            input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, when in mic.onBuffer(buffer, when) }
-            micTapInstalled = true
+        try session.setActive(true)
+        let wantVoiceProcessing = wantRecord && Self.outputIsBuiltInSpeaker()
+        if engine.inputNode.isVoiceProcessingEnabled != wantVoiceProcessing {
+            engine.stop()
+            try engine.inputNode.setVoiceProcessingEnabled(wantVoiceProcessing)
+            if wantVoiceProcessing { engine.inputNode.isVoiceProcessingAGCEnabled = false }
         }
         if !engine.isRunning { try engine.start() }
+        // After starting: switching voice processing changes the input format,
+        // and a tap installed with the stale format never receives buffers.
+        if let mic {
+            engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil) { buffer, when in mic.onBuffer(buffer, when) }
+            micTapInstalled = true
+        }
+    }
+
+    /// Called on the main thread when listening can't continue as configured:
+    /// the sound moved between speaker and headphones (echo cancellation no
+    /// longer matches), or iOS stopped the engine to rebuild its audio I/O
+    /// (it does so just after voice processing is first switched on). The
+    /// caller restarts playback, which configures everything afresh.
+    var onRestartNeeded: (@MainActor () -> Void)?
+
+    /// True when the last `play` with a mic sent sound to the built-in speaker (echo cancellation on).
+    private(set) var micOnSpeaker = false
+
+    /// Whether the current route plays through the built-in speaker rather than headphones.
+    static func outputIsBuiltInSpeaker() -> Bool {
+        let headphones: Set<AVAudioSession.Port> = [.headphones, .bluetoothA2DP, .bluetoothLE, .bluetoothHFP, .usbAudio]
+        return !AVAudioSession.sharedInstance().currentRoute.outputs.contains { headphones.contains($0.portType) }
     }
 
     /// Sample rate of the microphone tap (valid after `play` with a mic request).
@@ -204,9 +224,21 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         }
     }
 
+    @objc private func routeChanged(_ notification: Notification) {
+        DispatchQueue.main.async {
+            guard self.isPlaying, self.micTapInstalled, !self.reconfiguring,
+                  Self.outputIsBuiltInSpeaker() != self.micOnSpeaker else { return }
+            self.onRestartNeeded?()
+        }
+    }
+
     @objc private func audioInterrupted(_ notification: Notification) {
         // Our own category / voice-processing changes post configuration changes too.
         if notification.name == .AVAudioEngineConfigurationChange && (reconfiguring || !isPlaying) { return }
+        if notification.name == .AVAudioEngineConfigurationChange && micTapInstalled {
+            DispatchQueue.main.async { self.onRestartNeeded?() }
+            return
+        }
         if notification.name == AVAudioSession.interruptionNotification,
            let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
            AVAudioSession.InterruptionType(rawValue: raw) != .began {

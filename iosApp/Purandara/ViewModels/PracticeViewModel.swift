@@ -67,6 +67,7 @@ final class PracticeViewModel: ObservableObject {
     private let player = VarisaiAudioPlayer()
     private var bank: SampleBank?
     private var current: Varisai?
+    private var recentRestarts: [Date] = []
     private var renderer: SampleRenderer?
     private var schedule: Schedule?
     private var timer: Timer?
@@ -85,6 +86,7 @@ final class PracticeViewModel: ObservableObject {
         syntheticSingerCents = nil
         #endif
         singAlong.micPermitted = Self.micAuthorized()
+        player.onRestartNeeded = { [weak self] in self?.restartListening() }
         guard loadSamples else { return }
         Task.detached(priority: .userInitiated) {
             do {
@@ -116,8 +118,6 @@ final class PracticeViewModel: ObservableObject {
         current = varisai
         self.schedule = schedule
         self.renderer = renderer
-        let onSpeaker = Self.onBuiltInSpeaker()
-        singAlong.onSpeaker = onSpeaker
         singAlong.live = nil
         singAlong.trace = []
         singAlong.marks = [:]
@@ -132,7 +132,10 @@ final class PracticeViewModel: ObservableObject {
             }) : nil
         engine = newEngine
         do {
-            try player.play(renderer, mic: newEngine?.micRequest(voiceProcessing: onSpeaker)) { [weak self] in self?.finished(renderer) }
+            let mic = newEngine?.micRequest()
+            try player.play(renderer, mic: mic) { [weak self] in self?.finished(renderer) }
+            // Decided by the player once the session is in record mode (the route can change then).
+            singAlong.onSpeaker = mic != nil ? player.micOnSpeaker : VarisaiAudioPlayer.outputIsBuiltInSpeaker()
         } catch {
             engine = nil
             stop()
@@ -154,6 +157,19 @@ final class PracticeViewModel: ObservableObject {
         } else {
             finished(renderer)
         }
+    }
+
+    /// The player can't keep listening as configured (route change, or iOS
+    /// rebuilt the audio engine): start again so echo cancellation and the
+    /// count-in leakage measurement match. At most a few times in quick succession.
+    private func restartListening() {
+        guard let current, playback.playing else { return }
+        let now = Date()
+        recentRestarts = recentRestarts.filter { now.timeIntervalSince($0) < 10 } + [now]
+        guard recentRestarts.count <= 3 else { stop(); return }
+        _ = engine?.stop()
+        engine = nil
+        play(current)
     }
 
     /// Stops at once (leaving the screen, going to the background).
@@ -249,11 +265,6 @@ final class PracticeViewModel: ObservableObject {
         } else {
             AVAudioSession.sharedInstance().requestRecordPermission(completion)
         }
-    }
-
-    private static func onBuiltInSpeaker() -> Bool {
-        let headphones: Set<AVAudioSession.Port> = [.headphones, .bluetoothA2DP, .bluetoothLE, .bluetoothHFP, .usbAudio]
-        return !AVAudioSession.sharedInstance().currentRoute.outputs.contains { headphones.contains($0.portType) }
     }
 
     private func stopTimer() {

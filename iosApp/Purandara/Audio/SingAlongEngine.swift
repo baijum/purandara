@@ -63,9 +63,9 @@ final class SingAlongEngine: @unchecked Sendable {
     }
 
     /// The mic request to pass to `VarisaiAudioPlayer.play`, or nil when a synthetic singer replaces the mic.
-    func micRequest(voiceProcessing: Bool) -> VarisaiAudioPlayer.MicRequest? {
+    func micRequest() -> VarisaiAudioPlayer.MicRequest? {
         guard syntheticCents == nil else { return nil }
-        return VarisaiAudioPlayer.MicRequest(voiceProcessing: voiceProcessing) { [weak self] buffer, when in
+        return VarisaiAudioPlayer.MicRequest { [weak self] buffer, when in
             guard let self, let channel = buffer.floatChannelData?[0] else { return }
             let samples = Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
             let rate = buffer.format.sampleRate
