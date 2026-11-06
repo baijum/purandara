@@ -119,6 +119,34 @@ class BleedModelTest {
     }
 
     @Test
+    fun anOddClickThroughEchoCancellationDoesNotDecideTheRun() {
+        // iPad speaker with echo cancellation still adapting: of the count-in
+        // clicks most are cancelled, two get through loudly.
+        val bleed = BleedModel()
+        repeat(160) { i ->
+            val click = i % 20 == 0
+            val loud = i == 40 || i == 100
+            bleed.calibrate(micRms = if (loud) 0.3f else 0.004f, outputRms = if (click) 0.03f else 0.0005f)
+        }
+        bleed.finishCalibration()
+        assertTrue(bleed.leakageRatio < 0.2, "leakage ${bleed.leakageRatio}")
+        assertTrue(bleed.isVoice(micRms = 0.1f, outputRms = 0.09f))
+    }
+
+    @Test
+    fun leakageOnEveryClickIsStillMeasured() {
+        // A speaker without echo cancellation: every click reaches the mic.
+        val bleed = BleedModel()
+        repeat(160) { i ->
+            val click = i % 20 == 0
+            bleed.calibrate(micRms = if (click) 0.3f else 0.004f, outputRms = if (click) 0.03f else 0.0005f)
+        }
+        bleed.finishCalibration()
+        assertTrue(bleed.leakageRatio > 5, "leakage ${bleed.leakageRatio}")
+        assertFalse(bleed.isVoice(micRms = 0.4f, outputRms = 0.09f))
+    }
+
+    @Test
     fun noisyRoomRaisesTheBarAboveItsNoise() {
         val bleed = BleedModel()
         repeat(60) { bleed.calibrate(micRms = 0.02f, outputRms = 0.0f) }

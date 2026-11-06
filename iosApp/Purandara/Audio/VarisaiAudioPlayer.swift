@@ -104,6 +104,11 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
             try engine.inputNode.setVoiceProcessingEnabled(wantVoiceProcessing)
             if wantVoiceProcessing { engine.inputNode.isVoiceProcessingAGCEnabled = false }
         }
+        micOnSpeaker = wantVoiceProcessing
+        #if DEBUG
+        print("[player] configure record \(wantRecord) echoCancel \(wantVoiceProcessing) "
+            + "out \(session.currentRoute.outputs.map { $0.portType.rawValue })")
+        #endif
         if !engine.isRunning { try engine.start() }
         // After starting: switching voice processing changes the input format,
         // and a tap installed with the stale format never receives buffers.
@@ -235,6 +240,10 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     }
 
     @objc private func routeChanged(_ notification: Notification) {
+        #if DEBUG
+        print("[player] route change \(notification.userInfo?[AVAudioSessionRouteChangeReasonKey] ?? "-") "
+            + "out \(AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue })")
+        #endif
         DispatchQueue.main.async {
             guard self.isPlaying, self.micTapInstalled, !self.reconfiguring,
                   Self.outputIsBuiltInSpeaker() != self.micOnSpeaker else { return }
@@ -246,6 +255,9 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         // Our own category / voice-processing changes post configuration changes too.
         if notification.name == .AVAudioEngineConfigurationChange && (reconfiguring || !isPlaying) { return }
         if notification.name == .AVAudioEngineConfigurationChange && micTapInstalled {
+            #if DEBUG
+            print("[player] engine configuration changed while listening: restarting")
+            #endif
             DispatchQueue.main.async { self.onRestartNeeded?() }
             return
         }

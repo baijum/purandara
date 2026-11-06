@@ -12,8 +12,13 @@ import kotlin.math.sqrt
  * is the median mic level while the app is nearly silent (between count-in
  * clicks); with a continuous drone there is no such moment and the noise is
  * taken as zero, which attributes everything to leakage (the cautious side).
- * The leakage ratio comes from frames where the app is clearly audible, after
- * taking the noise away. (Dividing
+ * The leakage ratio is the median over frames where the app is clearly
+ * audible, after taking the noise away. The median, not a high percentile:
+ * echo cancellation is still adapting during the count-in and lets an odd
+ * click through, and one such click must not decide the whole run (measured
+ * on an iPad: most clicks cancelled to 0.004, an occasional one at 0.3).
+ * Real leakage without cancellation affects every click, so the median still
+ * sees it. (Dividing
  * raw mic level by output level instead blows up between count-in clicks, when
  * the output is nearly silent but the room is not, and rejects every voice.)
  *
@@ -96,7 +101,7 @@ class BleedModel {
         /** Enough quiet frames (about a second) to trust the noise floor. */
         private const val MIN_NOISE_FRAMES = 40
 
-        /** High percentile so leakage peaks are covered. */
-        private const val CALIBRATION_PERCENTILE = 0.9
+        /** Typical leakage, robust to the odd click echo cancellation misses. */
+        private const val CALIBRATION_PERCENTILE = 0.5
     }
 }
