@@ -7,6 +7,7 @@ import com.baijum.purandara.practice.PracticeHistory
 data class LibraryState(
     val history: PracticeHistory = PracticeHistory(),
     val saMidi: Int,
+    val saCents: Int = 0,
     val tanpuraPlaying: Boolean = false,
     val samplesLoaded: Boolean = false,
     val loadError: Boolean = false,
@@ -17,4 +18,6 @@ data class LibraryActions(
     val onSelect: (Varisai) -> Unit,
     val onToggleTanpura: () -> Unit = {},
     val onSaChange: (Int) -> Unit = {},
+    val onOpenShruti: () -> Unit = {},
+    val onFindSa: () -> Unit = {},
 )

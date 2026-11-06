@@ -6,6 +6,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -54,14 +57,14 @@ import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.VarisaiSet
 import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.practice.PracticeRecord
-import com.baijum.purandara.ui.player.SaPicker
+import com.baijum.purandara.ui.SaPicker
 
 /**
  * The landing page: continue / next up, the student's Sa with a tanpura to
  * tune to, then every exercise by set with its shape and progress
  * (docs/plan-landing.md).
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun LibraryScreen(
     catalog: List<Varisai>,
@@ -98,7 +101,7 @@ fun LibraryScreen(
             }
             LazyColumn(Modifier.fillMaxSize()) {
                 item(key = "continue") { ContinueCard(catalog, history, nowMillis, compact, actions.onSelect) }
-                item(key = "sa") { SaCard(state.saMidi, state.tanpuraPlaying, state.samplesLoaded, actions) }
+                item(key = "sa") { SaCard(state, actions) }
                 catalog.groupBy { it.set }.forEach { (set, exercises) ->
                     stickyHeader(key = set.name) {
                         SetHeader(set, history.practisedCount(set, catalog), exercises.size)
@@ -195,8 +198,9 @@ private fun NextRow(label: String, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SaCard(saMidi: Int, tanpuraPlaying: Boolean, samplesLoaded: Boolean, actions: LibraryActions) {
+private fun SaCard(state: LibraryState, actions: LibraryActions) {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
@@ -204,13 +208,19 @@ private fun SaCard(saMidi: Int, tanpuraPlaying: Boolean, samplesLoaded: Boolean,
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() },
             )
-            SaPicker(saMidi, actions.onSaChange)
-            FilledTonalButton(onClick = actions.onToggleTanpura, enabled = samplesLoaded) {
-                Icon(painterResource(if (tanpuraPlaying) R.drawable.ic_stop else R.drawable.ic_play), contentDescription = null)
-                Text(
-                    stringResource(if (tanpuraPlaying) R.string.tanpura_stop else R.string.tanpura_play),
-                    modifier = Modifier.padding(start = 8.dp),
-                )
+            SaPicker(state.saMidi, state.saCents, actions.onSaChange)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(onClick = actions.onToggleTanpura, enabled = state.samplesLoaded) {
+                    Icon(painterResource(if (state.tanpuraPlaying) R.drawable.ic_stop else R.drawable.ic_play), contentDescription = null)
+                    Text(
+                        stringResource(if (state.tanpuraPlaying) R.string.tanpura_stop else R.string.tanpura_play),
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+                FilledTonalButton(onClick = actions.onOpenShruti, enabled = state.samplesLoaded) {
+                    Text(stringResource(R.string.practise_sa))
+                }
+                OutlinedButton(onClick = actions.onFindSa) { Text(stringResource(R.string.find_my_sa)) }
             }
             Text(
                 stringResource(R.string.tanpura_hint),

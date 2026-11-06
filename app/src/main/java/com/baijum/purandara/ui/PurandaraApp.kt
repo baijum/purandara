@@ -22,6 +22,11 @@ import com.baijum.purandara.ui.library.LibraryScreen
 import com.baijum.purandara.ui.library.LibraryState
 import com.baijum.purandara.ui.player.PlayerActions
 import com.baijum.purandara.ui.player.PlayerScreen
+import com.baijum.purandara.ui.shruti.FindSaActions
+import com.baijum.purandara.ui.shruti.FindSaScreen
+import com.baijum.purandara.ui.shruti.ShrutiActions
+import com.baijum.purandara.ui.shruti.ShrutiScreen
+import com.baijum.purandara.viewmodel.PracticeUiState
 import com.baijum.purandara.viewmodel.PracticeViewModel
 
 /** Top-level navigation: the exercise library, or the player for the selected exercise. */
@@ -41,48 +46,95 @@ fun PurandaraApp(viewModel: PracticeViewModel) {
         micDenied = !granted
         if (granted) viewModel.updateSettings { it.copy(singAlong = true) }
     }
-
-    val selected = state.selected
-    if (selected == null) {
-        LibraryScreen(
-            catalog = viewModel.catalog,
-            state = LibraryState(
-                history = state.history,
-                saMidi = state.settings.saMidi,
-                tanpuraPlaying = state.tanpuraPlaying,
-                samplesLoaded = state.samplesLoaded,
-                loadError = state.loadError,
-            ),
-            actions = LibraryActions(
-                onSelect = viewModel::select,
-                onToggleTanpura = viewModel::toggleTanpura,
-                onSaChange = { midi -> viewModel.updateSettings { it.copy(saMidi = midi) } },
-            ),
-        )
-    } else {
-        BackHandler { viewModel.select(null) }
-        PlayerScreen(
-            varisai = selected,
-            state = state,
-            micDenied = micDenied,
-            actions = PlayerActions(
-                onBack = { viewModel.select(null) },
-                onTogglePlay = viewModel::togglePlay,
-                onSettingsChange = viewModel::updateSettings,
-                onToggleSingAlong = {
-                    when {
-                        state.settings.singAlong -> viewModel.updateSettings { it.copy(singAlong = false) }
-                        state.singAlong.micPermitted || viewModel.debugSyntheticSingerCents != null ->
-                            viewModel.updateSettings { it.copy(singAlong = true) }
-                        else -> requestMic.launch(Manifest.permission.RECORD_AUDIO)
-                    }
-                },
-                onOpenAppSettings = {
-                    context.startActivity(
-                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
-                    )
-                },
-            ),
-        )
+    // Shruti practice and Find my Sa ask for the mic themselves and restart once allowed.
+    val requestMicForShruti = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        viewModel.setMicPermission(granted)
+        if (granted && state.shruti.open) viewModel.openShruti()
+        if (granted && state.findSa.open) viewModel.openFindSa()
     }
+    val allowMic = { requestMicForShruti.launch(Manifest.permission.RECORD_AUDIO) }
+
+    when {
+        state.shruti.open -> ShrutiRoute(viewModel, state, allowMic)
+        state.findSa.open -> FindSaRoute(viewModel, state, allowMic)
+        state.selected == null -> LibraryRoute(viewModel, state)
+        else -> PlayerRoute(viewModel, state, micDenied) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
+    }
+}
+
+@Composable
+private fun ShrutiRoute(viewModel: PracticeViewModel, state: PracticeUiState, allowMic: () -> Unit) {
+    BackHandler { viewModel.closeShruti() }
+    ShrutiScreen(
+        state,
+        ShrutiActions(onBack = viewModel::closeShruti, onHoldChange = viewModel::setHold, onAllowMic = allowMic),
+        micAllowed = state.singAlong.micPermitted || viewModel.debugSyntheticSingerCents != null,
+    )
+}
+
+@Composable
+private fun FindSaRoute(viewModel: PracticeViewModel, state: PracticeUiState, allowMic: () -> Unit) {
+    BackHandler { viewModel.closeFindSa() }
+    FindSaScreen(
+        state.findSa,
+        micPermitted = state.singAlong.micPermitted || viewModel.debugSyntheticSingerCents != null,
+        actions = FindSaActions(
+            onBack = viewModel::closeFindSa,
+            onUse = viewModel::useSuggestedSa,
+            onRetry = viewModel::openFindSa,
+            onAllowMic = allowMic,
+        ),
+    )
+}
+
+@Composable
+private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState) {
+    LibraryScreen(
+        catalog = viewModel.catalog,
+        state = LibraryState(
+            history = state.history,
+            saMidi = state.settings.saMidi,
+            saCents = state.settings.saCents,
+            tanpuraPlaying = state.tanpuraPlaying,
+            samplesLoaded = state.samplesLoaded,
+            loadError = state.loadError,
+        ),
+        actions = LibraryActions(
+            onSelect = viewModel::select,
+            onToggleTanpura = viewModel::toggleTanpura,
+            onSaChange = { midi -> viewModel.updateSettings { it.copy(saMidi = midi) } },
+            onOpenShruti = viewModel::openShruti,
+            onFindSa = viewModel::openFindSa,
+        ),
+    )
+}
+
+@Composable
+private fun PlayerRoute(viewModel: PracticeViewModel, state: PracticeUiState, micDenied: Boolean, requestMic: () -> Unit) {
+    val context = LocalContext.current
+    val selected = state.selected ?: return
+    BackHandler { viewModel.select(null) }
+    PlayerScreen(
+        varisai = selected,
+        state = state,
+        micDenied = micDenied,
+        actions = PlayerActions(
+            onBack = { viewModel.select(null) },
+            onTogglePlay = viewModel::togglePlay,
+            onSettingsChange = viewModel::updateSettings,
+            onToggleSingAlong = {
+                when {
+                    state.settings.singAlong -> viewModel.updateSettings { it.copy(singAlong = false) }
+                    state.singAlong.micPermitted || viewModel.debugSyntheticSingerCents != null ->
+                        viewModel.updateSettings { it.copy(singAlong = true) }
+                    else -> requestMic()
+                }
+            },
+            onOpenAppSettings = {
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)),
+                )
+            },
+        ),
+    )
 }

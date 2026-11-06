@@ -43,5 +43,5 @@ The current **Play tanpura** button stays.
 | | Scope | Tests |
 |---|---|---|
 | P1 ✅ | Shared: `Strictness` threaded through zones and scoring; `HoldTracker`; `ShrutiSession` (room check, readings, hold); `NoteCatcher` + `SaFinder`; Sa fine-tune; voice ranges | commonTest |
-| P2 | Android: Shruti practice screen, Find my Sa, strictness and fine-tune settings, grouped Sa list | unit + `AccessibilityTest` |
+| P2 ✅ | Android: Shruti practice screen, Find my Sa, strictness and fine-tune settings, grouped Sa list | unit + `AccessibilityTest` |
 | P3 | iOS: the same (mic windowing shared with the sing-along engine) | XCTest + UI audits |

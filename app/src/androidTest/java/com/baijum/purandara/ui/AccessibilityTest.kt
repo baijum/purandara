@@ -42,6 +42,19 @@ import com.baijum.purandara.singalong.NoteResult
 import com.baijum.purandara.singalong.PassSummary
 import com.baijum.purandara.singalong.SwaraMapper
 import com.baijum.purandara.singalong.Tendency
+import com.baijum.purandara.domain.Pitch
+import com.baijum.purandara.shruti.HoldGoal
+import com.baijum.purandara.shruti.HoldState
+import com.baijum.purandara.shruti.HoldTarget
+import com.baijum.purandara.shruti.SaSuggestion
+import com.baijum.purandara.singalong.Strictness
+import com.baijum.purandara.ui.shruti.FindSaActions
+import com.baijum.purandara.ui.shruti.FindSaScreen
+import com.baijum.purandara.ui.shruti.ShrutiActions
+import com.baijum.purandara.ui.shruti.ShrutiScreen
+import com.baijum.purandara.viewmodel.FindSaStep
+import com.baijum.purandara.viewmodel.FindSaUiState
+import com.baijum.purandara.viewmodel.ShrutiUiState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -260,6 +273,74 @@ class AccessibilityTest {
         assertTouchTarget(button)
         button.performClick()
         assertEquals(1, tanpuraToggled)
+    }
+
+    @Test
+    fun strictnessAndFineTuneAreDescribed() {
+        showPlayer()
+        openSettings()
+        compose.onNodeWithContentDescription("Fine tune").performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "0 cents"))
+        compose.onNodeWithText("Precise").performScrollTo().assertHasClickAction()
+        compose.onNodeWithText("Gentle").performScrollTo().performClick()
+        assertEquals(Strictness.GENTLE, settings.strictness)
+    }
+
+    private fun showShruti(shruti: ShrutiUiState, micPermitted: Boolean = true) {
+        compose.setContent {
+            PurandaraTheme {
+                ShrutiScreen(
+                    PracticeUiState(settings = settings, samplesLoaded = true, singAlong = SingAlongState(micPermitted = micPermitted), shruti = shruti),
+                    ShrutiActions(onBack = {}, onHoldChange = { _, _ -> }, onAllowMic = {}),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun shrutiPracticeReadsThePitchAndAnnouncesAReachedHold() {
+        val sa = settings.saHz
+        val reading = SwaraMapper(sa, VarisaiCatalog.raga, settings.tuning).read(sa)
+        val hold = HoldState(HoldTarget.SA, HoldGoal.SHORT, currentSeconds = 10.4, bestSeconds = 10.4, onTarget = true, reached = true)
+        showShruti(ShrutiUiState(open = true, reading = reading, hold = hold))
+        compose.onNodeWithContentDescription("Your pitch").assertExists()
+        assertTouchTarget(compose.onNodeWithContentDescription("Back").assertHasClickAction())
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        compose.onNode(hasText("Hold a note") and heading).performScrollTo()
+        compose.onNodeWithText("Upper Sa").performScrollTo().assertHasClickAction()
+        compose.onNodeWithText("30 s").performScrollTo().assertHasClickAction()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion) and hasText("Goal reached: Sa held for 10 seconds"))
+            .performScrollTo().assertExists()
+    }
+
+    @Test
+    fun shrutiPracticeWithoutTheMicOffersToAllowIt() {
+        showShruti(ShrutiUiState(open = true), micPermitted = false)
+        assertTouchTarget(compose.onNodeWithText("Allow microphone").assertHasClickAction())
+    }
+
+    @Test
+    fun findMySaShowsTheSuggestionWithActions() {
+        compose.setContent {
+            PurandaraTheme {
+                FindSaScreen(
+                    FindSaUiState(
+                        open = true,
+                        step = FindSaStep.DONE,
+                        lowestHz = Pitch.midiToHz(41),
+                        highestHz = Pitch.midiToHz(67),
+                        suggestion = SaSuggestion(50, narrowRange = false),
+                    ),
+                    micPermitted = true,
+                    actions = FindSaActions(onBack = {}, onUse = {}, onRetry = {}, onAllowMic = {}),
+                )
+            }
+        }
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        compose.onNode(hasText("Suggested Sa: D3 · 2 kattai") and heading).assertExists()
+        compose.onNodeWithText("Lowest F2 · Highest G4").assertExists()
+        assertTouchTarget(compose.onNodeWithText("Use this").assertHasClickAction())
+        assertTouchTarget(compose.onNodeWithText("Try again").assertHasClickAction())
     }
 
     private companion object {

@@ -6,6 +6,7 @@ import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.schedule.PerformanceSettings
 import com.baijum.purandara.practice.PracticeHistory
+import com.baijum.purandara.singalong.Strictness
 
 /** The student's practice settings. */
 data class PracticeSettings(
@@ -25,9 +26,15 @@ data class PracticeSettings(
     val harmoniumGuide: Boolean = true,
     /** Sing-along cancels the app's own sound from the mic when playing through the speaker. */
     val echoCancellation: Boolean = true,
+    /** What counts as in tune and close, for sing-along and Shruti practice. */
+    val strictness: Strictness = Strictness.PRECISE,
+    /** Fine-tune of Sa in cents (Shruti.FINE_TUNE_RANGE). */
+    val saCents: Int = 0,
 ) {
+    val saHz: Double get() = Shruti.saHz(saMidi, saCents)
+
     fun performance(): PerformanceSettings =
-        PerformanceSettings(saHz = Shruti.saHz(saMidi), tempo = tempo, kala = kala, tuning = tuning)
+        PerformanceSettings(saHz = saHz, tempo = tempo, kala = kala, tuning = tuning)
 
     /** Sing-along forces the count-in (leakage is measured while the student is silent). */
     fun renderOptions(): RenderOptions = RenderOptions.practice(
@@ -59,6 +66,8 @@ class PracticePreferences(context: Context) {
             singAlong = prefs.getBoolean(SING_ALONG, d.singAlong),
             harmoniumGuide = prefs.getBoolean(HARMONIUM_GUIDE, d.harmoniumGuide),
             echoCancellation = prefs.getBoolean(ECHO_CANCELLATION, d.echoCancellation),
+            strictness = Strictness.entries.firstOrNull { it.name == prefs.getString(STRICTNESS, null) } ?: d.strictness,
+            saCents = prefs.getInt(SA_CENTS, d.saCents).takeIf { it in Shruti.FINE_TUNE_RANGE } ?: d.saCents,
             tuning = Tuning.entries.firstOrNull { it.name == prefs.getString(TUNING, null) } ?: d.tuning,
         )
     }
@@ -84,6 +93,8 @@ class PracticePreferences(context: Context) {
             .putBoolean(SING_ALONG, s.singAlong)
             .putBoolean(HARMONIUM_GUIDE, s.harmoniumGuide)
             .putBoolean(ECHO_CANCELLATION, s.echoCancellation)
+            .putString(STRICTNESS, s.strictness.name)
+            .putInt(SA_CENTS, s.saCents)
             .apply()
     }
 
@@ -102,5 +113,7 @@ class PracticePreferences(context: Context) {
         const val HARMONIUM_GUIDE = "harmonium_guide"
         const val ECHO_CANCELLATION = "echo_cancellation"
         const val HISTORY = "practice_history"
+        const val STRICTNESS = "strictness"
+        const val SA_CENTS = "sa_cents"
     }
 }

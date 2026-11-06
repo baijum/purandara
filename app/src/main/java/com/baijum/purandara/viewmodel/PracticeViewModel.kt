@@ -12,6 +12,7 @@ import ai.onnxruntime.OrtException
 import com.baijum.purandara.audio.AudioRecordMicSource
 import com.baijum.purandara.audio.HarmoniumSamples
 import com.baijum.purandara.audio.MicSource
+import com.baijum.purandara.audio.PitchListener
 import com.baijum.purandara.audio.RenderOptions
 import com.baijum.purandara.audio.NeuralPitchSupervisor
 import com.baijum.purandara.audio.SampleBank
@@ -27,6 +28,11 @@ import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.practice.PracticeHistory
+import com.baijum.purandara.shruti.HoldGoal
+import com.baijum.purandara.shruti.HoldTarget
+import com.baijum.purandara.shruti.ShrutiOutcome
+import com.baijum.purandara.shruti.ShrutiSession
+import com.baijum.purandara.singalong.BleedModel
 import com.baijum.purandara.singalong.FrameOutcome
 import com.baijum.purandara.singalong.NoteMark
 import com.baijum.purandara.singalong.PassResult
@@ -66,6 +72,8 @@ data class PracticeUiState(
     val history: PracticeHistory = PracticeHistory(),
     /** The landing page's tanpura-only drone is sounding. */
     val tanpuraPlaying: Boolean = false,
+    val shruti: ShrutiUiState = ShrutiUiState(),
+    val findSa: FindSaUiState = FindSaUiState(),
 )
 
 /**
@@ -94,6 +102,10 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
 
     /** The exercise playing now has been heard through one full pass (recorded once per play). */
     private var practisedThisPlay = false
+
+    /** Shruti practice or Find my Sa listening. */
+    private var listener: PitchListener? = null
+    private var shrutiSession: ShrutiSession? = null
 
     /** Debug builds only: a synthetic singer offset by this many cents replaces the mic. */
     var debugSyntheticSingerCents: Double? = null
@@ -153,6 +165,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         if (next.singAlong) loadSupervisor()
         if (wasPlaying) play()
         if (wasTanpura) playTanpura()
+        if (_state.value.shruti.open) startShruti()
     }
 
     fun setMicPermission(granted: Boolean) {
@@ -172,6 +185,106 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         renderer = r
         player.play(r) { mainHandler.post { onPlaybackFinished(r) } }
         _state.update { it.copy(tanpuraPlaying = true) }
+    }
+
+    // --- Shruti practice (docs/plan-shruti.md) ---
+
+    fun openShruti() {
+        _state.update { it.copy(shruti = ShrutiUiState(open = true, target = it.shruti.target, goal = it.shruti.goal)) }
+        startShruti()
+    }
+
+    fun closeShruti() {
+        stop()
+        _state.update { it.copy(shruti = it.shruti.copy(open = false, reading = null, trace = emptyList(), hold = null)) }
+    }
+
+    fun setHold(target: HoldTarget, goal: HoldGoal) {
+        shrutiSession?.startHold(target, goal)
+        _state.update { it.copy(shruti = it.shruti.copy(target = target, goal = goal, hold = null)) }
+    }
+
+    /** The tanpura plus, with the mic allowed, a [ShrutiSession] listening to the student. */
+    private fun startShruti() {
+        val bank = bank ?: return
+        stop()
+        val settings = _state.value.settings
+        val r = SampleRenderer(bank, Schedule.of(catalog.first(), settings.performance()), RenderOptions.droneOnly(settings.droneLevel))
+        renderer = r
+        val listening = _state.value.singAlong.micPermitted || debugSyntheticSingerCents != null
+        val session = ShrutiSession(settings.saHz, VarisaiCatalog.raga, settings.tuning, settings.strictness, r.sampleRate)
+        val shruti = _state.value.shruti
+        session.startHold(shruti.target, shruti.goal)
+        if (listening) {
+            shrutiSession = session
+            player.onRendered = { start, rms -> session.outputLevels.record(start, rms) }
+            loadSupervisor()
+        }
+        player.play(r) { mainHandler.post { onPlaybackFinished(r) } }
+        if (listening) {
+            val onSpeaker = !headphonesConnected()
+            listener = PitchListener(
+                // The debug synthetic singer sings Sa after the room check, like a student would.
+                micSource(onSpeaker && settings.echoCancellation) { nanos ->
+                    player.outputFrameAt(nanos)?.takeIf { it >= ShrutiSession.DEFAULT_ROOM_CHECK_SECONDS * r.sampleRate }?.let { settings.saHz }
+                },
+                supervisor,
+                timeOf = { nanos -> player.outputFrameAt(nanos)?.takeIf { it >= 0 }?.let { it.toDouble() / r.sampleRate } },
+            ) { frame ->
+                val outcome = session.onFrame(frame)
+                mainHandler.post { onShrutiOutcome(r, frame.timeSeconds, outcome) }
+            }.also { it.start() }
+            _state.update { it.copy(singAlong = it.singAlong.copy(onSpeaker = onSpeaker)) }
+        }
+        _state.update { it.copy(shruti = it.shruti.copy(listeningToRoom = listening, reading = null, trace = emptyList(), hold = null)) }
+    }
+
+    private fun onShrutiOutcome(r: SampleRenderer, seconds: Double, outcome: ShrutiOutcome) {
+        if (renderer !== r) return
+        val sa = _state.value.settings.saHz
+        _state.update { s ->
+            val reading = outcome.reading
+            val trace = if (reading == null) s.shruti.trace else s.shruti.trace + FreeTracePoint(seconds, Pitch.cents(sa, reading.frequencyHz), reading.zone)
+            s.copy(
+                shruti = s.shruti.copy(
+                    listeningToRoom = outcome.listeningToRoom,
+                    reading = reading,
+                    trace = trace.dropWhile { it.seconds < seconds - TRACE_SECONDS },
+                    hold = outcome.hold,
+                ),
+            )
+        }
+    }
+
+    // --- Find my Sa ---
+
+    fun openFindSa() {
+        stop()
+        val guide = FindSaGuide()
+        val start = System.nanoTime()
+        _state.update { it.copy(findSa = FindSaUiState(open = true)) }
+        if (!_state.value.singAlong.micPermitted && debugSyntheticSingerCents == null) return
+        loadSupervisor()
+        listener = PitchListener(
+            micSource(echoCancellation = false) { nanos -> if ((nanos - start) / NANOS < FAKE_LOW_SECONDS) LOW_DEMO_HZ else HIGH_DEMO_HZ },
+            supervisor,
+            timeOf = { nanos -> (nanos - start) / NANOS },
+        ) { frame ->
+            val hz = frame.frequencyHz?.takeIf { frame.rms >= BleedModel.MIN_VOICE_RMS }
+            val next = guide.onFrame(frame.timeSeconds, hz)
+            mainHandler.post { if (_state.value.findSa.open) _state.update { it.copy(findSa = next) } }
+        }.also { it.start() }
+    }
+
+    fun closeFindSa() {
+        stop()
+        _state.update { it.copy(findSa = FindSaUiState()) }
+    }
+
+    fun useSuggestedSa() {
+        val suggestion = _state.value.findSa.suggestion ?: return
+        closeFindSa()
+        updateSettings { it.copy(saMidi = suggestion.saMidi, saCents = 0) }
     }
 
     private fun updateHistory(transform: (PracticeHistory) -> PracticeHistory) {
@@ -204,7 +317,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
         val singAlong = settings.singAlong && (_state.value.singAlong.micPermitted || debugSyntheticSingerCents != null)
         val newEngine = if (singAlong) {
-            SingAlongEngine(micSource(onSpeaker && settings.echoCancellation, r, schedule), player, r, schedule, supervisor) { outcome ->
+            SingAlongEngine(micSource(onSpeaker && settings.echoCancellation, exerciseTarget(r, schedule)), player, r, SingAlongEngine.sessionFor(r, schedule, settings.strictness), supervisor) { outcome ->
                 mainHandler.post { onOutcome(r, outcome) }
             }.also { it.attach() }
         } else {
@@ -242,15 +355,19 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun micSource(echoCancellation: Boolean, r: SampleRenderer, schedule: Schedule): MicSource {
+    /** Debug synthetic singer for an exercise: the note being heard, silent in the count-in. */
+    private fun exerciseTarget(r: SampleRenderer, schedule: Schedule): (Long) -> Double? = { nanos ->
+        player.outputFrameAt(nanos)?.takeIf { it >= 0 && r.countInBeat(it) == null }?.let { frame ->
+            val t = r.passSeconds(frame)
+            schedule.notes.lastOrNull { it.startSeconds <= t && t < schedule.durationSeconds }?.frequencyHz
+        }
+    }
+
+    /** The microphone, or in debug builds a synthetic singer singing [syntheticTarget]. */
+    private fun micSource(echoCancellation: Boolean, syntheticTarget: (Long) -> Double?): MicSource {
         val synthetic = debugSyntheticSingerCents
         return if (synthetic != null) {
-            SyntheticSingerMicSource(synthetic) { nanos ->
-                val frame = player.outputFrameAt(nanos) ?: return@SyntheticSingerMicSource null
-                if (r.countInBeat(frame) != null || frame < 0) return@SyntheticSingerMicSource null
-                val t = r.passSeconds(frame)
-                schedule.notes.lastOrNull { it.startSeconds <= t && t < schedule.durationSeconds }?.frequencyHz
-            }
+            SyntheticSingerMicSource(synthetic, syntheticTarget)
         } else {
             AudioRecordMicSource(echoCancellation = echoCancellation)
         }
@@ -303,6 +420,10 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     fun stop() {
         ticker?.cancel()
         ticker = null
+        listener?.stop()
+        listener = null
+        if (shrutiSession != null) player.onRendered = null
+        shrutiSession = null
         val finalPass = engine?.stop()
         engine = null
         player.stop()
@@ -332,6 +453,13 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         const val TAG = "PracticeViewModel"
         const val FRAME_MS = 16L
         const val MAX_TRACE = 1500
+        const val TRACE_SECONDS = 10.0
+        const val NANOS = 1e9
+
+        /** Debug synthetic singer in Find my Sa: a low note, then a high one. */
+        const val FAKE_LOW_SECONDS = 4.0
+        const val LOW_DEMO_HZ = 98.0
+        const val HIGH_DEMO_HZ = 392.0
         const val MIC_SAMPLE_RATE = 44_100
         val HEADPHONE_TYPES = setOf(
             AudioDeviceInfo.TYPE_WIRED_HEADPHONES,

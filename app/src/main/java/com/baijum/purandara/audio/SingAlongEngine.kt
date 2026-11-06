@@ -4,6 +4,7 @@ import com.baijum.purandara.singalong.FrameOutcome
 import com.baijum.purandara.singalong.PitchPipeline
 import com.baijum.purandara.singalong.SingAlongClock
 import com.baijum.purandara.singalong.SingAlongSession
+import com.baijum.purandara.singalong.Strictness
 import com.baijum.purandara.domain.schedule.Schedule
 
 /**
@@ -21,23 +22,12 @@ import com.baijum.purandara.domain.schedule.Schedule
 class SingAlongEngine(
     private val mic: MicSource,
     private val player: VarisaiAudioPlayer,
-    private val renderer: SampleRenderer,
-    schedule: Schedule,
+    renderer: SampleRenderer,
+    private val session: SingAlongSession,
     private val supervisor: NeuralPitchSupervisor?,
     private val onOutcome: (FrameOutcome) -> Unit,
 ) {
     private val sampleRate = renderer.sampleRate
-    private val session = SingAlongSession(
-        schedule = schedule,
-        clock = SingAlongClock(
-            countInSeconds = renderer.countInFrames.toDouble() / sampleRate,
-            passSeconds = renderer.performanceFrames.toDouble() / sampleRate,
-            loop = renderer.totalFrames == Long.MAX_VALUE,
-            outputLatencySeconds = 0.0,
-            inputLatencySeconds = 0.0,
-        ),
-        sampleRate = sampleRate,
-    )
     private val pipeline = PitchPipeline(mic.sampleRate)
 
     /** Call before [VarisaiAudioPlayer.play] so output levels are recorded from the first block. */
@@ -51,6 +41,25 @@ class SingAlongEngine(
             if (pipeline.beginFrame()) pipeline.onNeuralResult(supervisor?.estimate(window))
             val frame = pipeline.process(window, heardFrame.toDouble() / sampleRate)
             onOutcome(session.onFrame(frame))
+        }
+    }
+
+    companion object {
+        /** The session for [renderer]'s playback of [schedule]: count-in, pass length and looping from the renderer. */
+        fun sessionFor(renderer: SampleRenderer, schedule: Schedule, strictness: Strictness): SingAlongSession {
+            val rate = renderer.sampleRate.toDouble()
+            return SingAlongSession(
+                schedule = schedule,
+                clock = SingAlongClock(
+                    countInSeconds = renderer.countInFrames / rate,
+                    passSeconds = renderer.performanceFrames / rate,
+                    loop = renderer.totalFrames == Long.MAX_VALUE,
+                    outputLatencySeconds = 0.0,
+                    inputLatencySeconds = 0.0,
+                ),
+                sampleRate = renderer.sampleRate,
+                strictness = strictness,
+            )
         }
     }
 

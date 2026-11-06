@@ -60,6 +60,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.baijum.purandara.R
+import com.baijum.purandara.ui.FineTuneControl
+import com.baijum.purandara.ui.SaPicker
+import com.baijum.purandara.ui.StrictnessPicker
+import com.baijum.purandara.ui.saLabel
 import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
@@ -110,7 +114,7 @@ fun PlayerScreen(
                 marks = if (settings.singAlong) state.singAlong.marks else emptyMap(),
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
-            PlaybackStatus(playback, settings.saMidi)
+            PlaybackStatus(playback, saLabel(settings.saMidi, settings.saCents))
             HorizontalDivider()
             QuickControls(settings, actions.onSettingsChange, Modifier.padding(16.dp))
         }
@@ -200,13 +204,13 @@ private fun SingAlongPanel(varisai: Varisai, state: PracticeUiState, micDenied: 
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PlaybackStatus(playback: PlaybackState, saMidi: Int) {
+private fun PlaybackStatus(playback: PlaybackState, sa: String) {
     if (!playback.playing) return
     val pass = playback.position?.repetition
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         StatusText(
             emphasis = true,
-            text = stringResource(R.string.sa_playing, stringResource(R.string.sa_value, Shruti.noteName(saMidi), Shruti.kattai(saMidi))),
+            text = stringResource(R.string.sa_playing, sa),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         when {
@@ -266,7 +270,8 @@ private fun PracticeSettingsSheet(
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.semantics { heading() },
         )
-        SaPicker(settings.saMidi) { midi -> onSettingsChange { it.copy(saMidi = midi) } }
+        SaPicker(settings.saMidi, settings.saCents) { midi -> onSettingsChange { it.copy(saMidi = midi) } }
+        FineTuneControl(settings.saCents) { cents -> onSettingsChange { it.copy(saCents = cents) } }
 
         Text(stringResource(R.string.tuning), style = MaterialTheme.typography.titleSmall)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -286,6 +291,7 @@ private fun PracticeSettingsSheet(
         LevelSlider(stringResource(R.string.harmonium_volume), settings.harmoniumLevel, enabled = true) { v ->
             onSettingsChange { it.copy(harmoniumLevel = v) }
         }
+        StrictnessPicker(settings.strictness) { strictness -> onSettingsChange { it.copy(strictness = strictness) } }
         Text(stringResource(R.string.harmonium_guide), style = MaterialTheme.typography.titleSmall)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             listOf(true to R.string.guide_all, false to R.string.guide_off).forEachIndexed { i, (guide, label) ->
@@ -307,34 +313,6 @@ private fun PracticeSettingsSheet(
         ToggleRow(stringResource(R.string.click), settings.click) { on -> onSettingsChange { it.copy(click = on) } }
         ToggleRow(stringResource(R.string.count_in), settings.countIn) { on -> onSettingsChange { it.copy(countIn = on) } }
         ToggleRow(stringResource(R.string.loop), settings.loop) { on -> onSettingsChange { it.copy(loop = on) } }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun SaPicker(saMidi: Int, onSelect: (Int) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    val label = @Composable { midi: Int -> stringResource(R.string.sa_value, Shruti.noteName(midi), Shruti.kattai(midi)) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
-            value = label(saMidi),
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.sa)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            Shruti.SA_RANGE.forEach { midi ->
-                DropdownMenuItem(
-                    text = { Text(label(midi)) },
-                    onClick = {
-                        expanded = false
-                        onSelect(midi)
-                    },
-                )
-            }
-        }
     }
 }
 
