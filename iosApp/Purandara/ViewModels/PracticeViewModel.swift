@@ -482,6 +482,9 @@ final class PracticeViewModel: ObservableObject {
     private func restartPlayback() {
         if shruti.open { startShruti(); return }
         if findSaOpen { startFindSa(); return }
+        // iOS rebuilds the engine after leaving record mode (Practise Sa, Find my Sa):
+        // without a restart the tanpura would go silent.
+        if tanpuraPlaying { playTanpura(); return }
         guard let current, playback.playing else { return }
         let now = Date()
         recentRestarts = recentRestarts.filter { now.timeIntervalSince($0) < 10 } + [now]
