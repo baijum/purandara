@@ -1,7 +1,7 @@
 # Plan: Alankarams and Gitams
 
 Status: **proposed** (2026-11-06). Nothing is built yet. The open questions at
-the end need answers first.
+the end need answers first. Candidate source: karnatik.com (see *Source review*).
 
 The next two stages of the traditional beginner path after the varisais are:
 
@@ -134,10 +134,88 @@ Chaturasra Triputa, so it becomes one case of the same model.
 
 A1 and A2 ship alankarams on their own. Gitams follow.
 
+## Source review: karnatik.com (2026-11-06)
+
+**Alankarams** ([lesson 6](https://karnatik.com/lesson6.shtml))
+
+- **Notation:** all seven sapta tala alankarams in Mayamalavagowla, in clean
+  notation.
+  - Lowercase letters are the middle octave; `S` and `R` are upper Sa and Ri.
+  - Each alankaram is 10 avartas: five climbing to S′ and five coming back.
+- **Rupaka:** written drutam first (`s r | s r g m ||`).
+- **Jhampa:** the misra laghu is spaced 3 + 2 + 2 inside the laghu, then the
+  anudrutam and the drutam. Ata's khanda laghus contain karvais.
+- **Mismatch with the plan:** these all match the tala table above.
+  - The only error is the page header, which says "taaLam: aadi". It is a
+    template leftover and can be ignored.
+- **An eighth alankaram:** Sankeerna jati Eka (9 beats), in two versions.
+  It is optional (Q7).
+
+**Gitams** ([index](https://karnatik.com/geetams.shtml))
+
+- **Malahari gitams:** 27 gitams are listed, and the four Malahari pillari
+  gitams each have notation, words and meaning:
+  - [Śrī Gaṇanātha / Lambōdara](https://karnatik.com/c1806.shtml): Rupaka. These
+    are one gitam, called by its opening line and by its refrain.
+  - [Kunda Gaura / Mandāra](https://karnatik.com/c1807.shtml): Rupaka. Also one
+    gitam.
+  - [Kereya Nīranu](https://karnatik.com/c1808.shtml): Tisra Triputa.
+  - [Padumanābha](https://karnatik.com/c1809.shtml): Tisra Triputa.
+- **Talas:** Rupaka is written `2 | 4 ||` (drutam first) here too, so Q6 is
+  settled for this source.
+- **Order:**
+  - Śrī Gaṇanātha, Kunda Gaura and Kereya Nīranu start with *caraṇam 1*, then
+    the *pallavi* (the refrain).
+  - Each later caraṇam is followed by "(pallavi)", meaning sing the refrain
+    again.
+  - Padumanābha runs pallavi, anupallavi, caraṇam, each followed by its
+    refrain.
+- **What the grammar needs:**
+  - Named sections and a repeat reference, expanded when the piece is parsed,
+    so that the player and sing-along see the sung order.
+  - The screen shows section names.
+- **Words:** written one syllable group per swara, with `.` for a held vowel.
+  Some groups span two swaras (`naatha` under `S R`).
+  - Transcription splits these at syllable boundaries (`naa tha`), and the file
+    header records that change.
+  - The romanisation is the site's own (`shree`, `gaNanaatha`, capitals for
+    retroflex). The app would show the words in the transliteration chosen in
+    Q4.
+
+**Problems to settle before encoding**
+
+1. **Inconsistent lower-octave dots.**
+   - The site marks mandra with a trailing dot (`d.`), but drops it in places.
+   - On its own mandra-sthayi varisai page, `d n.` and `d n. s r` must be `d.`.
+   - In Padumanābha (`s d , | d p | m p`) and Kereya Nīranu (`d p d | s ,`) it
+     is unclear whether the `d` and `p` after `s` are lower or middle.
+   - Every lower note in the gitams needs a second source, a recording or your
+     teacher. The same rule kept Mandhra Sthayi out of the varisais.
+2. **No licence stated.**
+   - The compositions are traditional and public domain, and the notation is
+     re-encoded in the app's own format.
+   - Still, credit karnatik.com in ATTRIBUTION.md (with the page links).
+     Preferably also ask the site's author before shipping.
+3. **Typos to fix in transcription,** recorded in the header.
+   - Example: the caraṇam 3 words of Śrī Gaṇanātha are split oddly
+     (`sa r | vO t ta ma`).
+   - Each fix is listed rather than made silently.
+
+**By-product:** lessons [4](https://karnatik.com/lesson4.shtml) and
+[5](https://karnatik.com/lesson5.shtml) have the Thara and Mandhra Sthayi
+varisais that plan.md section 3.4 excludes.
+
+- They have the same dropped-dot problem.
+- Thara 5 reaches P′, which is above the C5 sample ceiling at the higher Sa
+  choices.
+- So they stay excluded for now.
+
 ## Open questions
 
 1. **Notation source (needed before A2 and G1).** The varisais were copied
    verbatim from your workbook, which has no alankarams or gitams.
+   karnatik.com is the candidate (see *Source review*). It is enough for the
+   alankarams; the gitams need the lower-octave check in Q8.
    - Which book or teacher's notes should be the reference?
    - Gitams have regional variants (*pathantaram*), and the version should
      match what you are taught.
@@ -147,21 +225,25 @@ A1 and A2 ship alankarams on their own. Gitams follow.
    Kharaharapriya. With the raga model above, the varisais could follow too.
    - Recommendation: Mayamalavagowla only in A2, with a raga choice as a later,
      separate plan.
-3. **Which gitams first?** Recommendation: the Malahari pillari gitams in
-   teaching order:
-   - Śrī Gaṇanātha (Rupaka)
-   - Kunda Gaura (Rupaka)
-   - Kereya Nīranu (Triputa)
-   - Padumanābha (Triputa)
+3. **Which gitams first?** Recommendation: the four Malahari pillari gitams
+   in teaching order:
+   - Śrī Gaṇanātha (Lambōdara is the same gitam)
+   - Kunda Gaura (Mandāra)
+   - Kereya Nīranu
+   - Padumanābha
 
-   Optionally Lambōdara Lakumikara. Mohanam and Anandabhairavi gitams can come
-   later.
+   Vara Vīṇā (Mohanam) and others later.
 4. **Script for the words.** Recommendation: Latin transliteration first.
    Kannada script, the original language of most pillari gitams, could be a
    later option. It needs a bundled font check on both platforms.
 5. **Gamakas.** Should the app only show the gamaka caveat and suggest Gentle,
    as recommended? The alternative is a per-note "gamaka, judge loosely" flag
    in the notation. The flag would need a source that marks gamakas.
-6. **Rupaka anga order.** Sapta tala Rupaka is drutam then laghu (x v · x 1 2 3),
-   but many gitam books write it laghu first. The strip will follow the chosen
-   source. Please confirm what your teacher counts.
+6. **Rupaka anga order.** Sapta tala Rupaka is drutam then laghu (x v · x 1 2 3).
+   Many gitam books write it laghu first, but karnatik.com uses drutam first
+   for both alankarams and gitams, so the strip follows that unless your
+   teacher counts it differently.
+7. **Sankeerna Eka alankaram.** Add karnatik.com's eighth alankaram (9 beats),
+   or keep to the traditional seven? Recommendation: the seven.
+8. **Mandra cross-check.** Do you have a book, a recording you trust or your
+   teacher to confirm the lower notes in Padumanābha and Kereya Nīranu?
