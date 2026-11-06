@@ -101,12 +101,15 @@ final class SingAlongEngine: @unchecked Sendable {
             pipeline = PitchPipeline(sampleRate: Int32(rate))
             supervisor = supervisorFactory(Int32(rate))
             ring.removeAll()
+            sinceLastWindow = 0
         }
         if ring.isEmpty {
             ringStartHost = hostTime - AVAudioTime.hostTime(forSeconds: AVAudioSession.sharedInstance().inputLatency)
         }
         ring.append(contentsOf: samples)
-        sinceLastWindow += samples.count
+        // Windows can only end where a full window of history precedes them,
+        // so audio that arrived before the first full window doesn't count.
+        sinceLastWindow = min(sinceLastWindow + samples.count, max(0, ring.count - Self.window))
         while ring.count >= Self.window && sinceLastWindow >= Self.hop {
             sinceLastWindow -= Self.hop
             // Window ends `sinceLastWindow` samples before the newest sample.
@@ -116,8 +119,8 @@ final class SingAlongEngine: @unchecked Sendable {
             let captureHost = ringStartHost + AVAudioTime.hostTime(forSeconds: centreOffset)
             process(Array(ring[start..<end]), captureHost: captureHost)
         }
-        // Keep one window of history.
-        let excess = ring.count - Self.window
+        // Keep the history the next window needs.
+        let excess = ring.count - Self.window - sinceLastWindow
         if excess > Self.hop * 4 {
             ring.removeFirst(excess)
             ringStartHost += AVAudioTime.hostTime(forSeconds: Double(excess) / micRate)
