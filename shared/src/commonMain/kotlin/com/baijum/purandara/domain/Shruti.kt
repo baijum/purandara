@@ -26,4 +26,28 @@ object Shruti {
 
     /** Frequency of Sa in Hz (equal-tempered keyboard pitch, A4 = 440 Hz). */
     fun saHz(midi: Int): Double = Pitch.midiToHz(midi)
+
+    /** Fine-tune range in cents, to match a teacher's shruti box or a recording. */
+    val FINE_TUNE_RANGE: IntRange = -50..50
+
+    /** Frequency of Sa [cents] above (or below) the keyboard pitch [midi]. */
+    fun saHz(midi: Int, cents: Int): Double = Pitch.midiToHz(midi + cents.coerceIn(FINE_TUNE_RANGE) / 100.0)
+
+    /** " +12¢" / " −8¢" after a Sa label, or "" when not fine-tuned. */
+    fun fineTuneSuffix(cents: Int): String = when {
+        cents > 0 -> " +$cents¢"
+        cents < 0 -> " −${-cents}¢"
+        else -> ""
+    }
+
+    /** Which voices usually sing at [midi] as Sa (for grouping the Sa list). */
+    fun voiceRange(midi: Int): VoiceRange = VoiceRange.entries.first { midi in it.midis }
+}
+
+/** Sa choices grouped by the voices that usually use them (docs/plan-shruti.md). */
+enum class VoiceRange(val title: String, val midis: IntRange) {
+    LOWER("Lower voices", 43..47),
+    MEN("Most men", 48..52),
+    WOMEN("Most women", 53..58),
+    HIGHER("Higher voices", 59..60),
 }

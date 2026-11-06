@@ -20,15 +20,23 @@ enum class Zone {
     ;
 
     companion object {
-        const val IN_TUNE_CENTS = 10.0
-        const val CLOSE_CENTS = 25.0
-
-        fun of(cents: Double): Zone = when {
-            abs(cents) <= IN_TUNE_CENTS -> IN_TUNE
-            abs(cents) <= CLOSE_CENTS -> CLOSE
+        /** The zone of [cents] off target, at [strictness] (Precise when omitted). */
+        fun of(cents: Double, strictness: Strictness = Strictness.PRECISE): Zone = when {
+            abs(cents) <= strictness.inTuneCents -> IN_TUNE
+            abs(cents) <= strictness.closeCents -> CLOSE
             else -> OFF
         }
     }
+}
+
+/**
+ * How near counts as "in tune" and "close" (docs/plan-shruti.md). A practice
+ * setting: beginners start gentle and tighten as they improve.
+ */
+enum class Strictness(val inTuneCents: Double, val closeCents: Double) {
+    GENTLE(20.0, 40.0),
+    STEADY(15.0, 30.0),
+    PRECISE(10.0, 25.0),
 }
 
 /**
@@ -49,12 +57,18 @@ data class SwaraReading(
     val centsOff: Double,
     val inRaga: Boolean,
     val westernName: String,
+    val strictness: Strictness = Strictness.PRECISE,
 ) {
-    val zone: Zone get() = Zone.of(centsOff)
+    val zone: Zone get() = Zone.of(centsOff, strictness)
 }
 
 /** Names sung pitches relative to Sa in a raga and tuning. */
-class SwaraMapper(private val saHz: Double, private val raga: Raga, private val tuning: Tuning) {
+class SwaraMapper(
+    private val saHz: Double,
+    private val raga: Raga,
+    private val tuning: Tuning,
+    private val strictness: Strictness = Strictness.PRECISE,
+) {
     init {
         require(saHz > 0.0 && saHz.isFinite()) { "Sa must be a positive frequency" }
     }
@@ -76,6 +90,7 @@ class SwaraMapper(private val saHz: Double, private val raga: Raga, private val 
             centsOff = Pitch.cents(target, frequencyHz),
             inRaga = position in ragaByPosition,
             westernName = Shruti.noteName(Pitch.nearestMidi(frequencyHz)),
+            strictness = strictness,
         )
     }
 

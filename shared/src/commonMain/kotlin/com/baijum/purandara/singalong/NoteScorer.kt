@@ -19,8 +19,13 @@ sealed interface NoteResult {
      * @property octaveShift 0 normally; -1/+1 when sung an octave low/high.
      * @property sung what was actually sung, when it was a different swara.
      */
-    data class Judged(val cents: Double, val octaveShift: Int, val sung: SwaraReading?) : NoteResult {
-        val zone: Zone get() = if (sung != null) Zone.OFF else Zone.of(cents)
+    data class Judged(
+        val cents: Double,
+        val octaveShift: Int,
+        val sung: SwaraReading?,
+        val strictness: Strictness = Strictness.PRECISE,
+    ) : NoteResult {
+        val zone: Zone get() = if (sung != null) Zone.OFF else Zone.of(cents, strictness)
         val high: Boolean get() = cents > 0
     }
 
@@ -57,7 +62,11 @@ data class PassResult(val pass: Int, val marks: List<NoteMark>, val summary: Pas
  * Scores a pass of sung frames against the schedule
  * (docs/plan-pitch-monitor.md, section 4.4).
  */
-class NoteScorer(private val schedule: Schedule, private val mapper: SwaraMapper) {
+class NoteScorer(
+    private val schedule: Schedule,
+    private val mapper: SwaraMapper,
+    private val strictness: Strictness = Strictness.PRECISE,
+) {
 
     fun score(pass: Int, frames: List<ScoredFrame>): PassResult {
         val sorted = frames.sortedBy { it.secondsInPass }
@@ -81,9 +90,9 @@ class NoteScorer(private val schedule: Schedule, private val mapper: SwaraMapper
         val octaveShift = (cents / CENTS_PER_OCTAVE).roundToInt()
         val residual = cents - octaveShift * CENTS_PER_OCTAVE
         return if (abs(residual) <= WRONG_SWARA_CENTS) {
-            NoteResult.Judged(residual, octaveShift, sung = null)
+            NoteResult.Judged(residual, octaveShift, sung = null, strictness = strictness)
         } else {
-            NoteResult.Judged(cents, 0, sung = mapper.read(sungHz))
+            NoteResult.Judged(cents, 0, sung = mapper.read(sungHz), strictness = strictness)
         }
     }
 

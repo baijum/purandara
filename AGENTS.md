@@ -42,6 +42,7 @@ Do not add features speculatively.
 | `shared/.../domain/` | `Swara`, `Raga`, `Tala`, `Tuning`, `Shruti`, `HarmoniumBank` |
 | `shared/.../domain/varisai/` | Notation parser and the exercise catalog (`catalog/` holds the notation text) |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
+| `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` (Find my Sa) |
 | `shared/.../practice/` | `PracticeHistory`: practised / best sing-along per exercise, continue and next up (stored on device as JSON) |
 | `shared/.../domain/schedule/` | `Schedule`: timed note/beat/cursor events, `cursorAt`/`beatAt` |
 | `shared/.../audio/` | `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output) |
