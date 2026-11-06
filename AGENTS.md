@@ -7,10 +7,34 @@ of Carnatic music.
 **Status:** in active development. Built so far (each planned in `docs/` first):
 the varisai player (`docs/plan.md`), sing-along with pitch feedback
 (`docs/plan-pitch-monitor.md`), the landing page (`docs/plan-landing.md`), and
-Shruti practice, strictness and choosing Sa (`docs/plan-shruti.md`), and
-the alankarams and gitams (`docs/plan-alankaram-gitam.md`).
+Shruti practice, strictness and choosing Sa (`docs/plan-shruti.md`), the
+alankarams and Malahari gitams (`docs/plan-alankaram-gitam.md`), and, in
+progress, more gitams, swarajatis and varnams
+(`docs/plan-gitam-swarajati-varnam.md`: Analekara, Rara Venu and practise one
+section are built; the rest waits on a second notation source and decisions
+tracked in GitHub issues #1–#6).
 New features are planned and discussed before they are built; do not add
 features speculatively.
+
+## Adding notation (alankarams, gitams, swarajatis, varnams)
+
+- **Two independent sources must agree**, or the piece waits; never write
+  notation from memory. So far: karnatik.com (primary), Shivkumar
+  Kalyanaraman's archive (shivkumar.org) and *Sangeeta Bala Padam* Part 1
+  as cross-checks. Where they differ, keep the primary and list the variant
+  (or ask the user, who decides pathantarams).
+- Re-encode in the app's grammar (`docs/plan.md` 3.2). karnatik.com marks
+  octaves by case (capital = upper) and a trailing dot (lower); shivkumar.org
+  often marks *length* by case (capital = two cells, `;` = two-cell hold, a
+  stray `-` is a word separator) and its octave marks are lost in its HTML.
+- List every fix and every source difference in the notation file's header,
+  and keep the cross-check scripts in `tools/notation/` passing with the
+  expected output recorded there. Credit sources in ATTRIBUTION.md.
+- Words are simple Latin, long vowels single (`sri gananatha`), one syllable
+  per cell, `-` for a held syllable.
+- Tests catch typos: no leap over an octave in a piece, words align with
+  cells, every note playable at every Sa the piece allows
+  (`Varisai.playableSaMidis`; a piece above the samples gets a lower ceiling).
 
 ## Hard constraints
 
@@ -45,7 +69,7 @@ features speculatively.
 | Where | What |
 |---|---|
 | `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
-| `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt` with its sources and fixes in the header); `WordsDisplay` |
+| `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt`, `Swarajati.kt`, each with its sources and fixes in the header); `WordsDisplay` |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
 | `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` + `FindSaGuide` (Find my Sa) |
 | `shared/.../practice/` | `PracticeHistory`: practised / best sing-along per exercise, continue and next up (stored on device as JSON) |
@@ -66,7 +90,11 @@ features speculatively.
 | `shared/src/iosMain/.../audio/FloatBridge.kt` | Bulk float copies between Swift buffers and Kotlin arrays |
 | `site/` | The end-user website and guide (https://baijum.github.io/purandara/): `pages/` HTML fragments with front matter, `templates/`, `static/` (CSS, the hero script, self-hosted fonts, app screenshots), `build.py` (standard library only) → `site/_build`. Published to GitHub Pages by `.github/workflows/site.yml`. Keep the guide in step with the app when features change. |
 
-Swift interop notes: Kotlin default arguments are not visible from Swift (use the
+Swift interop notes: a Kotlin `Char` arrives in Swift as a number (use an enum's
+`name` instead of `symbol`); a combining dot below (Ḍ) is clipped by `Text` and
+fails the audit, so a lone lower-octave swara draws its dot as a shape; launch
+arguments arrive as strings (`UserDefaults.integer(forKey:)`, not `as? Int`).
+Kotlin default arguments are not visible from Swift (use the
 small factories such as `PerformanceSettings.create(...)`, `RenderOptions.practice(...)`);
 Kotlin names starting with `copy`/`new`/`init` get a `do` prefix in Swift, so avoid them
 in API meant for iOS. Kotlin enum entries named after Objective-C keywords get a `_` suffix

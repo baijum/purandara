@@ -90,6 +90,8 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [docs/plan-pitch-monitor.md](docs/plan-pitch-monitor.md) | Sing-along with pitch feedback |
 | [docs/plan-landing.md](docs/plan-landing.md) | Landing page |
 | [docs/plan-shruti.md](docs/plan-shruti.md) | Shruti practice, strictness, choosing Sa |
+| [docs/plan-alankaram-gitam.md](docs/plan-alankaram-gitam.md) | Alankarams and the Malahari gitams (done) |
+| [docs/plan-gitam-swarajati-varnam.md](docs/plan-gitam-swarajati-varnam.md) | More gitams, swarajatis, varnams (in progress; open items in issues #1–#6) |
 
 ## Building
 
