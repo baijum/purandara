@@ -1,0 +1,121 @@
+package com.baijum.purandara.singalong
+
+import com.baijum.purandara.domain.schedule.Schedule
+import com.baijum.purandara.platform.PlatformLock
+import com.baijum.purandara.platform.withLock
+
+/**
+ * Levels of what the app has rendered, by rendered frame, so the mic side
+ * can ask how loud the app was when a sound left the speaker.
+ *
+ * Written from the playback thread, read from the mic thread.
+ */
+class OutputLevels(private val capacity: Int = DEFAULT_CAPACITY) {
+    private val lock = PlatformLock()
+    private val starts = LongArray(capacity)
+    private val levels = FloatArray(capacity)
+    private var count = 0
+    private var next = 0
+
+    /** Record that frames from [startFrame] were rendered at [rms]. Blocks must arrive in order. */
+    fun record(startFrame: Long, rms: Float) = lock.withLock {
+        starts[next] = startFrame
+        levels[next] = rms
+        next = (next + 1) % capacity
+        if (count < capacity) count++
+    }
+
+    /** Level of the block containing [frame], or 0 if it was not (or is no longer) recorded. */
+    fun rmsAt(frame: Long): Float = lock.withLock {
+        var best = -1
+        var bestStart = Long.MIN_VALUE
+        for (i in 0 until count) {
+            val s = starts[i]
+            if (s <= frame && s > bestStart) {
+                bestStart = s
+                best = i
+            }
+        }
+        if (best < 0) 0f else levels[best]
+    }
+
+    fun clear() = lock.withLock {
+        count = 0
+        next = 0
+    }
+
+    companion object {
+        /** ~11 s of history at 44.1 kHz with 1024-frame blocks. */
+        const val DEFAULT_CAPACITY = 512
+    }
+}
+
+/** What the screen shows live while singing. */
+data class LiveReading(val reading: SwaraReading?, val pass: Int?, val secondsInPass: Double?)
+
+/**
+ * Ties the sing-along pieces together for one playback: bleed calibration
+ * during the count-in, voice detection, per-pass scoring and the live
+ * reading. Platforms feed it [PitchFrame]s (mic thread) and output levels
+ * (playback thread, via [outputLevels]).
+ *
+ * Mic-thread methods ([onFrame], [finish]) must be called from one thread.
+ */
+class SingAlongSession(
+    private val schedule: Schedule,
+    private val clock: SingAlongClock,
+    private val sampleRate: Int,
+    val outputLevels: OutputLevels = OutputLevels(),
+) {
+    private val mapper = SwaraMapper(schedule.settings.saHz, schedule.settings.raga, schedule.settings.tuning)
+    private val scorer = NoteScorer(schedule, mapper)
+    private val bleed = BleedModel()
+    private val frames = mutableListOf<ScoredFrame>()
+    private var currentPass = -1
+    private val results = mutableListOf<PassResult>()
+
+    /** Passes scored so far, oldest first. */
+    val passResults: List<PassResult> get() = results
+
+    /** True once the count-in has been used to measure leakage. */
+    val bleedCalibrated: Boolean get() = bleed.isCalibrated
+
+    /** Mic level per unit of output level measured in the count-in (near 0 with headphones or echo cancellation). */
+    val leakageRatio: Double get() = bleed.leakageRatio
+
+    /**
+     * Handle one analysed mic frame. Returns the live reading, plus any pass
+     * that this frame completed (scored), or null.
+     */
+    fun onFrame(frame: PitchFrame): Pair<LiveReading, PassResult?> {
+        val heardFrame = (clock.heardSeconds(frame.timeSeconds) * sampleRate).toLong()
+        val outputRms = outputLevels.rmsAt(heardFrame)
+
+        if (clock.inCountIn(frame.timeSeconds)) {
+            bleed.calibrate(frame.rms, outputRms)
+            return LiveReading(null, null, null) to null
+        }
+        val position = clock.locate(frame.timeSeconds) ?: return LiveReading(null, null, null) to null
+        if (!bleed.isCalibrated) bleed.finishCalibration()
+
+        var completed: PassResult? = null
+        if (position.pass != currentPass) {
+            if (currentPass >= 0) completed = scoreCurrent()
+            currentPass = position.pass
+        }
+        val voice = frame.frequencyHz != null && bleed.isVoice(frame.rms, outputRms)
+        frames += ScoredFrame(position.secondsInPass, frame.frequencyHz, voice)
+        val reading = if (voice) mapper.read(frame.frequencyHz) else null
+        return LiveReading(reading, position.pass, position.secondsInPass) to completed
+    }
+
+    /** Score the pass in progress (call when playback stops). Null if nothing was sung into a pass. */
+    fun finish(): PassResult? = if (currentPass >= 0 && frames.isNotEmpty()) scoreCurrent() else null
+
+    private fun scoreCurrent(): PassResult {
+        val result = scorer.score(currentPass, frames.toList())
+        results += result
+        frames.clear()
+        return result
+    }
+}

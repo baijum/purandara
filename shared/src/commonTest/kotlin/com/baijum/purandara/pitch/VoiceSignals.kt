@@ -59,6 +59,35 @@ object VoiceSignals {
         return out
     }
 
+    /**
+     * A voice that follows [frequencyAt] (Hz at time t, or null for silence),
+     * e.g. a synthetic student singing along with a schedule.
+     */
+    fun follow(
+        seconds: Double,
+        sampleRate: Int = 44_100,
+        amplitude: Float = 0.3f,
+        frequencyAt: (Double) -> Double?,
+    ): FloatArray {
+        val n = (seconds * sampleRate).toInt()
+        val out = FloatArray(n)
+        var phase = 0.0
+        var env = 0.0
+        for (i in 0 until n) {
+            val f = frequencyAt(i.toDouble() / sampleRate)
+            // 10 ms attack/release so voice starts and stops without clicks.
+            env = if (f != null) minOf(1.0, env + 100.0 / sampleRate) else maxOf(0.0, env - 100.0 / sampleRate)
+            if (f != null) phase += 2 * PI * f / sampleRate
+            if (env == 0.0) continue
+            val f0 = f ?: 200.0
+            var v = 0.0
+            val harmonics = (sampleRate / 2.5 / f0).toInt().coerceAtMost(30)
+            for (h in 1..harmonics) v += formantGain(h * f0) / h * sin(h * phase)
+            out[i] = (v * env * amplitude / 1.6).toFloat()
+        }
+        return out
+    }
+
     fun noise(seconds: Double, sampleRate: Int = 44_100, amplitude: Float = 0.1f, seed: Int = 2): FloatArray {
         val random = Random(seed)
         return FloatArray((seconds * sampleRate).toInt()) { ((random.nextFloat() * 2 - 1) * amplitude) }

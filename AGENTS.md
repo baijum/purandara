@@ -43,6 +43,8 @@ Do not add features speculatively.
 | `shared/.../domain/varisai/` | Notation parser and the exercise catalog (`catalog/` holds the notation text) |
 | `shared/.../domain/schedule/` | `Schedule`: timed note/beat/cursor events, `cursorAt`/`beatAt` |
 | `shared/.../audio/` | `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output) |
+| `shared/.../pitch/` | `PitchDetector` (YIN), `AudioResampler`, `NeuralArbitrator`: ported from ukulele-companion with the interpolation sign fix |
+| `shared/.../singalong/` | `PitchPipeline`, `SwaraMapper`, `SingAlongClock`, `BleedModel`, `NoteScorer`, `SingAlongSession`: sing-along scoring |
 | `app/.../audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (`AudioTrack` on a worker thread) |
 | `app/.../viewmodel/` | `PracticeViewModel` |
 | `app/.../ui/` | `PurandaraApp` (library ↔ player), `library/`, `player/` |

@@ -150,8 +150,11 @@ the student would look perfect while silent. Defences, in order:
    - **iOS:** `inputNode.setVoiceProcessingEnabled(true)` with
      `isVoiceProcessingAGCEnabled = false`.
 3. **Count-in calibration.** Sing-along forces the count-in on. The student is
-   silent during it, so the mic level of drone and click bleed is measured
-   then and sets the voice-presence threshold for the pass.
+   silent during it, so the **leakage ratio** (mic level ÷ the app's own output
+   level) is measured then. During the pass, the leakage expected at each moment
+   is that ratio times the current output level (harmonium included, though it
+   is silent in the count-in). Sound must be ≥ 2× that (≈ 6 dB) to count as voice
+   (`BleedModel`).
 4. **Harmonium guide off** (setting): only drone and click play, and the student
    sings alone. This is the workbook's own progression, and it removes the
    worst bleed. Suggested in the pass summary when bleed was detected.
@@ -213,7 +216,7 @@ In the player (both platforms):
 | # | Milestone | Done when |
 |---|---|---|
 | S1 ✅ | Port YIN, `AudioResampler`, `NeuralArbitrator` to `shared/`; voice-range tuning; synthetic detector tests | Done: all 67 ported tests plus 8 voice tests pass on JVM, Android host and iOS; within ±2 cents 60 Hz–1 kHz, no octave errors. Found and fixed a sign error in the ported parabolic interpolation (up to ~32 cents) |
-| S2 | `PitchTracker` + `NoteScorer` + pass summary (shared) | All section 4.5 scorer and bleed tests pass |
+| S2 ✅ | `PitchTracker` + `NoteScorer` + pass summary (shared) | Done as `PitchPipeline`, `SwaraMapper`, `SingAlongClock`, `BleedModel`, `NoteScorer`, `SingAlongSession`: 21 unit + 4 end-to-end audio tests pass; a silent student with harmonium leakage scores "no voice" |
 | S3 | Neural runtime on both platforms: bundle SwiftF0, ONNX Runtime AAR and iOS xcframework script, supervisors, CI | Model loads on emulator and simulator; arbitration active; falls back cleanly without the model |
 | S4 | Android sing-along: permission, capture with echo cancellation, pitch lane, cell marks, summary, guide setting | Emulator run with an injected WAV "singer"; on-device bleed check with and without headphones |
 | S5 | iOS sing-along: same | Same, plus accessibility audit passes |

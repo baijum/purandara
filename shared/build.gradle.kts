@@ -6,6 +6,11 @@ plugins {
 }
 
 kotlin {
+    compilerOptions {
+        // PlatformLock is an expect/actual class (stable in practice, Beta by name).
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     jvm()
 
     android {
