@@ -151,8 +151,12 @@ feeds the output to its audio system.
   - **Pitch:** varispeed by linear interpolation at the event's rate.
   - **Joins:** a 30 ms legato crossfade between notes, and a release fade at
     the end.
-  - **Drone:** looped Sa, Pa and upper Sa at a lower level, crossfading over
-    the steady part of each clip so the 2.5 s samples can play indefinitely.
+  - **Long notes and drone:** past the attack, each clip loops its steady
+    part. The loop is a whole number of periods of the note (the files are
+    exactly in tune), so a 100 ms linear crossfade joins it in phase with no
+    click or level dip. That lets a karvai or the drone outlast the 2.5 s file.
+  - **Drone:** Sa, Pa and upper Sa at a lower level, each starting at a
+    different point in its loop so they don't pulse together.
   - **Click:** a short synthesized tick, accented on the claps (`x`). No
     sample needed.
   - **Mixing:** the drone and harmonium levels.
@@ -253,7 +257,7 @@ and Xcode, and is reviewable on its own.
 | # | Milestone | Done when |
 |---|---|---|
 | M1 ✅ | `Raga`, `Tala`, parser, catalog, `Schedule` (shared) | All in-scope exercises parse and validate; timing tests pass |
-| M2 | `SampleRenderer` (shared) | Rendered WAV of Sarali 1 has every note within ±1 cent and onsets within ±1 ms of the schedule (JVM test) |
+| M2 ✅ | `SampleRenderer` (shared) | Pitch within ±0.5 cent and note changes within ±1 ms of the schedule (synthetic-sample tests on JVM, Android host and iOS); real-harmonium render within ±0.3 cent (opt-in `RenderDemoTest`) |
 | M3 | Android: decode, `AudioTrack` output, Library and Player screens | Plays every exercise in sync; TalkBack pass |
 | M4 | iOS: decode, `AVAudioEngine` output, Library and Player screens | Same as M3; VoiceOver pass |
 | M5 | Settings, persistence, count-in, polish | Parity check across both apps |
