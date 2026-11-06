@@ -95,7 +95,33 @@ class Schedule private constructor(
     val cursor: List<CursorEvent>,
     val durationSeconds: Double,
 ) {
+    /** Notation position sounding at [seconds], or null before the start or after the end. */
+    fun cursorAt(seconds: Double): NotationPosition? {
+        if (seconds < 0.0 || seconds >= durationSeconds) return null
+        return cursor[lastStartingAtOrBefore(cursor, seconds) { it.startSeconds }].position
+    }
+
+    /** Tala beat sounding at [seconds], or null before the start or after the end. */
+    fun beatAt(seconds: Double): BeatEvent? {
+        if (seconds < 0.0 || seconds >= durationSeconds) return null
+        return beats[lastStartingAtOrBefore(beats, seconds) { it.startSeconds }]
+    }
+
     companion object {
+        /** Index of the last element whose start is <= [seconds]; list is sorted and starts at 0. */
+        private inline fun <T> lastStartingAtOrBefore(list: List<T>, seconds: Double, start: (T) -> Double): Int {
+            var lo = 0
+            var hi = list.lastIndex
+            while (lo < hi) {
+                val mid = (lo + hi + 1) / 2
+                if (start(list[mid]) <= seconds + TIME_EPSILON) lo = mid else hi = mid - 1
+            }
+            return lo
+        }
+
+        /** Tolerance for float rounding when a lookup lands exactly on an event. */
+        private const val TIME_EPSILON = 1e-9
+
         /**
          * Builds the schedule.
          *

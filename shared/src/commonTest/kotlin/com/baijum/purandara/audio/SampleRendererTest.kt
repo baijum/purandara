@@ -40,14 +40,14 @@ class SampleRendererTest {
         Schedule.of(VarisaiCatalog.byId(id)!!, PerformanceSettings(saHz = saC3, tempo = tempo, kala = kala))
 
     private fun renderAll(renderer: SampleRenderer, block: Int = 4096): FloatArray {
-        val out = FloatArray(renderer.totalFrames)
+        val out = FloatArray(renderer.totalFrames.toInt())
         var pos = 0
         while (true) {
             val n = renderer.render(out, pos, minOf(block, out.size - pos))
             if (n == 0) break
             pos += n
         }
-        assertEquals(renderer.totalFrames, pos)
+        assertEquals(renderer.totalFrames, pos.toLong())
         return out
     }
 
@@ -113,7 +113,7 @@ class SampleRendererTest {
         val s = schedule("sarali-1")
         val r = SampleRenderer(sineBank, s, notesOnly)
         assertEquals(32 * sr, r.performanceFrames)
-        assertEquals(32 * sr + (0.25 * sr).toInt(), r.totalFrames)
+        assertEquals((32 * sr + (0.25 * sr).toInt()).toLong(), r.totalFrames)
         val out = renderAll(r)
         assertEquals(0f, out.last(), 1e-3f)
         assertEquals(0, r.render(FloatArray(10)))
@@ -155,6 +155,82 @@ class SampleRendererTest {
         val s = schedule("dhattu-1", tempo = 120, kala = 4)
         val out = renderAll(SampleRenderer(sineBank, s, RenderOptions(drone = true, click = true)))
         assertTrue(out.all { abs(it) < 1f }, "peak ${out.maxOf { abs(it) }}")
+    }
+
+    private fun renderFrames(renderer: SampleRenderer, frames: Int, block: Int = 4096): FloatArray {
+        val out = FloatArray(frames)
+        var pos = 0
+        while (pos < frames) {
+            val n = renderer.render(out, pos, minOf(block, frames - pos))
+            assertTrue(n > 0, "looping renderer stopped at $pos")
+            pos += n
+        }
+        return out
+    }
+
+    @Test
+    fun loopingRepeatsOnTheBeatWithoutAGap() {
+        val s = schedule("sarali-1")
+        val r = SampleRenderer(levelBank, s, notesOnly.copy(loop = true))
+        assertEquals(Long.MAX_VALUE, r.totalFrames)
+        val pass = r.performanceFrames
+        val out = renderFrames(r, pass * 2 + sr)
+        // Pass 2 sounds exactly like pass 1 once past the first boundary.
+        for (t in sr until pass - sr) assertEquals(out[t], out[t + pass], 1e-6f, "frame $t")
+        // Across the boundary the level never drops to silence: the last note
+        // (S) crossfades into the first (S) with no gap.
+        val sa = levelOf(s.notes.first().playback.midi)
+        for (t in pass - sr / 10 until pass + sr / 10) assertTrue(out[t] > sa * 0.9f, "dip at ${t.toDouble() / sr}s: ${out[t]}")
+        // Note changes in the second pass are still on the beat.
+        val change = s.notes[1]
+        val boundary = pass + (change.startSeconds * sr).toInt()
+        val mid = (levelOf(s.notes[0].playback.midi) + levelOf(change.playback.midi)) / 2
+        val crossing = (boundary - sr / 20 until boundary + sr / 20).first { out[it] >= mid }
+        assertTrue(abs(crossing - boundary) * 1000.0 / sr <= 1.0)
+    }
+
+    @Test
+    fun loopingIsSmoothAcrossTheBoundary() {
+        val s = schedule("plain-scale-1")
+        val r = SampleRenderer(sineBank, s, RenderOptions(harmoniumGain = 0.5f, drone = true, droneGain = 0.5f, loop = true))
+        val out = renderFrames(r, r.performanceFrames * 2)
+        val maxStep = 2 * PI * 600.0 * 1.5 / sr // generous bound for the sum of all voices
+        val p = r.performanceFrames
+        for (t in p - sr / 5 until p + sr / 5) assertTrue(abs(out[t] - out[t - 1]) < maxStep, "jump at ${t.toDouble() / sr}s")
+    }
+
+    @Test
+    fun loopingBlockSizeDoesNotChangeTheOutput() {
+        val s = schedule("janta-1", kala = 2)
+        val options = RenderOptions(drone = true, click = true, loop = true)
+        val frames = SampleRenderer(sineBank, s, options).performanceFrames * 2 + 1234
+        val whole = renderFrames(SampleRenderer(sineBank, s, options), frames, block = frames)
+        val chunked = renderFrames(SampleRenderer(sineBank, s, options), frames, block = 777)
+        assertTrue(whole.contentEquals(chunked))
+    }
+
+    @Test
+    fun passSecondsWrapsWhenLooping() {
+        val s = schedule("plain-scale-1")
+        val looping = SampleRenderer(sineBank, s, notesOnly.copy(loop = true))
+        assertEquals(1.5, looping.passSeconds((16 * sr + 1.5 * sr).toLong()), 1e-9)
+        val once = SampleRenderer(sineBank, s, notesOnly)
+        assertEquals(17.5, once.passSeconds((17.5 * sr).toLong()), 1e-9)
+    }
+
+    @Test
+    fun fadeOutStopsSmoothly() {
+        val s = schedule("plain-scale-1")
+        val r = SampleRenderer(sineBank, s, RenderOptions(loop = true))
+        renderFrames(r, 3 * sr)
+        r.fadeOut(0.08)
+        val tail = FloatArray(sr)
+        val n = r.render(tail)
+        assertEquals((0.08 * sr).toInt(), n)
+        assertTrue(abs(tail[n - 1]) < 0.01f, "ends near silence: ${tail[n - 1]}")
+        assertEquals(0, r.render(tail))
+        r.reset()
+        assertTrue(r.render(tail) > 0)
     }
 
     @Test

@@ -38,7 +38,7 @@ class RenderDemoTest {
         )
         for ((id, settings, options) in demos) {
             val renderer = SampleRenderer(bank, Schedule.of(VarisaiCatalog.byId(id)!!, settings), options)
-            val pcm = FloatArray(renderer.totalFrames)
+            val pcm = FloatArray(renderer.totalFrames.toInt())
             renderer.render(pcm)
             val name = "$id-sa${Pitch.nearestMidi(settings.saHz)}-kala${settings.kala}" +
                 (if (options.click) "-click" else "") + (if (options.drone) "" else "-nodrone") + ".wav"

@@ -18,6 +18,12 @@ complexity:
     thresholdInClasses: 30
     thresholdInInterfaces: 15
     thresholdInObjects: 30
+  LongParameterList:
+    active: true
+    functionThreshold: 6
+    constructorThreshold: 7
+    # Compose: optional parameters such as `modifier = Modifier` are idiomatic.
+    ignoreDefaultParameters: true
   NestedBlockDepth:
     active: true
     threshold: 5

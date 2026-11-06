@@ -153,3 +153,40 @@ class ScheduleTest {
         assertFailsWith<IllegalArgumentException> { PerformanceSettings(saHz = 0.0) }
     }
 }
+
+class SchedulePositionTest {
+    private val s = Schedule.of(
+        VarisaiCatalog.byId("sarali-4")!!,
+        PerformanceSettings(saHz = Pitch.midiToHz(48), tempo = 60),
+    )
+
+    @Test
+    fun cursorFollowsSwarasAndKarvai() {
+        assertEquals(NotationPosition(0, 0, 0, 0), s.cursorAt(0.0))
+        assertEquals(NotationPosition(0, 0, 0, 0), s.cursorAt(0.999))
+        assertEquals(NotationPosition(0, 0, 1, 0), s.cursorAt(1.0))
+        assertEquals(NotationPosition(0, 0, 5, 0), s.cursorAt(5.5)) // the karvai after P
+        assertEquals(NotationPosition(0, 3, 7, 0), s.cursorAt(31.9))
+    }
+
+    @Test
+    fun beatFollowsTala() {
+        assertEquals(0, s.beatAt(0.2)?.beatInAvarta)
+        assertEquals(5, s.beatAt(13.4)?.beatInAvarta)
+        assertEquals(13, s.beatAt(13.4)?.index)
+    }
+
+    @Test
+    fun outsideThePerformanceIsNull() {
+        assertEquals(null, s.cursorAt(-0.1))
+        assertEquals(null, s.cursorAt(32.0))
+        assertEquals(null, s.beatAt(40.0))
+    }
+
+    @Test
+    fun pairsAtSecondKalaHighlightEachSlot() {
+        val j = Schedule.of(VarisaiCatalog.byId("janta-1")!!, PerformanceSettings(saHz = Pitch.midiToHz(48), tempo = 60, kala = 2))
+        assertEquals(NotationPosition(0, 0, 0, 1), j.cursorAt(0.3)) // 4 swaras per beat: S S | R R
+        assertEquals(NotationPosition(0, 0, 1, 0), j.cursorAt(0.5))
+    }
+}

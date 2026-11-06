@@ -1,5 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Purandara</string>
-    <string name="home_tagline">Carnatic music practice companion</string>
+
+    <!-- Library -->
+    <string name="library_title">Exercises</string>
+    <string name="library_raga">Mayamalavagowla · Adi tala</string>
+    <string name="loading_samples">Preparing the harmonium…</string>
+    <string name="load_error">The harmonium sounds could not be loaded.</string>
+
+    <!-- Player -->
+    <string name="back">Back</string>
+    <string name="play">Play</string>
+    <string name="stop">Stop</string>
+    <string name="sa">Sa</string>
+    <string name="sa_value">%1$s · %2$s kattai</string>
+    <string name="tempo">Tempo</string>
+    <string name="tempo_value">%d beats per minute</string>
+    <string name="tempo_short">%d bpm</string>
+    <string name="slower">Slower</string>
+    <string name="faster">Faster</string>
+    <string name="kala">Speed</string>
+    <string name="kala_1">First kala</string>
+    <string name="kala_2">Second kala</string>
+    <string name="kala_3">Third kala</string>
+    <string name="kala_4">Fourth kala</string>
+    <string name="drone">Drone (Sa and Pa)</string>
+    <string name="click">Tala click</string>
+    <string name="loop">Repeat continuously</string>
+    <string name="tuning">Tuning</string>
+    <string name="tuning_just">Just (tanpura)</string>
+    <string name="tuning_equal">Equal (keyboard)</string>
+    <string name="pass_of">Pass %1$d of %2$d</string>
+    <string name="avarta_description">Avarta %1$d: %2$s</string>
+    <string name="karvai_spoken">hold</string>
+    <string name="notation">Notation</string>
 </resources>

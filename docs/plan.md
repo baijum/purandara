@@ -190,9 +190,12 @@ on iOS.
 1. **Library:** exercises grouped by set (Plain scale, Sarali, Madhya Sthayi,
    Janta, Vakra Janta, Dhattu), each with its number and a one-line notation preview.
 2. **Player:**
-   - **Notation:** one row per avarta, with the tala marks (`x 1 2 3 x v x v`)
-     above each akshara cell. The current akshara is highlighted, and the
-     current swara within it at kala 2 and above.
+   - **Tala strip:** the beats being kept (`x 1 2 3 | x v | x v`), current beat
+     filled. Separate from the notation because at kala 2+ several written
+     aksharas share one beat.
+   - **Notation:** one row per avarta, with the written tala marks above each
+     akshara cell. The current akshara is highlighted, and the current swara
+     within it when an akshara holds several.
    - **Transport:** play/stop, repeat (once, or loop), and a count-in of one
      clapped avarta. The workbook says to clap a cycle first.
    - **Controls:** tempo, kala (1–4), drone on/off, click on/off.
@@ -258,7 +261,7 @@ and Xcode, and is reviewable on its own.
 |---|---|---|
 | M1 ✅ | `Raga`, `Tala`, parser, catalog, `Schedule` (shared) | All in-scope exercises parse and validate; timing tests pass |
 | M2 ✅ | `SampleRenderer` (shared) | Pitch within ±0.5 cent and note changes within ±1 ms of the schedule (synthetic-sample tests on JVM, Android host and iOS); real-harmonium render within ±0.3 cent (opt-in `RenderDemoTest`) |
-| M3 | Android: decode, `AudioTrack` output, Library and Player screens | Plays every exercise in sync; TalkBack pass |
+| M3 ✅ | Android: decode, `AudioTrack` output, Library and Player screens | Verified on a Pixel 9 emulator: plays in sync (highlight matches the hardware play head), loops, stops; 0 underruns; screen-reader labels checked |
 | M4 | iOS: decode, `AVAudioEngine` output, Library and Player screens | Same as M3; VoiceOver pass |
 | M5 | Settings, persistence, count-in, polish | Parity check across both apps |
 
