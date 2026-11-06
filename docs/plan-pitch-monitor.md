@@ -1,239 +1,231 @@
-# Plan: Pitch monitor (second feature)
+# Plan: Sing along with pitch feedback (second feature)
 
-Status: **draft for review**. Open decisions are marked **[Decision]**.
-Builds on the varisai player (`docs/plan.md`).
+Status: **decisions made, implementation starting**. Builds on the varisai
+player (`docs/plan.md`).
 
 ## 1. Goal
 
-The student sings and sees and hears where their voice is relative to Sa, in
-swaras, so they can find notes and hold them steadily. This is the "check"
-step of the workbook's pitch-matching loop (chapter 5): listen → echo →
-**check** → retry.
+While a varisai plays, the student sings along and sees how close each swara
+was. Afterwards they get a short summary of which notes need attention. This
+is the "check" step of the workbook's pitch-matching loop (chapter 5), applied
+to the exercises.
 
 The workbook's pitch-monitor rules become requirements:
 
 | Workbook rule | Requirement |
 |---|---|
-| "Wait for the pitch estimate to settle; voice onset can be breathy or unstable." | Ignore the onset; report a note only once it has **settled** (section 4.3). |
-| "Check the octave as well as the note name." | Always show the sthayi: mandra, madhya or tara. |
-| "Make sure the reading follows your voice, not the drone or a lingering keyboard note." | Keep the app's own drone and harmonium out of the reading (section 5). |
-| "Use a broad beginner goal: get close, then improve gradually. Do not turn practice into a hunt for zero cents." | Broad zones (in tune / close / off) rather than a needle chasing every cent (section 4.4). |
-| "For a gamaka or deliberate glide, a moving line can be musically correct." | Show a pitch **trace** over time, not only a needle, and never mark movement as an error. |
-| Success score 3: "found it quickly and held it comfortably for about three seconds." | Measure time-to-settle and hold duration for each note. |
+| "Wait for the pitch estimate to settle; voice onset can be breathy or unstable." | Judge each note on its settled middle, not its onset (section 4.4). |
+| "Check the octave as well as the note name." | Report an octave mismatch separately from tuning ("an octave low"). |
+| "Make sure the reading follows your voice, not the drone or a lingering keyboard note." | Keep the app's own drone and harmonium out of the reading (section 5). The harmonium plays the very note being sung, so this is critical. |
+| "Get close, then improve gradually. Do not turn practice into a hunt for zero cents." | Broad zones: in tune ±10 cents, close ±25 cents (section 4.3). |
+| "A moving line can be musically correct." | Show the sung trace; never mark movement inside a note as an error. Only its settled pitch is judged. |
+| "Use the keyboard only when a note is unclear; do not play every note under your voice once the shape is familiar." | A **harmonium guide** setting: all notes, or off (drone and click only). |
 
-## 2. Phasing
+## 2. Decisions (2026-11-06)
 
-| Phase | What | Why this order |
-|---|---|---|
-| **A** | A standalone pitch monitor screen: sing freely over an optional drone. | The smallest useful piece. It builds the detection, capture and display that B and C reuse. |
-| **B** | Sing along in the player: your trace drawn against the expected swaras while a varisai plays, with a per-note summary afterwards. | Builds directly on A and the player. |
-| **C** | Guided pattern cards (workbook cards A–F): the app plays a note, you echo it, it checks and tells you whether to retry. | Needs A's settle detection and B's expected-note comparison. |
+| # | Decision |
+|---|---|
+| 1 | On the built-in speaker: echo cancellation on, and suggest headphones. |
+| 2 | Zones: in tune ±10 cents, close ±25 cents. |
+| 3 | Show the Western note name small, beside the swara. |
+| 4 | **Include the neural pitch checker** (SwiftF0 on ONNX Runtime) from the start. This is an approved third-party SDK; see section 3.1. |
+| 5 | **Build sing-along in the player first.** No standalone monitor screen for now. Its building blocks (detector, tracker) are built here, so a standalone screen is cheap to add later. |
 
-This plan details **phase A** and sketches B and C enough to keep A's design compatible.
+## 3. What is reused, and what isn't
 
-## 3. Reuse from the ukulele app
-
-Same author and licence (MIT). Ported code gets a provenance note in its header.
+From `ukulele-companion` (same author, MIT). Ported files carry a provenance note.
 
 | Piece | Source | Changes |
 |---|---|---|
-| YIN pitch detector (FFT difference function, CMND threshold, best local estimate, parabolic interpolation, continuity tracking, buffer reuse) | `ukulele-companion/shared/.../domain/PitchDetector.kt` | Range 55–1100 Hz (voice: low male mandra Pa to high female tara). Thresholds re-tuned on voice-like test signals. |
-| Android capture (`AudioRecord`, 44.1 kHz mono, frame dropping when processing falls behind) | `app/.../audio/AudioCaptureEngine.kt` | Audio source chosen for echo cancellation (section 5). |
-| iOS capture (`AVAudioEngine` input tap at the hardware rate, interruption handling) | `iosApp/.../Audio/AudioCaptureEngine.swift` | `.playAndRecord` so the drone can play; voice processing (section 5). |
-| Median smoothing and noise gate ideas | `PitchMonitorStateMachine.kt` | Rewritten around swaras and settling. |
+| YIN detector (FFT difference function, CMND threshold, best local estimate, parabolic interpolation, continuity tracking, cached buffers) | `shared/.../domain/PitchDetector.kt` | Range 55–1100 Hz for voice; thresholds re-tuned on voice-like test signals. |
+| `AudioResampler` (anti-aliased, cached buffers) | `shared/.../domain/AudioResampler.kt` | None expected (44.1/48 kHz → 16 kHz for SwiftF0). |
+| `NeuralArbitrator` + `NeuralPitchResult` (frame gating, result TTL, failure fallback, consistency window, octave correction) | `shared/.../domain/NeuralArbitrator.kt` | Retune only if voice tests show a need. |
+| Neural supervisors (model loading off the main thread, inference) | `app/.../domain/NeuralPitchSupervisor.kt`, `iosApp/.../Audio/NeuralPitchSupervisor.swift` | Package names; same always-on-with-fallback behaviour. |
+| SwiftF0 model (`swift_f0_model.onnx`, ~398 KB) | lars76/swift-f0 | Kept once at repo-root `models/`, packaged into both apps like `audio/` (Android assets dir, iOS bundle folder). |
+| Microphone capture (Android `AudioRecord`; iOS `AVAudioEngine` tap; frame dropping; interruptions) | `AudioCaptureEngine.kt` / `.swift` | Echo cancellation (section 5); iOS session `.playAndRecord` so playback continues. |
+| iOS ONNX Runtime setup script (checksummed xcframework download) | `iosApp/setup_onnxruntime.sh` | Same approach; vendored download URL changed to official sources. |
 
-**Not carried over: chord detection.** The ukulele pitch monitor's chord
-features (`AudioChordDetector`, `Chromagram`, `ArpeggioDetector`, the
-simultaneous/arpeggio merge in `PitchMonitorStateMachine`, and the chroma
-visualisation) are not needed. Carnatic vocal practice is monophonic, and the
-drone is the app's own, so its pitches are already known.
+**Not carried over:**
+- **Chord detection.** That means `AudioChordDetector`, `Chromagram`,
+  `ArpeggioDetector`, the simultaneous/arpeggio merge in
+  `PitchMonitorStateMachine`, and the chroma view. Carnatic vocal practice is
+  monophonic, and the drone and harmonium pitches are the app's own, so they're
+  known.
+- **The ukulele tuner UI.**
 
-**Not reused yet: the neural pitch supervisor (SwiftF0 via ONNX Runtime).** It
-would add a third-party SDK, which needs discussion (AGENTS.md hard constraint).
-Phase A ships with YIN alone; revisit if testing shows octave errors on low voices
-**[Decision 4]**.
+### 3.1 New third-party dependency (approved)
+
+| What | Licence | Where | Size |
+|---|---|---|---|
+| ONNX Runtime (Microsoft) | MIT | Android AAR (`com.microsoft.onnxruntime:onnxruntime-android`); iOS xcframework via the C API, downloaded by `iosApp/setup_onnxruntime.sh` at build time (checksummed; git-ignored) | Several MB per ABI. Measure and record in the release notes. |
+| SwiftF0 model (lars76) | MIT | Bundled with the app; runs fully offline | ~398 KB |
+
+Both are recorded in `AGENTS.md` under approved exceptions and credited in
+`ATTRIBUTION.md`. The download happens at **build** time only. The app itself
+never touches the network.
 
 ## 4. Shared logic (`shared/`, pure Kotlin)
 
 ### 4.1 Pipeline
 
 ```
-mic frames ─▶ PitchDetector (YIN) ─▶ PitchTracker ─▶ VoiceReading
- (platform)       Hz + confidence      smoothing,       swara, octave, cents,
-                                       swara mapping,   zone, settled?, trace
-                                       settling, stats
+mic frames ─▶ YIN ──────────────┐
+ (platform)                      ├─▶ NeuralArbitrator ─▶ PitchTracker ─▶ readings + trace
+          ─▶ resample 16 kHz ─▶ SwiftF0 (platform ONNX, every 5th frame)
+                                                            │
+                         Schedule (expected notes) ─▶ NoteScorer ─▶ per-note marks, pass summary
 ```
 
-- **Frames:** 2048-sample windows (46 ms at 44.1 kHz, enough for two periods at
-  55 Hz) every 512 samples (about 86 readings per second).
-- **Noise gate:** RMS below a threshold means silence, so no reading is shown.
-- **Confidence gate:** YIN aperiodicity above the threshold means unvoiced or
-  breathy, so the frame is dropped.
+- **Frames:** 2048-sample YIN windows (46 ms at 44.1 kHz) every 512 samples
+  (~86 readings per second). SwiftF0 runs on every 5th frame, as in the ukulele app.
+- **Gates:** an RMS noise gate, and a YIN aperiodicity gate for breathy or
+  unvoiced frames.
 
 ### 4.2 Swara mapping
 
-- **Input:** a frequency, the student's Sa, the raga and the tuning (the same
-  `PracticeSettings` as the player).
-- **Output:**
-  - the nearest swara of the raga (Mayamalavagowla: S R1 G3 M1 P D1 N3);
-  - its octave (mandra / madhya / tara);
-  - the cents deviation from that swara's target (`Tuning.JUST` or `EQUAL`);
-  - the nearest of all 12 swarasthanas, so a sung R2 isn't silently snapped to R1.
-- If the sung note is closer to a swarasthana outside the raga, show that
-  swarasthana (e.g. "R2") with a hint that it isn't in Mayamalavagowla.
+Frequency + Sa + raga + tuning (the player's `PracticeSettings`) → nearest
+swarasthana, octave, cents from target, and Western note name. A note outside
+the raga is named, not snapped: a sung R2 in Mayamalavagowla shows as R2.
 
-### 4.3 Settling
+### 4.3 Zones
 
-A note has **settled** when the smoothed pitch stays within ±`SETTLE_CENTS`
-(default 20) of one swara for `SETTLE_MS` (default 300 ms).
-- `onset → settled` records **time to settle**.
-- While settled, the tracker accumulates **hold duration** and **steadiness**
-  (standard deviation in cents).
-- Leaving the window or silence ends the held note and emits a `HeldNote`
-  summary: swara, octave, mean cents, steadiness, hold time and time to settle.
-  Phases B and C build on these summaries.
-
-### 4.4 Zones
-
-| Zone | Default | Meaning |
+| Zone | Range | Shown as |
 |---|---|---|
-| In tune | within ±10 cents of the target | "Good" |
-| Close | within ±25 cents | "Nearly there", the workbook's broad beginner goal |
-| Off | beyond ±25 cents | Show direction: "a little high" or "a little low" |
+| In tune | within ±10 cents | "In tune", solid mark |
+| Close | within ±25 cents | "Close", lighter mark plus ↑/↓ |
+| Off | beyond ±25 cents | "High" or "low" with ↑/↓ |
+| No voice | not enough settled readings | Hollow mark |
 
-Defaults are adjustable later. A beginner/advanced preset is possible **[Decision 2]**.
+Colour is never the only carrier: arrows and words go with it.
+
+### 4.4 Scoring each note (`NoteScorer`)
+
+For each `NoteEvent` in the schedule:
+
+1. **Timing.** Shift its window by the **output latency**: the student hears
+   the note late. Readings carry their capture time minus the **input latency**.
+   Both come from the platform; section 6 covers calibration.
+2. **Settled middle.** Skip the first `max(120 ms, 30%)` of the note, and judge
+   the rest. Karvai-extended notes give more to judge.
+3. **Result.** The median of the remaining readings gives the zone and the
+   cents. The octave is compared separately: right swara, wrong octave is
+   "an octave low/high", not "off".
+4. **Too fast to judge.** Notes shorter than 250 ms (e.g. third and fourth
+   kala at normal tempo) get no mark. The trace is still drawn.
+
+**Pass summary:** after each pass (or on Stop):
+- "14 of 16 notes in tune or close";
+- up to three notes needing attention, e.g. "Ri₁ sharp in 3 of 4", "Dha₁ low";
+- any octave issues.
 
 ### 4.5 Tests
 
-- **Synthetic voice-like signals:** a harmonic series with formant-like
-  weighting, 5–6 Hz vibrato, breathy noise and a soft onset, from 60 Hz to 1 kHz.
-  - Steady pitch within ±2 cents.
-  - No octave errors across the range, including weak fundamentals.
-- **Settling:** a glide followed by a hold settles once and reports a time to
-  settle within ±1 frame; vibrato of ±30 cents around a swara counts as settled
-  (on its mean).
-- **Mapping:** every swarasthana at every Sa from G2 to C4 in both tunings, at
-  octave boundaries, and for notes outside the raga.
-- **Drone bleed (simulated):** voice plus the app's drone mixed in at −10 dB.
-  The reading must follow the voice, and silence plus drone only must not
-  produce a reading (section 5).
+- **Detector:** synthetic voice-like signals (harmonic series with formant
+  weighting, 5–6 Hz vibrato, breath noise, soft onset) from 60 Hz to 1 kHz.
+  Steady pitch within ±2 cents, no octave errors, including weak fundamentals
+  (YIN alone and arbitrated).
+- **Scorer:** synthetic "sung" performances built from a `Schedule`:
+  - perfectly in tune;
+  - consistently sharp by 30 cents;
+  - one note flat;
+  - sung an octave low;
+  - late onsets;
+  - silence on some notes;
+  - with vibrato.
+  Each must give the expected marks and summary.
+- **Bleed:** voice plus the app's drone and harmonium mixed at −10/−20 dB. The
+  reading follows the voice. Harmonium alone, with no voice, must score as
+  "no voice", not "in tune" (section 5).
 
 ## 5. Keeping the app's own sound out of the reading
 
-The app plays a drone, and in phase B the whole exercise, through the
-speaker. The microphone hears it. Three layers of defence, in order:
+The harmonium plays the target note through the speaker. If the mic hears it,
+the student would look perfect while silent. Defences, in order:
 
-1. **Headphones** (best). Suggest them on the monitor screen when the drone is on
-   and audio is going to the built-in speaker. Detect the output route on both
-   platforms.
-2. **Echo cancellation** on when playing through the speaker:
-   - **Android:** `VOICE_COMMUNICATION` audio source, which turns on
-     the platform's echo canceller on most devices, plus `AcousticEchoCanceler`
-     where available. Fallback: `VOICE_RECOGNITION` (no AGC).
-   - **iOS:** `inputNode.setVoiceProcessingEnabled(true)`, which cancels
-     the engine's own output, with automatic gain control off
-     (`isVoiceProcessingAGCEnabled = false`) so quiet singing isn't pumped.
-   - Both may slightly colour the voice; pitch is robust to that. Measured on
-     devices in phase A.
-3. **Drone rejection in the tracker:**
-   - The tracker knows the drone's exact pitches (Sa, Pa, upper Sa).
-   - A reading that sits on a drone pitch with the low energy typical of
-     bleed, while no voice onset was seen, is treated as "drone only" and
-     not shown.
-   - This is a safety net, not the main defence. Singing Sa over a Sa drone
-     must still register.
+1. **Headphones.** Detect the output route; while sing-along is on and audio
+   goes to the built-in speaker, show a one-line suggestion.
+2. **Echo cancellation** when playing through the speaker:
+   - **Android:** the `VOICE_COMMUNICATION` source, plus `AcousticEchoCanceler`
+     where available.
+   - **iOS:** `inputNode.setVoiceProcessingEnabled(true)` with
+     `isVoiceProcessingAGCEnabled = false`.
+3. **Count-in calibration.** Sing-along forces the count-in on. The student is
+   silent during it, so the mic level of drone and click bleed is measured
+   then and sets the voice-presence threshold for the pass.
+4. **Harmonium guide off** (setting): only drone and click play, and the student
+   sings alone. This is the workbook's own progression, and it removes the
+   worst bleed. Suggested in the pass summary when bleed was detected.
+5. **Bleed check in the scorer.** If a note's readings match the reference
+   exactly but the level is no higher than the calibrated bleed, mark it "no
+   voice". This is a safety net, not the main defence.
 
-**[Decision 1]:** default behaviour on the built-in speaker.
-- *Proposed:* echo cancellation on, and suggest headphones.
-- *Alternative:* switch the drone off while the mic is on unless headphones are
-  connected (simplest and most reliable, but you lose the drone).
+## 6. Latency
 
-## 6. Screens (phase A)
+- **Output latency:** Android `AudioTrack` timestamps; iOS
+  `AVAudioSession.outputLatency + ioBufferDuration`. Already used for the highlight.
+- **Input latency:** iOS `AVAudioSession.inputLatency`; Android estimate from
+  `AudioRecord` timestamps where available, or a per-device default.
+- **Human lag:** absorbed by judging only the settled middle of each note.
+- **Calibration** (later, if needed): a one-time "sing Sa with the click"
+  measurement stored per device. Not planned unless testing shows scoring
+  windows are off.
 
-Opened from the library ("Pitch monitor" above the exercise sets) on both
-platforms.
+## 7. Screens
 
-- **Big reading:** the swara with its octave mark (e.g. `P`, `S′`, `Ṇ` for
-  mandra), plus zone text ("In tune", "A little high") and a ± cents figure,
-  smaller. **[Decision 3]:** show the Western note name too (e.g. "G3") as
-  secondary text? The workbook uses both.
-- **Trace:** the last ~8 seconds of pitch, scrolling left, on a vertical
-  axis of swara lines (S R G M P D N S′ across about 1.5 octaves around
-  the student's range):
-  - in-tune stretches drawn solid and the rest lighter;
-  - silence leaves a gap;
-  - gamakas show as movement and are not judged.
-- **Held-note chips:** the last few `HeldNote`s ("P held 3.2 s, steady").
-  This is the workbook's success score, made visible.
-- **Controls:** drone on/off (from practice settings), and a start/stop
-  microphone button.
-- **Permission:** microphone access is requested only when the student taps
-  Start, with a one-line reason. If refused, a short explanation and a link to
-  settings. The rest of the app works without it.
+In the player (both platforms):
+- **Sing along toggle:** a microphone button in the top bar. Microphone
+  permission is requested on first use, with a one-line reason; if refused,
+  a short explanation and a link to settings. Everything else works without it.
+- **Pitch lane** under the tala strip:
+  - the student's pitch for the current avarta as a trace, over a staircase of
+    the expected swaras;
+  - horizontal swara lines labelled S R G M P D N S′;
+  - silence leaves a gap.
+- **Notation cell marks:** after a note passes, its cell shows its mark (zone
+  plus arrow; hollow for "no voice"). Marks clear at the next pass.
+- **Live reading** (small, beside the lane): the current swara with octave,
+  zone word and cents, plus the Western note name small (decision 3).
+- **Pass summary card** after each pass or Stop, as in section 4.4.
+- **Harmonium guide** setting in the practice settings sheet: "All notes" or "Off".
 
-### 6.1 Accessibility
+### 7.1 Accessibility
 
-A core requirement, since the reading is otherwise visual-only:
-- **Settled-note announcement** (optional, on by default when a screen
-  reader is running): when a note settles, announce it once, e.g. "Pa, in tune"
-  or "Ga, a little low". Throttled (at most one per second, and never repeat
-  the same note while it's held), as the ukulele tuner does.
-- **Haptic** tick when a note settles in tune, where supported.
-- **The trace** is one element whose value summarises recent singing: "Last
-  note: Pa, held 3 seconds, steady".
-- **The big reading** is a live value only when focused.
-- Reduce motion: the trace jumps instead of scrolling smoothly.
+- **No announcements during the pass.** They'd talk over the music and the
+  student's own voice.
+- **At the end of each pass,** the summary is announced once ("14 of 16
+  notes in tune or close; Ri₁ sharp").
+- **Avarta rows:** each row's spoken sentence gains the marks after the
+  pass, e.g. "Avarta 1: S in tune, R high, G in tune…".
+- **The pitch lane** is one element whose value is the live reading,
+  read only when focused.
+- **Haptic** tick when a note lands in tune, optional.
+- Reduce motion: the lane jumps instead of scrolling.
 
-### 6.2 Privacy
+### 7.2 Privacy
 
-- Audio is processed in memory and never stored or sent anywhere.
-- No recording in phase A. Recording is a separate future feature with
-  its own consent.
-- The permission rationale and the privacy note say exactly that.
-- Platform declarations:
-  - Android: `RECORD_AUDIO`, with the microphone marked as not required.
-  - iOS: `NSMicrophoneUsageDescription`.
+- Audio is processed in memory, never stored or sent anywhere. No recording.
+- The permission text says so.
+- Android: `RECORD_AUDIO`, with the microphone marked not required. iOS:
+  `NSMicrophoneUsageDescription`.
 
-## 7. Phases B and C (outline)
-
-- **B, sing along in the player:**
-  - Draw the sung trace over the notation rows, or under the tala strip.
-  - After each pass, a per-note summary: which swaras were close, which
-    were sharp or flat, and time to settle.
-  - Uses the `Schedule`'s note events as targets, shifted by the measured
-    audio and mic latency. Latency is calibrated once with a click and
-    loopback, or estimated per device.
-  - Requires the section 5 defences, because the harmonium plays while you sing.
-- **C, guided pattern cards:** card A (Sa–Pa–Sa′) through card F.
-  - Each step: play the target → silence → the student sings → check
-    (settled within the zone?) → "good", or "listen again".
-  - Scores map to the workbook's 0–3 success score.
-  - The mic only listens while the reference is silent, which sidesteps
-    echo entirely.
-
-## 8. Milestones (phase A)
+## 8. Milestones
 
 | # | Milestone | Done when |
 |---|---|---|
-| P1 | Port YIN to `shared/`; voice-range tuning and synthetic tests | ±2 cents, no octave errors on the synthetic suite, 55–1100 Hz |
-| P2 | `PitchTracker`: smoothing, swara mapping, settling, zones, `HeldNote`, drone rejection | All section 4.5 tests pass on JVM, Android host and iOS |
-| P3 | Android: permission, capture with echo cancellation, monitor screen | Works on the emulator with a synthetic mic input; on-device check of drone bleed with and without headphones |
-| P4 | iOS: same | Same, plus the accessibility audit passes |
-| P5 | Accessibility polish: announcements, haptics, trace summary | TalkBack/VoiceOver pass; instrumented and UI tests |
+| S1 | Port YIN, `AudioResampler`, `NeuralArbitrator` to `shared/`; voice-range tuning; synthetic detector tests | ±2 cents and no octave errors across 60 Hz–1 kHz on the synthetic suite, on JVM, Android host and iOS |
+| S2 | `PitchTracker` + `NoteScorer` + pass summary (shared) | All section 4.5 scorer and bleed tests pass |
+| S3 | Neural runtime on both platforms: bundle SwiftF0, ONNX Runtime AAR and iOS xcframework script, supervisors, CI | Model loads on emulator and simulator; arbitration active; falls back cleanly without the model |
+| S4 | Android sing-along: permission, capture with echo cancellation, pitch lane, cell marks, summary, guide setting | Emulator run with an injected WAV "singer"; on-device bleed check with and without headphones |
+| S5 | iOS sing-along: same | Same, plus accessibility audit passes |
+| S6 | Accessibility and latency polish; device testing | TalkBack/VoiceOver pass; scoring windows verified on at least one physical device per platform |
 
-## 9. Decisions
-
-1. **Drone on the built-in speaker while singing:** echo cancellation plus a headphone suggestion (proposed), or drone off unless headphones are connected?
-2. **Zones:** ±10 cents in tune and ±25 cents close (proposed), and whether a stricter preset is wanted later.
-3. **Western note name:** show it as secondary text next to the swara (proposed: yes, small)?
-4. **Neural pitch supervisor:** leave it out of phase A (proposed), or bring in ONNX Runtime now?
-5. **Order:** phase A first (proposed), or go straight to sing-along in the player (B)?
-
-## 10. Risks
+## 9. Risks
 
 | Risk | Mitigation |
 |---|---|
-| Octave errors on low male voices (strong 2nd harmonic) | YIN continuity tracking; synthetic tests with weak fundamentals; neural supervisor as a fallback option |
-| Echo cancellation behaves differently across Android devices | Headphone suggestion; drone rejection safety net; test on at least two physical devices |
-| Echo cancellation colours or ducks quiet singing | Turn AGC off where possible; measure; allow switching echo cancellation off when using headphones |
-| The emulator and simulator can't test a real voice | Inject WAV fixtures through a debug audio source; on-device checks are part of P3/P4 |
+| Harmonium bleed scored as singing | Five defences in section 5; tests with silent "student" plus bleed |
+| Echo cancellation differs across Android devices | Headphone suggestion; count-in calibration; guide-off mode; test on at least two devices |
+| Echo cancellation colours or ducks quiet singing | AGC off where possible; measure; allow echo cancellation off with headphones |
+| Octave errors on low male voices | YIN continuity plus SwiftF0 octave correction; weak-fundamental tests |
+| ONNX Runtime adds app size | Measure per ABI; consider ABI splits / App Bundle (Android) |
+| The emulator and simulator can't hear a real voice | Debug WAV-injection audio source for automated runs; on-device checks in S4–S6 |

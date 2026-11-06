@@ -13,6 +13,12 @@ Do not add features speculatively.
 - No analytics, tracking, or telemetry.
 - No ads or monetisation code without prior discussion.
 - No third-party SDKs without prior discussion.
+
+  **Approved exceptions** (discussed and agreed; not precedent for others):
+
+  | Dependency | Why | Approved |
+  |---|---|---|
+  | ONNX Runtime (MIT) + SwiftF0 pitch model (MIT, bundled) | Neural pitch checker for sing-along: corrects YIN octave errors. Runs fully offline; the iOS xcframework is downloaded at build time only. | 2026-11-06 (`docs/plan-pitch-monitor.md`) |
 - Never commit `keystore.properties`, API keys, or secrets.
 - Credit every bundled third-party asset in `ATTRIBUTION.md` in the same change,
   even CC0/public-domain ones: name each contributor, link the source, state the
