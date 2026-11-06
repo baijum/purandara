@@ -1,6 +1,7 @@
 package com.baijum.purandara.domain.varisai
 
 import com.baijum.purandara.domain.Octave
+import com.baijum.purandara.domain.Swara
 import com.baijum.purandara.domain.SwaraLetter
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -167,7 +168,7 @@ class VarisaiParserTest {
     @Test
     fun unknownHeadersValuesAndLettersOutsideTheRagaAreErrors() {
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: dhruva\nS R G M") }
-        assertFailsWith<VarisaiParseException> { parseOne("1\nraga: kalyani\nS R G M | P D | N S′ || S R G M | P D | N S′") }
+        assertFailsWith<VarisaiParseException> { parseOne("1\nraga: todi\nS R G M | P D | N S′ || S R G M | P D | N S′") }
         val e = assertFailsWith<VarisaiParseException> {
             parseOne("1\nraga: malahari\nS R G M | P D | N S′ || S R G M | P D | D S′")
         }
@@ -237,6 +238,36 @@ class VarisaiParserTest {
         val e = assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nbeat: 2\nS R G M") }
         assertTrue("needs 8" in e.message!!, e.message)
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nbeat: 3\nS R G M") }
+    }
+
+    @Test
+    fun variantDigitsOverrideTheRagaWhenAllowed() {
+        // Bhairavi allows its Dhaivata as D1 beside the default D2.
+        val v = parseOne("1\nraga: bhairavi\ntala: dhruva-4\n" + List(14) { "S" }.joinToString(" ") + "\n" +
+            "P D1 P S N S P D1 M P G D R S ||")
+        assertEquals(14, v.avartas[1].aksharas.size)
+        val swaras = v.avartas[1].aksharas.filterIsInstance<Akshara.Swaras>().map { it.swaras.single() }
+        assertEquals(listOf("D1", "D1"), swaras.filter { it.variant != null }.map { it.toString() })
+        // The variant decides the pitch: D1 and the raga's D2 differ.
+        assertEquals(
+            setOf(Swara.D1, Swara.D2),
+            swaras.filter { it.letter == SwaraLetter.D }.map { it.swaraIn(v.raga) }.toSet(),
+        )
+        // A digit the raga does not allow is an error, as is a stray digit.
+        assertFailsWith<VarisaiParseException> {
+            parseOne("1\nraga: bhairavi\ntala: dhruva-4\n" + List(14) { "S" }.joinToString(" ") + "\n" +
+                "N3 " + List(13) { "S" }.joinToString(" ") + " ||")
+        }
+        assertFailsWith<VarisaiParseException> {
+            parseOne("1\nraga: bhairavi\ntala: dhruva-4\n" + List(14) { "S" }.joinToString(" ") + "\n" +
+                "1 " + List(13) { "S" }.joinToString(" ") + " ||")
+        }
+        // Octave marks still combine with a variant.
+        val tara = parseOne("1\nraga: bhairavi\ntala: dhruva-4\n" + List(14) { "S" }.joinToString(" ") + "\n" +
+            "D1′ " + List(13) { "S" }.joinToString(" ") + " ||")
+        val written = tara.avartas[1].aksharas[0] as Akshara.Swaras
+        assertEquals("D1′", written.swaras[0].toString())
+        assertEquals(Octave.TARA, written.swaras[0].octave)
     }
 
     @Test

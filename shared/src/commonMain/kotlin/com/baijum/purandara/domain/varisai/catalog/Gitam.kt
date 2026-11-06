@@ -1,8 +1,10 @@
 package com.baijum.purandara.domain.varisai.catalog
 
 /**
- * The four Malahari pillari gitams of Purandara Dasa, with their words.
- * Traditional compositions (16th century, public domain).
+ * The gitams, with their words. Traditional compositions.
+ *
+ * Gitams 1-4 are the Malahari pillari gitams of Purandara Dasa (16th century,
+ * public domain); gitam 5 is Analekara (Suddha Saveri).
  *
  * Sources (docs/plan-alankaram-gitam.md, "Source review" and "Cross-check"):
  * - Primary: karnatik.com (by Rani): Sri Gananatha https://karnatik.com/c1806.shtml,
@@ -53,6 +55,83 @@ package com.baijum.purandara.domain.varisai.catalog
  *   teacher or book to settle.
  * - shivkumar.org labels Kereya Neeranu and Padumanabha "Chathurasra Jathi"
  *   Triputa, but its notation is 3 + 2 + 2 (Tisra), as karnatik.com says.
+ *
+ * Gitams 6-8 (added 2026-11-07) each have a single source, accepted by the
+ * user's decision (issue #1): Shivkumar Kalyanaraman's archive, adapted from
+ * Chitraveena Ravikiran's *Perfecting Carnatic Music, Level 1*. The notation
+ * is taken from each page's PDF, which carries the octave and variant marks
+ * its HTML loses. karnatik.com has lyrics only for all three. The pages mark
+ * no sections, so these gitams have none; words are the pages', lowercased.
+ *
+ * - Kamalajadala (Kalyani, Misra Chapu): the source's bars mark the chapu
+ *   angas as 3 + 4, which is how the app's Misra Chapu is built. All madhya.
+ *   Its last line reads "D P - M" where the parallel phrase (avarta 4), the
+ *   words and the 7-akshara avarta give "D P M"; the typo is corrected.
+ *   "(a)su" (the elided a of "kaasura") is written "su".
+ * - Re Re Sri Ramachandra (Arabhi, Tisra Triputa): on this page lowercase
+ *   means the mandra octave (on other pages it is length); its mandras are
+ *   written with `ˌ`. The page's avarohana header says N2/G2, but the raga
+ *   is the standard Arabhi (N3/G3, per karnatik.com's raga page). Avarta 18's
+ *   words row is one hold short in the print; the missing "-" is supplied.
+ *   The bold letters are a Word artifact, ignored; the final "ja nu" (for
+ *   -jana) is as printed.
+ * - Sri Ramachandra (Bhairavi, Chaturasra Dhruva): the piece sings both
+ *   Dhaivatas; D1 is written as a variant of the raga's D2 (the digit
+ *   syntax), and the source's explicit D2s are the plain default D. The
+ *   arohana header's "G2M2" is a typo for G2 M1. All madhya.
+ *
+ * The crosscheck script's expected output for gitams 6-8 (2026-11-07): the
+ * letter streams match shivkumar.org exactly (70, 131 and 95 letters) — the
+ * script compares these three by letter alone, since the pages' octave and
+ * variant marks (read from the PDFs) survive nowhere in their HTML.
+ *
+ * Gitam 9, Kamala Sulochana (Anandabhairavi, Adi; Purandara Dasa), added
+ * 2026-11-07 — the sanchari geetham that had no notation source anywhere
+ * (issue #1). Sources:
+ * - Primary: the "Gurukulam & SF" geetham-notes collection (geetham_notes.pdf,
+ *   supplied by the user; provenance page/site to be confirmed), pp. 26-28:
+ *   complete swaras and words, in Adi tala, with Anandabhairavi's arohana
+ *   written in the 16-swarasthana naming (its "G1"/"N1" are the modern G2/N2;
+ *   its arohana header also mislabels the mela as 22nd Kharaharapriya).
+ * - Cross-check: a staff-and-sargam rendering of the same piece (also
+ *   supplied by the user) — it agrees bar for bar, with two exceptions listed
+ *   below; and vignanam.org's lyrics for the sahityam. No online notation
+ *   source exists, so crosscheck_gitams.py skips this piece.
+ *
+ * Choices and fixes, each listed:
+ * - Tala: Adi (the collection PDF and karnatik.com's lyrics page agree); the
+ *   staff rendering labels it "Eka Tala 4/4", whose 4-beat bars are the
+ *   half-avartas of the same music.
+ * - Avartas 8 and 10 (the "sankalita"/"tilaka dhare" phrases, G G R N S): the
+ *   collection PDF writes plain N (madhya Ni) both times; the staff rendering
+ *   dots it below both times (mandra Ni). The PDF is kept; the teacher may
+ *   prefer the mandra reading.
+ * - Avarta 16 repeats avarta 5's phrase; the PDF writes avarta 5's Ni with a
+ *   mandra dot (Nˌ) and avarta 16's plain — both are encoded as the PDF has
+ *   them, again for the teacher to settle.
+ * - The second time through "maraala gaamini karihara madhye" and "bimbaana
+ *   vidu mandalare" (avartas 13-18) repeats avartas 3-6's swaras; the PDF has
+ *   them identical except avarta 16's N (above).
+ * - Avarta 12's last cell: the PDF writes plain S (madhya), but the staff
+ *   rendering dots it (tara) and only that reading joins avarta 13's tara
+ *   phrase without a leap of more than an octave; written S′.
+ * - Words: as the PDF prints them ("se" for the sha of "shaayya", "jha" in
+ *   "ghana jha ga"), lowercased; the elided "naaM" is split "na am".
+ *
+ * The same collection PDF (see gitam 9) also gives second sources for three
+ * of the pieces above, with differences for the teacher to settle:
+ * - Kamalajadala: it calls the tala Tisra Triputa (shivkumar.org's PDF, the
+ *   chosen source, has Misra Chapu — issue #3), and writes the piece an
+ *   octave higher, from tara Sa down to mandra Dha, where the chosen source
+ *   stays in the middle octave.
+ * - Re Re Sri Ramachandra: it sets the piece in (Chaturasra) Rupaka — six
+ *   aksharas to the avarta — where the chosen source has Tisra Triputa
+ *   (seven). The melody's letters agree.
+ * - Sri Ramachandra: its letter stream matches the chosen source, but it
+ *   writes both Dhaivatas as the plain default (D2), where the chosen source
+ *   sings the second avarta's first Dhaivata as D1 — the variant kept here.
+ * - Vara Veena: a third source (with shivkumar.org's PDF and the NIOS book)
+ *   for when that gitam is encoded.
  */
 internal val GITAM_NOTATION: String = """
 1
@@ -192,4 +271,140 @@ D P D | S′ , | S′ , ||
 R′ R′ S′ | D P | M P ||
 " ja ta - | ju - | - ta ||
 (sakala)
+
+6
+title: Kamalajadala
+raga: kalyani
+tala: misra-chapu
+S S S N D N S ||
+" ka ma la ja - da la ||
+N D P D P M P ||
+" vi ma la su na ya na ||
+G M P P D D N ||
+" ka ri va ra da ka ru ||
+D P M P G R S ||
+" na - mbu dhe - - - ||
+D D D G G G , ||
+" ka ru na sha ra dhe - ||
+M P , M G R S ||
+" ka ma - la - - - ||
+R , , S , , , ||
+" kan - - tha - - - ||
+, , , , , , , ||
+" - - - - - - - ||
+G M P M P D P ||
+" ke - shi na ra ka - ||
+N D P D P M P ||
+" su ra vi bhe - da na ||
+G M P P D D N ||
+" va ra dha ve - la a ||
+D P M P G R S ||
+" pu ra su ro - tta ma ||
+
+
+
+7
+title: Re Re Sri Ramachandra
+raga: arabhi
+tala: triputa-3
+P , P M M P , ||
+" re - re sri - ra - ||
+M G R S R M G ||
+" - - ma chan - - - ||
+R R S S D R S ||
+" - - - - - - - ||
+R , , R , S R ||
+" ndra - - - - ra ghu ||
+M G R R S S , ||
+" vam - sha ti la ka - ||
+P M M P , P , ||
+" ra - gha ven - dra - ||
+P M P M G R R ||
+" a - - - - - - ||
+M G R S R S S ||
+" a - - - - - - ||
+S Dˌ R S R S S ||
+" a - - - - - - ||
+Dˌ S , Dˌ Dˌ Dˌ Pˌ ||
+" a - - sri tha ja na ||
+Pˌ Mˌ Pˌ Dˌ S S , ||
+" po - sha ku - re - ||
+R S R M G R R ||
+" si - - tha - - ma ||
+M G R M M P M ||
+" no - - ran - ja nu ||
+P , P P , P , ||
+" re - re dhi - ra - ||
+P M P D S S R ||
+" ra - va na - su ra ||
+M G R S R S S ||
+" an - tha ku - re - ||
+S D R S R S S ||
+" a - - yi ya yi ya ||
+D S , D D D P ||
+" a - - yi ya yi ya ||
+P M P D S S , ||
+" a - - yi ya re - ||
+S , S D D D P ||
+" dhi - na ja na man - ||
+P M P M G R R ||
+" da - ru ma - ma va ||
+
+8
+title: Sri Ramachandra
+raga: bhairavi
+tala: dhruva-4
+G R G M P , M G R G M P M , ||
+" sri - ra - ma - chan - dra - sri tha pa - ||
+P D N N D1 P M N D1 P M G R S ||
+" - ri ja - - tha sa ma - - - - - stha ||
+S R S P M P G R G M G G R S ||
+" kal - - ya - na gu na - bhi ra - - ma ||
+R R G G M M G G R G M P M M ||
+" si - tha - mu kha am - - - bo - ru ha ||
+P D D N N S P D N S R G R S ||
+" san - - - - cha ri - - - - - - ka ||
+N R S G R S N N D1 M P D N S ||
+" ni ran - tha ram - man - ga la ma - - ta ||
+P D1 P S N S P D1 M P G , R S ||
+" no - - tu - - - - - - - - - - ||
+9
+title: Kamala Sulochana
+raga: anandabhairavi
+tala: adi
+N D N S′ S′ , N S′ ||
+" ka ma la su lo - cha na ||
+G′ R′ S′ N N D P M ||
+" vi ma la ta ta - ki ni ||
+P P P D N D P M ||
+" ma ra - la ga - mi ni ||
+M P M P G R S , ||
+" ka ri ha ra ma - dhe - ||
+S , Nˌ , S G G M ||
+" bim - ba - - - na na ||
+G M P M G R S , ||
+" vi du man - da la re - ||
+P , M G M , G R ||
+" chan - da na kun - ku ma ||
+G , R N S , S , ||
+" san - cha li ta - - - ||
+P P M G M M G R ||
+" pa ri ma la ka - stu ri ||
+G G R N S , S , ||
+" ti la ka dha re - re - ||
+S G R G M G M , ||
+" jaa - - ji se - yya - ||
+M N D N P D N S′ ||
+" ka cha ku cha gha na jha ga ||
+G′ R′ S′ N N D P M ||
+" na am - - bho - - ja ||
+P P P D N D P M ||
+" ma ra - la ga - mi ni ||
+M P M P G R S , ||
+" ka ri ha ra ma - dhe - ||
+S , N , S G G M ||
+" bim - ba - - - na na ||
+G M P M G R S , ||
+" vi du man - da la re - ||
+
 """

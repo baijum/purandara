@@ -25,6 +25,13 @@ enum class AngaKind {
 
     /** A single clap (U). */
     ANUDRUTAM,
+
+    /**
+     * A clap, then finger counts, of its own length — the chapu talas' anga.
+     * Built by [Tala.Companion.chapu], which carries the lengths; [Tala.suladi]
+     * never takes it.
+     */
+    CHAPU,
 }
 
 /** Jati: the length of a laghu. */
@@ -136,10 +143,27 @@ class Tala(
                         TalaBeat(Kriya.WAVE, "v", startsAnga = false),
                     )
                     AngaKind.ANUDRUTAM -> listOf(TalaBeat(Kriya.CLAP, "x", startsAnga = true))
+                    AngaKind.CHAPU -> error("a chapu anga carries its own length; build it with chapu()")
                 }
             },
             key = key,
             jati = jati,
+        )
+
+        /**
+         * A chapu tala: angas of [lengths] aksharas, each one clap plus finger
+         * counts — Misra Chapu is 3 + 4 ("clapped as 3 + 4" in the author's
+         * ThaaLam app, which this follows). Chapu talas have no jati; each
+         * anga carries its own length, and its beats flow faster than a
+         * suladi tala's at the same tempo.
+         */
+        fun chapu(key: String, name: String, lengths: List<Int>): Tala = Tala(
+            name = name,
+            beats = lengths.flatMap { length ->
+                listOf(TalaBeat(Kriya.CLAP, "x", startsAnga = true)) +
+                    (1 until length).map { TalaBeat(Kriya.COUNT, it.toString(), startsAnga = false) }
+            },
+            key = key,
         )
 
         /** Adi tala: a four-akshara laghu then two drutas — x 1 2 3 | x v | x v. */
@@ -163,7 +187,8 @@ class Tala(
 
 /**
  * The talas notation can name. Adi is Chaturasra Triputa; the others are the
- * jatis in which the seven sapta tala alankarams are sung.
+ * jatis in which the seven sapta tala alankarams are sung, plus Misra Chapu
+ * (the chapu tala of the Kamalajadala geetham).
  */
 object Talas {
     private val L = AngaKind.LAGHU
@@ -178,8 +203,9 @@ object Talas {
     val TRIPUTA_TISRA: Tala = Tala.suladi("triputa-3", "Tisra Triputa", listOf(L, D, D), Jati.TISRA)
     val ATA: Tala = Tala.suladi("ata-5", "Ata", listOf(L, L, D, D), Jati.KHANDA)
     val EKA: Tala = Tala.suladi("eka-4", "Eka", listOf(L), Jati.CHATURASRA)
+    val MISRA_CHAPU: Tala = Tala.chapu("misra-chapu", "Misra Chapu", listOf(3, 4))
 
-    val all: List<Tala> = listOf(ADI, DHRUVA, MATYA, RUPAKA, JHAMPA, TRIPUTA_TISRA, ATA, EKA)
+    val all: List<Tala> = listOf(ADI, DHRUVA, MATYA, RUPAKA, JHAMPA, TRIPUTA_TISRA, ATA, EKA, MISRA_CHAPU)
 
     fun byKey(key: String): Tala? = all.firstOrNull { it.key == key }
 }

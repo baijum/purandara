@@ -5,16 +5,33 @@ import com.baijum.purandara.domain.Note
 import com.baijum.purandara.domain.Octave
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Shruti
+import com.baijum.purandara.domain.Swara
 import com.baijum.purandara.domain.SwaraLetter
 import com.baijum.purandara.domain.Tala
 import com.baijum.purandara.domain.Tuning
 
 /**
- * A swara as written: a letter and its octave. `S′` is S in the tara
- * octave; `Ḍ` (a dot below) is D in the mandra octave.
+ * A swara as written: a letter, its octave, and optionally the [variant]
+ * the raga's default for the letter is overridden with (a digit after the
+ * letter, e.g. `D1` in a Bhairavi gitam). `S′` is S in the tara octave;
+ * `Ḍ` (a dot below) is D in the mandra octave.
  */
-data class WrittenSwara(val letter: SwaraLetter, val octave: Octave = Octave.MADHYA) {
-    override fun toString(): String = letter.symbol + when (octave) {
+data class WrittenSwara(
+    val letter: SwaraLetter,
+    val octave: Octave = Octave.MADHYA,
+    val variant: Swara? = null,
+) {
+    /** The letter with its octave mark, without the variant digit. */
+    val baseText: String get() = letter.symbol + when (octave) {
+        Octave.TARA -> "′"
+        Octave.MANDRA -> "\u0323"
+        Octave.MADHYA -> ""
+    }
+
+    /** The variant digit as written ("1" of `D1`), or null without a variant. */
+    val variantDigit: String? get() = variant?.name?.removePrefix(letter.name)
+
+    override fun toString(): String = letter.symbol + (variantDigit ?: "") + when (octave) {
         Octave.TARA -> "′"
         Octave.MANDRA -> "\u0323"
         Octave.MADHYA -> ""
@@ -22,6 +39,9 @@ data class WrittenSwara(val letter: SwaraLetter, val octave: Octave = Octave.MAD
 
     /** For screen readers: a dot below is not read aloud, so mandra is "low D". */
     fun spoken(): String = if (octave == Octave.MANDRA) "low ${letter.symbol}" else toString()
+
+    /** The pitch class this written swara sounds: its [variant], or the raga's default for the letter. */
+    fun swaraIn(raga: Raga): Swara = variant ?: raga.swara(letter)
 }
 
 /** One akshara of written notation. */
@@ -179,7 +199,7 @@ data class Varisai(
      */
     val playableSaMidis: IntRange by lazy {
         val notes = avartas.flatMap { it.aksharas }.filterIsInstance<Akshara.Swaras>().flatMap { it.swaras }
-            .map { Note(raga.swara(it.letter), it.octave) }.distinct()
+            .map { Note(it.swaraIn(raga), it.octave) }.distinct()
         val ok = Shruti.SA_RANGE.filter { midi ->
             Shruti.FINE_TUNE_RANGE.let { listOf(it.first, it.last) }.all { cents ->
                 val sa = Shruti.saHz(midi, cents)

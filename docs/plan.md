@@ -70,6 +70,7 @@ Copy the text verbatim so it can be compared line by line with the workbook.
 | `S R G M P D N` | Swara letters. The raga decides the variant (section 4). |
 | `′` (U+2032) after a letter | Tara sthayi (upper octave): `S′`. |
 | A run of letters, e.g. `SR`, `S′S′`, `SRGM` | One akshara divided evenly between its swaras. |
+| A digit after a letter, e.g. `D1`, `N3` | A swara variant: overrides the raga's default for that letter. Only the variants the raga allows (`Raga.allowedVariants`) parse. |
 | `,` | Karvai: hold the previous swara through this akshara. No gap. |
 | `\|` | Ends a laghu or druta. Layout only; the parser doesn't use it for timing. |
 | `\|\|` | Ends an avarta. Optional at the end of a line. |

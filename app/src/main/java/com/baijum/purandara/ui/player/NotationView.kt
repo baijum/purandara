@@ -203,10 +203,11 @@ private fun SwaraText(akshara: Akshara, activeSlot: Int?, color: Color, size: Te
         when (akshara) {
             Akshara.Karvai -> append(",")
             is Akshara.Swaras -> akshara.swaras.forEachIndexed { slot, swara ->
-                if (slot == activeSlot) {
-                    withStyle(SpanStyle(color = accent, fontWeight = FontWeight.Bold)) { append(swara.toString()) }
-                } else {
-                    append(swara.toString())
+                val main = if (slot == activeSlot) SpanStyle(color = accent, fontWeight = FontWeight.Bold) else SpanStyle(color = color)
+                withStyle(main) { append(swara.baseText) }
+                // A variant digit (D1, N3) is written as a subscript.
+                swara.variantDigit?.let { digit ->
+                    withStyle(main.copy(fontSize = size * VARIANT_DIGIT_SCALE)) { append(digit) }
                 }
             }
         }
@@ -345,6 +346,9 @@ private const val ROW_HEIGHT_DP = 48
 private const val ROW_GROWTH = 0.75f
 private const val WORDS_HEIGHT_DP = 22
 private const val WORD_SP = 15
+
+/** A variant digit (the 1 of D1) is drawn as a subscript at this fraction of the swara's size. */
+private const val VARIANT_DIGIT_SCALE = 0.6f
 
 /** "clap 1 2 3, clap wave, clap wave": the tala marks as words. */
 internal fun spokenBeats(tala: Tala, clap: String, wave: String): String =

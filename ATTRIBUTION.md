@@ -160,6 +160,44 @@ Sambasiva Yenave (composer Chinnakrishna Dasar, long in the public domain):
   section-scoped `beat: 5` for the khanda-gati charanam. Every choice between
   the three sources is listed in the file's header.
 
+Kamalajadala (Kalyani, Misra Chapu), Re Re Sri Ramachandra (Arabhi, Tisra
+Triputa) and Sri Ramachandra (Bhairavi, Chaturasra Dhruva) — Purandara Dasa
+and Paidala Gurumurti Sastri, long in the public domain:
+
+- **Source (single, by the owner's decision — issue #1):** Shivkumar
+  Kalyanaraman's archive, adapted from Chitraveena Ravikiran's *Perfecting
+  Carnatic Music, Level 1*:
+  [kamalajathala-kalyani-geetham](https://www.shivkumar.org/music/varnams/kamalajathala-kalyani-geetham.htm),
+  [reresrirama-arabhi-geetham](https://www.shivkumar.org/music/varnams/reresrirama-arabhi-geetham.htm),
+  [srirama-bhairavi-geetham](https://www.shivkumar.org/music/varnams/srirama-bhairavi-geetham.htm)
+  — each page's PDF, which carries the octave and variant marks its HTML
+  loses.
+- **Checked with:** `tools/notation/crosscheck_gitams.py` (letter streams
+  match the pages exactly; the octaves and variants have no second source and
+  follow the PDFs).
+- **Changes made:** words lowercased, one syllable per cell; the pages' dash
+  holds written as karvai; Kamalajadala's "D P - M" typo corrected to the
+  parallel phrase's "D P M"; Re Re's missing hold token supplied; Sri
+  Ramachandra's D1 kept as a swara variant of the raga's D2. All listed in
+  the file's header.
+
+Kamala Sulochana (Anandabhairavi, Adi) — Purandara Dasa, long in the public
+domain:
+
+- **Source (single, by the owner's decision — issue #1):** the "Gurukulam &
+  SF" geetham-notes collection (`geetham_notes.pdf`, supplied by the owner;
+  pp. 26–28, swaras and words), read together with a staff-and-sargam
+  rendering of the same piece also supplied by the owner.
+- **Checked against:** [vignanam.org](https://vignanam.org/english/carnatic-music-geethams-kamala-sulochana.html)
+  for the sahityam; no online notation source exists, so
+  `tools/notation/crosscheck_gitams.py` skips this piece (noted there).
+- **Changes made:** the collection's 16-swarasthana raga names read as the
+  modern G2/N2; avarta 12's final Sa written tara (the staff rendering dots
+  it, and only that joins the next phrase without a leap); two spots where
+  the staff rendering sings mandra Ni against the collection's plain Ni are
+  left as the collection has them, for the teacher. All listed in the file's
+  header.
+
 ## Code
 
 Pitch detection (`shared/.../pitch/`), the neural supervisors and parts of

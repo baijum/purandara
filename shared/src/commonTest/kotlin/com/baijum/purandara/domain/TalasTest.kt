@@ -54,6 +54,20 @@ class TalasTest {
     }
 
     @Test
+    fun misraChapuIsClappedAsThreePlusFour() {
+        val chapu = Talas.byKey("misra-chapu")!!
+        assertEquals("Misra Chapu", chapu.name)
+        assertEquals(7, chapu.aksharas)
+        assertEquals(listOf(3, 4), chapu.angas)
+        assertNull(chapu.jati)
+        // A clap starts each chapu anga; the rest are finger counts.
+        assertEquals("x 1 2 x 1 2 3", strip(chapu))
+        assertEquals(listOf(Kriya.CLAP, Kriya.COUNT, Kriya.COUNT, Kriya.CLAP, Kriya.COUNT, Kriya.COUNT, Kriya.COUNT), chapu.beats.map { it.kriya })
+        // Seven aksharas fit one row of notation.
+        assertEquals(listOf(0), chapu.rowStarts)
+    }
+
+    @Test
     fun longTalasSplitIntoTwoRowsAtAnAngaBoundary() {
         assertEquals(listOf(0), Tala.ADI.rowStarts)
         assertEquals(8, Tala.ADI.rowAksharas)

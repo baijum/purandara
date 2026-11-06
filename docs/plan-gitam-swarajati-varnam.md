@@ -7,6 +7,16 @@ Progress:
 - G1 (part): Analekara (Suddha Saveri), karnatik.com and shivkumar.org.
   One note differs between them (the first "ta - la di - nam": `P , M` on
   karnatik.com, kept; `P , P` on shivkumar.org); see `Gitam.kt`.
+- **G1 complete (2026-11-07): Kamalajadala (Kalyani, Misra Chapu), Re Re
+  Sri Ramachandra (Arabhi) and Sri Ramachandra (Bhairavi, Dhruva) added from
+  shivkumar.org alone — a single source, accepted by the user's decision
+  (issue #1).** New engine work: Misra Chapu (a chapu tala, its angas 3 + 4
+  per ThaaLam's model — the source's own bars agree) and swara variants (a
+  digit after a letter, e.g. Bhairavi's `D1` beside its `D2`, allowed per
+  raga, shown as a subscript). New ragas: Kalyani, Arabhi, Bhairavi. The
+  pieces' octave and variant marks survive only in the pages' PDFs (the HTML
+  loses them); the crosscheck script compares these three by letter stream,
+  which matches exactly.
 - The **highest Sa per piece** (from V1) came forward: Analekara climbs to
   upper Ma. `Varisai.playableSaMidis`; both players explain and offer the
   nearest Sa, and Play stays off until then.
@@ -62,10 +72,68 @@ What the two web sources have (checked 2026-11-06):
 | Rara Venu Gopa Bala | Bilahari, Adi | ✅ notation | ✅ | (not given) |
 | Sambasiva Yenave | Khamas, Adi | ✅ notation (other layout) | ✅ (+ *Sangeeta Bala Padam* Part 1, pp. 82–84) | Chinnakrishna Dasar ✅ (dates undocumented; see below) |
 | **Tana varnams** | | | | |
-| Ninnukori | Mohanam, Adi | ❌ | ✅ | Ramnad (Poochi) Srinivasa Iyengar, d. 1919 ✅ |
-| Evvari Bodhana | Abhogi, Adi | ❌ | ✅ | Patnam Subramania Iyer, d. 1902 ✅ |
-| Sami Ninne Kori | Shankarabharanam, Adi | ❌ (lyrics only) | ✅ | Veena Kuppayyar, d. 1860 ✅ |
-| Jalajaksha | Hamsadhwani, Adi | ❌ (lyrics only) | ✅ | Manambuchavadi Venkatasubbayyar / Patnam Subramania Iyer ✅ |
+| Ninnukori | Mohanam, Adi | ❌ | ✅ (+ rosemuralikrishnan.com, below) | Ramnad (Poochi) Srinivasa Iyengar, d. 1919 ✅ |
+| Evvari Bodhana | Abhogi, Adi | ❌ | ✅ (+ patantara.com, below) | Patnam Subramania Iyer, d. 1902 ✅ |
+| Sami Ninne Kori | Shankarabharanam, Adi | ❌ (lyrics only) | ✅ (+ carnaticpedia.com, below) | Veena Kuppayyar, d. 1860 ✅ |
+| Jalajaksha | Hamsadhwani, Adi | ❌ (lyrics only) | ✅ (+ NIOS book 2, below) | Manambuchavadi Venkatasubbayyar / Patnam Subramania Iyer ✅ |
+
+**Further sources (researched 2026-11-07, issue #1).**
+
+- **NIOS *Carnatic Music* Book 2** (National Institute of Open Schooling,
+  Government of India; free PDF at
+  nios.ac.in/media/documents/Carnatic_Music_243/). A complete independent
+  textbook with notation for the beginner repertoire. It has **Vara Veena**
+  (Mohanam, Rupaka — syllable pairs per beat with tala markers) and the
+  **Jalajaksha** varnam (Hamsadhwani, Adi — full, swaras and words), each of
+  which with shivkumar.org makes **two independent sources**. It also has
+  **Analekara** (a third source, useful for issue #2's variant note), a
+  Shankarabharanam jatiswaram and a Khamas swarajati. Its headers are sloppy
+  (it prints Mohanam as S R₂ G₂ P D₂ S and Analekara's raga as "Sudha
+  Dhanyasi, janya of the 28th mela"); its notation bodies are what count.
+- **rosemuralikrishnan.com** (Dr. Rose Muralikrishnan's teaching site, from
+  her own guide book): full **Ninnukori** notation — pallavi, anupallavi,
+  muktayi swaram, charanam, four charana swarams — a second source with
+  shivkumar.org.
+- **patantara.com**: has **Evvari Bodhana** (Abhogi, Adi) under CC
+  BY-NC-SA. Renders notation as images (not machine-readable), so it serves
+  the way the book photos did: a manual second source to compare against.
+- **carnaticpedia.com**: a **Sami Ninne Kori** notation page exists; the site
+  renders by JavaScript and needs a manual/browser check before counting.
+- **musicmaster.in**: a Kamala Sulochana page whose notation is a JavaScript
+  embed (not extractable); lyrics and scale only in text.
+- The Scribd uploads of these pieces (reresrirama, kamalajathala,
+  Srirama-Bhairavi-Geetham …) use shivkumar.org's file naming and are
+  re-uploads of its PDFs — **not independent sources**.
+
+**Still with one clean source each:** Kamala Jadala (also issue #3's tala
+question), Re Re Sri Ramachandra, Sri Ramachandra Shrita, and Kamala
+Sulochana. The NIOS book's gitam chapter stops at Vara Veena; the varnam
+chapter covers only Jalajaksha and a Vasanta varnam.
+
+**Update (2026-11-07):** the user accepted shivkumar.org as the single
+source for Kamala Jadala, Re Re Sri Ramachandra and Sri Ramachandra Shrita,
+and all three are now in the app (gitam-6/7/8) — Kamala Jadala in Misra
+Chapu (issue #3: the source's own bars mark the chapu angas 3 + 4, which is
+how the app builds it; karnatik.com's Tisra Triputa remains the alternative
+if the teacher says so). **Kamala Sulochana is now in the app too (gitam-9,
+Anandabhairavi, Adi)**: the user supplied the "Gurukulam & SF" geetham-notes
+collection (a complete gitam book with notation) plus a staff-and-sargam
+rendering of the piece, which agree bar for bar (two mandra-Ni readings left
+as the collection has them, for the teacher). The same collection gives
+second sources for gitam-7 and gitam-8 and a third for Vara Veena, with the
+differences listed in `Gitam.kt`'s header: it sets Re Re in Rupaka (the
+chosen source: Tisra Triputa), Kamalajadala in Tisra Triputa an octave
+higher (the chosen source: Misra Chapu, middle octave), and reads Sri
+Ramachandra's both Dhaivatas as the plain D2 (the chosen source sings the
+D1 variant).
+
+**Khamas G₂/N₁ — not a misprint after all.** The NIOS book's ragalakshana
+section also prints Khamas as S M₁ G₂ M₁ P D₂ N₁ S (bhashanga, anya Kakali
+Ni) — the same reading as *Sangeeta Bala Padam*'s header — while
+karnatik.com and shivkumar.org print the common S M₁ G₃ M₁ P D₂ N₂ S. Two
+books vs two web sites: this is a genuine two-tradition difference (the
+app's Sambasiva is encoded the web way). The user's teacher should say which
+Khamas they sing before more Khamas pieces are encoded.
 
 **What this means**
 

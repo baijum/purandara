@@ -234,7 +234,7 @@ class Schedule private constructor(
             raga: Raga,
             settings: PerformanceSettings,
         ): NoteEvent {
-            val note = Note(raga.swara(written.letter), written.octave)
+            val note = Note(written.swaraIn(raga), written.octave)
             val hz = settings.tuning.frequency(note, settings.saHz)
             val playback = requireNotNull(HarmoniumBank.playbackFor(hz)) {
                 "$written (${hz.toInt()} Hz) is outside the harmonium bank for Sa ${settings.saHz} Hz"

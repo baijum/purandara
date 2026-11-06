@@ -126,7 +126,7 @@ final class PracticeViewModelTests: XCTestCase {
         vm.settings.tempo = 90
         XCTAssertEqual(store.load().tempo, 90)
         XCTAssertFalse(vm.canPlay)
-        XCTAssertEqual(vm.catalog.count, 51)
+        XCTAssertEqual(vm.catalog.count, 55)
     }
 }
 

@@ -3,6 +3,7 @@ package com.baijum.purandara.domain.varisai
 import com.baijum.purandara.domain.Octave
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Ragas
+import com.baijum.purandara.domain.Swara
 import com.baijum.purandara.domain.SwaraLetter
 import com.baijum.purandara.domain.Tala
 import com.baijum.purandara.domain.Talas
@@ -262,6 +263,20 @@ class VarisaiParser(
                     throw VarisaiParseException(lineNo, column + k, "repeated octave mark")
                 }
                 swaras[swaras.lastIndex] = last.copy(octave = octave)
+            } else if (c.isDigit()) {
+                // A variant digit (D1, N3): the raga decides which letters take which.
+                val last = swaras.lastOrNull()
+                    ?: throw VarisaiParseException(lineNo, column + k, "variant digit without a swara")
+                if (last.variant != null) {
+                    throw VarisaiParseException(lineNo, column + k, "repeated variant digit")
+                }
+                val variant = Swara.entries.firstOrNull {
+                    it.name == "${last.letter.symbol}$c"
+                } ?: throw VarisaiParseException(lineNo, column + k, "no swara ${last.letter.symbol}$c")
+                if (!raga.allows(last.letter, variant)) {
+                    throw VarisaiParseException(lineNo, column + k, "${raga.name} does not allow ${last.letter.symbol}$c")
+                }
+                swaras[swaras.lastIndex] = last.copy(variant = variant)
             } else {
                 val letter = SwaraLetter.fromSymbol(c)
                     ?: throw VarisaiParseException(lineNo, column + k, "unexpected character '$c' in \"$token\"")

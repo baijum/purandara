@@ -22,6 +22,8 @@ enum class SwaraLetter(val symbol: Char) {
  * Compact notation such as `S R G M` only becomes pitches once a raga is
  * chosen: in Mayamalavagowla, R is R1 and G is G3. A raga may leave letters
  * out (Malahari has no N); notation that uses them is rejected by the parser.
+ * [allowedVariants] lists the letters a piece may write with a digit (`D1`)
+ * to override the raga's default for that letter; anything else is an error.
  * [arohanam] and [avarohanam] are shown for reference only: notation is never
  * checked against them, since compositions use phrases that cross them.
  */
@@ -31,11 +33,18 @@ class Raga(
     val key: String = name.lowercase(),
     val arohanam: List<Note> = emptyList(),
     val avarohanam: List<Note> = emptyList(),
+    val allowedVariants: Map<SwaraLetter, List<Swara>> = emptyMap(),
 ) {
     init {
         require(swaraMap[SwaraLetter.S] == Swara.S) { "$name: S must be Sa" }
         require(swaraMap[SwaraLetter.P] in setOf(null, Swara.P)) { "$name: P must be Pa" }
         require(swaraMap.size >= MIN_LETTERS) { "$name needs at least $MIN_LETTERS letters" }
+        allowedVariants.forEach { (letter, variants) ->
+            require(letter in swaraMap) { "$name: cannot allow variants of ${letter.symbol}, which it does not use" }
+            require(variants.all { it !in swaraMap.values || it == swaraMap[letter] }) {
+                "$name: a variant of ${letter.symbol} must be a different swara than its default"
+            }
+        }
     }
 
     /** The letters this raga uses, in scale order. */
@@ -49,6 +58,10 @@ class Raga(
     /** The swara [letter] stands for; [letter] must be one the raga [uses]. */
     fun swara(letter: SwaraLetter): Swara =
         swaraMap[letter] ?: throw IllegalArgumentException("$name has no ${letter.symbol}")
+
+    /** Whether a piece may write [variant] for [letter] (a digit after the letter). */
+    fun allows(letter: SwaraLetter, variant: Swara): Boolean =
+        allowedVariants[letter]?.contains(variant) == true
 
     override fun toString(): String = name
 
@@ -154,6 +167,84 @@ class Raga(
             avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M1, Swara.P, Swara.D2, Swara.N2).reversed(),
         )
 
+        /** The 65th melakarta: S R2 G3 M2 P D2 N3 S′ — the raga of the Kamalajadala geetham. */
+        val KALYANI: Raga = Raga(
+            "Kalyani",
+            mapOf(
+                SwaraLetter.S to Swara.S,
+                SwaraLetter.R to Swara.R2,
+                SwaraLetter.G to Swara.G3,
+                SwaraLetter.M to Swara.M2,
+                SwaraLetter.P to Swara.P,
+                SwaraLetter.D to Swara.D2,
+                SwaraLetter.N to Swara.N3,
+            ),
+            arohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M2, Swara.P, Swara.D2, Swara.N3),
+            avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M2, Swara.P, Swara.D2, Swara.N3).reversed(),
+        )
+
+        /**
+         * Janya of Shankarabharanam (29): ascent S R2 M1 P D2 S′ (no G, no N),
+         * descent S′ N3 D2 P M1 G3 R2 S. The raga of the Re Re Sri Ramachandra
+         * geetham. (Shivkumar.org's page prints the descent with N2/G2; the
+         * standard Arabhi, per karnatik.com's raga page, takes N3/G3.)
+         */
+        val ARABHI: Raga = Raga(
+            "Arabhi",
+            mapOf(
+                SwaraLetter.S to Swara.S,
+                SwaraLetter.R to Swara.R2,
+                SwaraLetter.G to Swara.G3,
+                SwaraLetter.M to Swara.M1,
+                SwaraLetter.P to Swara.P,
+                SwaraLetter.D to Swara.D2,
+                SwaraLetter.N to Swara.N3,
+            ),
+            arohanam = scale(Swara.S, Swara.R2, Swara.M1, Swara.P, Swara.D2),
+            avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M1, Swara.P, Swara.D2, Swara.N3).reversed(),
+        )
+
+        /**
+         * Janya of Kharaharapriya (22): S R2 G2 M1 P D2 N2 S′. Pieces may write
+         * its Dhaivata as D1 beside the default D2 (the Sri Ramachandra gitam
+         * does); other variants are errors.
+         */
+        val BHAIRAVI: Raga = Raga(
+            "Bhairavi",
+            mapOf(
+                SwaraLetter.S to Swara.S,
+                SwaraLetter.R to Swara.R2,
+                SwaraLetter.G to Swara.G2,
+                SwaraLetter.M to Swara.M1,
+                SwaraLetter.P to Swara.P,
+                SwaraLetter.D to Swara.D2,
+                SwaraLetter.N to Swara.N2,
+            ),
+            allowedVariants = mapOf(SwaraLetter.D to listOf(Swara.D1)),
+            arohanam = scale(Swara.S, Swara.R2, Swara.G2, Swara.M1, Swara.P, Swara.D2, Swara.N2),
+            avarohanam = scale(Swara.S, Swara.R2, Swara.G2, Swara.M1, Swara.P, Swara.D2, Swara.N2).reversed(),
+        )
+
+        /**
+         * Janya of Natabhairavi (20): a vakra ascent S G2 R2 G2 M1 P D2 P N2 S′
+         * (R after G, Pa twice), descent S′ N2 D2 P M1 G2 R2 S. The raga of the
+         * Kamala Sulochana sanchari geetham.
+         */
+        val ANANDABHAIRAVI: Raga = Raga(
+            "Anandabhairavi",
+            mapOf(
+                SwaraLetter.S to Swara.S,
+                SwaraLetter.R to Swara.R2,
+                SwaraLetter.G to Swara.G2,
+                SwaraLetter.M to Swara.M1,
+                SwaraLetter.P to Swara.P,
+                SwaraLetter.D to Swara.D2,
+                SwaraLetter.N to Swara.N2,
+            ),
+            arohanam = scale(Swara.S, Swara.G2, Swara.R2, Swara.G2, Swara.M1, Swara.P, Swara.D2, Swara.P, Swara.N2),
+            avarohanam = scale(Swara.S, Swara.R2, Swara.G2, Swara.M1, Swara.P, Swara.D2, Swara.N2).reversed(),
+        )
+
         /** [swaras] in the middle octave, then upper Sa. */
         private fun scale(vararg swaras: Swara): List<Note> =
             swaras.map { Note(it) } + Note(Swara.S, Octave.TARA)
@@ -162,7 +253,11 @@ class Raga(
 
 /** The ragas notation can name (`raga: malahari`). */
 object Ragas {
-    val all: List<Raga> = listOf(Raga.MAYAMALAVAGOWLA, Raga.MALAHARI, Raga.SUDDHA_SAVERI, Raga.MOHANAM, Raga.BILAHARI, Raga.KHAMAS)
+    val all: List<Raga> = listOf(
+        Raga.MAYAMALAVAGOWLA, Raga.MALAHARI, Raga.SUDDHA_SAVERI, Raga.MOHANAM,
+        Raga.BILAHARI, Raga.KHAMAS, Raga.KALYANI, Raga.ARABHI, Raga.BHAIRAVI,
+        Raga.ANANDABHAIRAVI,
+    )
 
     fun byKey(key: String): Raga? = all.firstOrNull { it.key == key }
 }

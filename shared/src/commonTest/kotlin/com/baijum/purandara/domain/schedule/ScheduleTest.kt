@@ -142,6 +142,21 @@ class ScheduleTest {
     }
 
     @Test
+    fun misraChapuKeepsItsSevenBeatsAtEveryKala() {
+        val line = List(7) { "S" }.joinToString(" ")
+        val v = VarisaiParser().parse("1\ntala: misra-chapu\n$line\n$line", VarisaiSet.SARALI).single()
+        assertEquals(Talas.byKey("misra-chapu"), v.tala)
+        for (kala in PerformanceSettings.KALA_RANGE) {
+            val s = Schedule.of(v, PerformanceSettings(saHz = saC3, kala = kala))
+            assertEquals(0, s.beats.size % 7, "kala $kala ends mid-avarta")
+            // The chapu angas start on beats 1 and 4 of each cycle, both claps.
+            val angaStarts = s.beats.withIndex().filter { it.value.beat.startsAnga }.map { it.index }
+            assertEquals((0 until s.beats.size).filter { it % 7 == 0 || it % 7 == 3 }, angaStarts)
+            assertEquals(s.durationSeconds, s.beats.size * s.settings.talaAksharaSeconds, 1e-9)
+        }
+    }
+
+    @Test
     fun khandaGatiSectionPacksMoreCellsIntoTheSameBeats() {
         // One 16-cell avarta (beat 2) then one 40-cell khanda-gati avarta (beat 5).
         val v = VarisaiParser().parse(

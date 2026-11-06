@@ -210,8 +210,14 @@ private struct AksharaCell: View {
     private var text: Text {
         if akshara is AksharaKarvai { return Text(",") }
         return swaras.enumerated().reduce(Text("")) { result, item in
-            let piece = Text(singleMandra ? item.element.letter.name : item.element.description())
-            return result + (item.offset == activeSlot ? piece.bold().foregroundColor(.accentColor) : piece)
+            let swara = item.element
+            var piece = Text(singleMandra ? swara.letter.name : swara.baseText)
+            if item.offset == activeSlot { piece = piece.bold().foregroundColor(.accentColor) }
+            // A variant digit (the 1 of D1) is written as a subscript.
+            if let digit = swara.variantDigit, !singleMandra {
+                piece = piece + Text(digit).font(.caption)
+            }
+            return result + piece
         }
     }
 }
