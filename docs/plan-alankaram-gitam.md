@@ -46,7 +46,26 @@ Chaturasra Triputa, so it becomes one case of the same model.
 
 ## Shared changes (`shared/`)
 
-1. **`Tala` built from angas.** Add `Anga.Laghu(jati)`, `Anga.Drutam` and
+1. **`Tala` built from angas, ported from ThaaLam.**
+   - ThaaLam is the author's sibling app (`~/baijum/ThaaLam`, same KMP stack).
+     It already has this model in `shared/.../data/Tala.kt` and
+     `domain/TalaLibrary.kt`:
+     - `AngaType` (laghu, drutam, anudrutam, chapu);
+     - the jathis;
+     - all 35 suladi talas, plus Misra, Khanda and Tisra Chapu;
+     - a gesture for each beat (clap, finger, wave).
+   - Port the Carnatic part, not the Hindustani or metronome parts, and map the
+     gestures onto the existing `Kriya`.
+   - **Fix Dhruva on the way.** ThaaLam's shape is laghu, drutam, laghu, drutam
+     (I O I O), and its test expects 12 beats for Chaturasra. Dhruva is
+     I O I I, which is 14 beats. That also matches karnatik.com.
+   - The Chapu talas cover the Misra Chapu gitams for later.
+   - Optionally port ThaaLam's gesture-coloured clicks into `SampleRenderer`
+     (a different timbre for a clap, a finger count and a wave). Today
+     Purandara has only an accent click and a plain click, and a 7-beat Misra
+     laghu is hard to follow with a plain click.
+
+   The original plan for this step: Add `Anga.Laghu(jati)`, `Anga.Drutam` and
    `Anga.Anudrutam`. `Tala.suladi(name, jati)` builds the beats and labels, and
    `Tala.ADI` stays the same value. The seven talas live in a small catalog.
    Tests check akshara counts, anga lengths and labels against the table above.
