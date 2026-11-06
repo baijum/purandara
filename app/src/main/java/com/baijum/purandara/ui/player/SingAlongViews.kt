@@ -9,6 +9,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -29,13 +30,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baijum.purandara.R
 import com.baijum.purandara.domain.Note
-import com.baijum.purandara.domain.Octave
-import com.baijum.purandara.domain.SwaraLetter
 import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.singalong.Attention
 import com.baijum.purandara.singalong.Display
 import com.baijum.purandara.singalong.NoteResult
 import com.baijum.purandara.singalong.PassSummary
+import com.baijum.purandara.singalong.PitchLane
 import com.baijum.purandara.singalong.SwaraReading
 import com.baijum.purandara.singalong.Tendency
 import com.baijum.purandara.singalong.Zone
@@ -63,8 +63,7 @@ fun PitchLane(
     val avartaSeconds = schedule.tala.aksharas * schedule.settings.writtenAksharaSeconds
     val reading = if (countingIn) stringResource(R.string.count_in_quiet) else liveText(live)
     val label = stringResource(R.string.pitch_lane)
-    val raga = schedule.raga
-    val lines = SwaraLetter.entries.map { Note(raga.swara(it)) } + Note(raga.swara(SwaraLetter.S), Octave.TARA)
+    val scale = remember(schedule) { PitchLane(schedule) }
     val sa = schedule.settings.saHz
 
     Column(modifier.clearAndSetSemantics {
@@ -73,8 +72,8 @@ fun PitchLane(
     }) {
         val laneColors = LaneColors(colors.outlineVariant, colors.onSurfaceVariant, colors.primary, colors.secondary, colors.error)
         Canvas(Modifier.fillMaxWidth().height(LANE_HEIGHT.dp)) {
-            val lane = Lane(size.width, size.height, sa, avarta?.let { it * avartaSeconds } ?: 0.0, avartaSeconds)
-            drawSwaraLines(lane, lines, laneColors, measurer)
+            val lane = Lane(size.width, size.height, sa, scale, avarta?.let { it * avartaSeconds } ?: 0.0, avartaSeconds)
+            drawSwaraLines(lane, scale.lines, laneColors, measurer)
             val a = avarta ?: return@Canvas
             drawStaircase(lane, schedule.notes.filter { it.position.avarta == a }, laneColors)
             drawTrace(lane, trace.filter { it.pass == (pass ?: 0) && lane.covers(it.secondsInPass) }, laneColors)
@@ -85,9 +84,9 @@ fun PitchLane(
 
 private class LaneColors(val line: Color, val label: Color, val inTune: Color, val close: Color, val off: Color)
 
-/** Geometry of the pitch lane: time across (one avarta), cents from Sa up the side. */
-private class Lane(val width: Float, val height: Float, val saHz: Double, val start: Double, val span: Double) {
-    fun y(cents: Double) = (height * (1 - (cents - LOW_CENTS) / (HIGH_CENTS - LOW_CENTS))).toFloat()
+/** Geometry of the pitch lane: time across (one avarta), cents from Sa up the side ([PitchLane]). */
+private class Lane(val width: Float, val height: Float, val saHz: Double, val scale: PitchLane, val start: Double, val span: Double) {
+    fun y(cents: Double) = (height * (1 - scale.fraction(cents))).toFloat()
     fun x(seconds: Double) = (LABEL_WIDTH + (width - LABEL_WIDTH) * ((seconds - start) / span)).toFloat()
     fun cents(note: Note) = CENTS_PER_OCTAVE * log2(note.frequency(saHz) / saHz)
     fun covers(seconds: Double) = seconds >= start && seconds < start + span
@@ -97,7 +96,7 @@ private fun DrawScope.drawSwaraLines(lane: Lane, lines: List<Note>, colors: Lane
     lines.forEach { note ->
         val y = lane.y(lane.cents(note))
         drawLine(colors.line, Offset(LABEL_WIDTH, y), Offset(lane.width, y), strokeWidth = 1f)
-        val text = note.swara.symbol.take(1) + if (note.octave == Octave.TARA) "′" else ""
+        val text = PitchLane.label(note)
         drawText(measurer, text, Offset(0f, y - LABEL_RAISE), style = TextStyle(color = colors.label, fontSize = LABEL_SP.sp))
     }
 }
@@ -194,8 +193,6 @@ private fun attentionText(a: Attention): String {
 
 private const val LANE_HEIGHT = 120
 private const val CENTS_PER_OCTAVE = 1200.0
-private const val LOW_CENTS = -150.0 // a little below Sa…
-private const val HIGH_CENTS = 1350.0 // …to a little above upper Sa
 private const val LABEL_WIDTH = 36f
 private const val LABEL_RAISE = 18f
 private const val LABEL_SP = 11

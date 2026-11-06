@@ -183,4 +183,36 @@ class VarisaiParserTest {
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nSˌˌ R G M") }
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nS′ˌ R G M") }
     }
+
+    @Test
+    fun sectionsRepeatsAndWords() {
+        val v = parseOne(
+            """
+            1
+            tala: eka-4
+            [charanam]
+            S R G M || R G M P
+            " sa ri - ga || ri·ga ma pa ma
+            [pallavi]
+            M , G R ||
+            " lam - bo da ||
+            (pallavi)
+            """,
+        )
+        assertEquals(listOf("Charanam", null, "Pallavi", "Pallavi"), v.avartas.map { it.section })
+        assertEquals(listOf("sa", "ri", "-", "ga"), v.avartas[0].words)
+        assertEquals("ri ga ma pa ma", v.avartas[1].spokenWords())
+        assertEquals(v.avartas[2].copy(section = null), v.avartas[3].copy(section = null))
+        assertEquals("sa ri ga", v.avartas[0].spokenWords())
+    }
+
+    @Test
+    fun wordsMustMatchTheLineAboveAndSectionsMustExist() {
+        val tooFew = assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nS R G M\n\" sa ri ga") }
+        assertTrue("3 words for 4 aksharas" in tooFew.message!!, tooFew.message)
+        assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\n[pallavi]\n\" sa ri ga ma") }
+        assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nS R G M\n\" a b c d\n\" a b c d") }
+        assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nS R G M\n(pallavi)") }
+        assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\n[p]\nS R G M\n[p]\nS R G M") }
+    }
 }

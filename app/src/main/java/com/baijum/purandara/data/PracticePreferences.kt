@@ -5,6 +5,7 @@ import com.baijum.purandara.audio.RenderOptions
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.schedule.PerformanceSettings
+import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.singalong.Strictness
 
@@ -30,6 +31,8 @@ data class PracticeSettings(
     val strictness: Strictness = Strictness.PRECISE,
     /** Fine-tune of Sa in cents (Shruti.FINE_TUNE_RANGE). */
     val saCents: Int = 0,
+    /** What a gitam's notation shows: swaras, words or both. */
+    val words: WordsDisplay = WordsDisplay.BOTH,
 ) {
     val saHz: Double get() = Shruti.saHz(saMidi, saCents)
 
@@ -69,6 +72,7 @@ class PracticePreferences(context: Context) {
             strictness = Strictness.entries.firstOrNull { it.name == prefs.getString(STRICTNESS, null) } ?: d.strictness,
             saCents = prefs.getInt(SA_CENTS, d.saCents).takeIf { it in Shruti.FINE_TUNE_RANGE } ?: d.saCents,
             tuning = Tuning.entries.firstOrNull { it.name == prefs.getString(TUNING, null) } ?: d.tuning,
+            words = WordsDisplay.entries.firstOrNull { it.name == prefs.getString(WORDS, null) } ?: d.words,
         )
     }
 
@@ -95,6 +99,7 @@ class PracticePreferences(context: Context) {
             .putBoolean(ECHO_CANCELLATION, s.echoCancellation)
             .putString(STRICTNESS, s.strictness.name)
             .putInt(SA_CENTS, s.saCents)
+            .putString(WORDS, s.words.name)
             .apply()
     }
 
@@ -115,5 +120,6 @@ class PracticePreferences(context: Context) {
         const val HISTORY = "practice_history"
         const val STRICTNESS = "strictness"
         const val SA_CENTS = "sa_cents"
+        const val WORDS = "words"
     }
 }

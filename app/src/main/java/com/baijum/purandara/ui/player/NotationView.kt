@@ -27,14 +27,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baijum.purandara.R
@@ -43,7 +47,9 @@ import com.baijum.purandara.domain.Tala
 import com.baijum.purandara.domain.schedule.NotationPosition
 import com.baijum.purandara.domain.varisai.Akshara
 import com.baijum.purandara.domain.varisai.Avarta
+import com.baijum.purandara.domain.varisai.HELD
 import com.baijum.purandara.domain.varisai.Varisai
+import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.singalong.NoteResult
 import com.baijum.purandara.viewmodel.MarkKey
 import com.baijum.purandara.ui.LocalReduceMotion
@@ -52,8 +58,9 @@ import com.baijum.purandara.ui.LocalReduceMotion
  * The exercise as a grid: one block per avarta, its akshara cells in the
  * same columns as the [TalaStrip] above (so the marks are not repeated on
  * every row). Talas longer than eight beats wrap onto two rows at an anga
- * boundary ([Tala.rowStarts]). The sounding akshara and swara are
- * highlighted, and the list follows playback.
+ * boundary ([Tala.rowStarts]). A gitam's words go under the swaras (or
+ * replace them, per [words]), and each section starts with a heading. The
+ * sounding akshara and swara are highlighted, and the list follows playback.
  */
 @Composable
 fun NotationView(
@@ -61,6 +68,7 @@ fun NotationView(
     position: NotationPosition?,
     modifier: Modifier = Modifier,
     marks: Map<MarkKey, NoteResult> = emptyMap(),
+    words: WordsDisplay = WordsDisplay.BOTH,
 ) {
     val tala = varisai.tala
     val listState = rememberLazyListState()
@@ -81,18 +89,29 @@ fun NotationView(
     LazyColumn(state = listState, modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         itemsIndexed(varisai.avartas) { index, avarta ->
             val rowMarks = marks.filterKeys { it.avarta == index }
-            val spoken = if (rowMarks.isEmpty()) avarta.spoken(tala, karvaiWord) else markedSpoken(avarta, index, rowMarks, tala, karvaiWord)
+            val swaras = if (rowMarks.isEmpty()) avarta.spoken(tala, karvaiWord) else markedSpoken(avarta, index, rowMarks, tala, karvaiWord)
+            val spoken = avarta.spokenWords()?.let { stringResource(R.string.avarta_words, swaras, it) } ?: swaras
             val description = stringResource(R.string.avarta_description, index + 1, spoken)
-            AvartaRow(
-                avarta = avarta,
-                tala = tala,
-                activeAkshara = position?.takeIf { it.avarta == index }?.akshara,
-                activeSlot = position?.takeIf { it.avarta == index }?.slot,
-                rowMarks = rowMarks,
-                modifier = Modifier
-                    .padding(horizontal = 12.dp)
-                    .clearAndSetSemantics { contentDescription = description },
-            )
+            Column {
+                avarta.section?.let { section ->
+                    Text(
+                        section,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 16.dp).semantics { heading() },
+                    )
+                }
+                AvartaRow(
+                    avarta = avarta,
+                    tala = tala,
+                    active = position?.takeIf { it.avarta == index },
+                    rowMarks = rowMarks,
+                    words = words,
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .clearAndSetSemantics { contentDescription = description },
+                )
+            }
         }
     }
 }
@@ -101,13 +120,18 @@ fun NotationView(
 private fun AvartaRow(
     avarta: Avarta,
     tala: Tala,
-    activeAkshara: Int?,
-    activeSlot: Int?,
+    active: NotationPosition?,
     rowMarks: Map<MarkKey, NoteResult>,
+    words: WordsDisplay,
     modifier: Modifier = Modifier,
 ) {
+    val activeAkshara = active?.akshara
+    val activeSlot = active?.slot
+    val rowWords = avarta.words?.takeIf { words.showsWords }
+    val showSwaras = rowWords == null || words.showsSwaras
     // Taller rows with larger system text, so swaras grow instead of shrinking to fit.
-    val rowHeight = ROW_HEIGHT_DP.dp * (1f + (LocalDensity.current.fontScale - 1f).coerceAtLeast(0f) * ROW_GROWTH)
+    val grow = 1f + (LocalDensity.current.fontScale - 1f).coerceAtLeast(0f) * ROW_GROWTH
+    val rowHeight = (ROW_HEIGHT_DP + if (rowWords != null && showSwaras) WORDS_HEIGHT_DP else 0).dp * grow
     val starts = tala.rowStarts
     val ends = starts.drop(1) + avarta.aksharas.size
     Column(modifier.fillMaxWidth()) {
@@ -120,6 +144,8 @@ private fun AvartaRow(
                         active = i == activeAkshara,
                         activeSlot = activeSlot.takeIf { i == activeAkshara },
                         marks = rowMarks.filterKeys { it.akshara == i }.mapKeys { it.key.slot },
+                        word = rowWords?.get(i),
+                        showSwaras = showSwaras,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -138,6 +164,8 @@ private fun AksharaCell(
     active: Boolean,
     activeSlot: Int?,
     marks: Map<Int, NoteResult>,
+    word: String? = null,
+    showSwaras: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -149,44 +177,73 @@ private fun AksharaCell(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        val text = buildAnnotatedString {
-            when (akshara) {
-                Akshara.Karvai -> append(",")
-                is Akshara.Swaras -> akshara.swaras.forEachIndexed { slot, swara ->
-                    if (slot == activeSlot) {
-                        withStyle(SpanStyle(color = colors.primary, fontWeight = FontWeight.Bold)) { append(swara.toString()) }
-                    } else {
-                        append(swara.toString())
-                    }
-                }
-            }
-        }
         val swaraCount = (akshara as? Akshara.Swaras)?.swaras?.size ?: 1
         val baseSize = if (swaraCount > 2) 13.sp else if (swaraCount == 2) 17.sp else 20.sp
-        // Shrink to fit rather than clip: with large system fonts a pair such
-        // as "GM" would otherwise lose a swara.
-        BasicText(
-            text,
-            style = TextStyle(
-                textAlign = TextAlign.Center,
-                color = if (active) colors.onPrimaryContainer else colors.onSurface,
-            ),
-            maxLines = 1,
-            softWrap = false,
-            autoSize = TextAutoSize.StepBased(minFontSize = MIN_SWARA_SP.sp, maxFontSize = baseSize),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        if (marks.isNotEmpty() && akshara is Akshara.Swaras) {
-            // One glyph per swara slot: ✓ in tune, ↑/↓ high/low, ⇣/⇡ octave, ✕ other swara, ○ not heard.
-            val glyphs = buildAnnotatedString {
-                akshara.swaras.indices.forEach { slot ->
-                    val result = marks[slot]
-                    withStyle(SpanStyle(color = markColor(result))) { append(markGlyph(result) ?: " ") }
+        val textColor = if (active) colors.onPrimaryContainer else colors.onSurface
+        if (showSwaras) SwaraText(akshara, activeSlot, textColor, baseSize)
+        if (word != null) WordText(word, underSwaras = showSwaras, textColor, if (showSwaras) WORD_SP.sp else baseSize)
+        if (marks.isNotEmpty() && akshara is Akshara.Swaras) MarkGlyphs(akshara, marks)
+    }
+}
+
+/** The akshara's swaras, the sounding one in bold. */
+@Composable
+private fun SwaraText(akshara: Akshara, activeSlot: Int?, color: Color, size: TextUnit) {
+    val accent = MaterialTheme.colorScheme.primary
+    val text = buildAnnotatedString {
+        when (akshara) {
+            Akshara.Karvai -> append(",")
+            is Akshara.Swaras -> akshara.swaras.forEachIndexed { slot, swara ->
+                if (slot == activeSlot) {
+                    withStyle(SpanStyle(color = accent, fontWeight = FontWeight.Bold)) { append(swara.toString()) }
+                } else {
+                    append(swara.toString())
                 }
             }
-            Text(glyphs, fontSize = MARK_SP.sp, maxLines = 1)
         }
     }
+    // Shrink to fit rather than clip: with large system fonts a pair such
+    // as "GM" would otherwise lose a swara.
+    BasicText(
+        text,
+        style = TextStyle(textAlign = TextAlign.Center, color = color),
+        maxLines = 1,
+        softWrap = false,
+        autoSize = TextAutoSize.StepBased(minFontSize = MIN_SWARA_SP.sp, maxFontSize = size),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/** A syllable of the words: the main text on its own, smaller and italic under swaras. */
+@Composable
+private fun WordText(word: String, underSwaras: Boolean, color: Color, size: TextUnit) {
+    // A held syllable ("-") is drawn as a bold en dash, as on iOS: a thin hyphen is hard to see.
+    val held = word == HELD
+    BasicText(
+        if (held) "–" else word,
+        style = TextStyle(
+            textAlign = TextAlign.Center,
+            color = color,
+            fontStyle = if (underSwaras && !held) FontStyle.Italic else FontStyle.Normal,
+            fontWeight = if (held) FontWeight.Bold else FontWeight.Normal,
+        ),
+        maxLines = 1,
+        softWrap = false,
+        autoSize = TextAutoSize.StepBased(minFontSize = MIN_SWARA_SP.sp, maxFontSize = size),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/** One glyph per swara slot: ✓ in tune, ↑/↓ high/low, ⇣/⇡ octave, ✕ other swara, ○ not heard. */
+@Composable
+private fun MarkGlyphs(akshara: Akshara.Swaras, marks: Map<Int, NoteResult>) {
+    val glyphs = buildAnnotatedString {
+        akshara.swaras.indices.forEach { slot ->
+            val result = marks[slot]
+            withStyle(SpanStyle(color = markColor(result))) { append(markGlyph(result) ?: " ") }
+        }
+    }
+    Text(glyphs, fontSize = MARK_SP.sp, maxLines = 1)
 }
 
 /** Row sentence with each swara's mark, e.g. "S in tune R high G in tune, …". */
@@ -274,6 +331,8 @@ private const val MIN_SWARA_SP = 8
 private const val MARK_SP = 11
 private const val ROW_HEIGHT_DP = 48
 private const val ROW_GROWTH = 0.75f
+private const val WORDS_HEIGHT_DP = 22
+private const val WORD_SP = 15
 
 /** "clap 1 2 3, clap wave, clap wave": the tala marks as words. */
 internal fun spokenBeats(tala: Tala, clap: String, wave: String): String =

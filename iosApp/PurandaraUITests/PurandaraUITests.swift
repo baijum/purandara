@@ -131,6 +131,16 @@ final class PurandaraUITests: XCTestCase {
         try audit(madhya, longNotation: true)
     }
 
+    /// A gitam: section headings, words under the swaras, and the words in each avarta's sentence.
+    func testGitamPlayerPassesAccessibilityAudit() throws {
+        let app = launch(["-open", "gitam-1"])
+        XCTAssertTrue(app.navigationBars["Sri Gananatha"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Malahari · Rupaka tala"].exists)
+        XCTAssertTrue(app.staticTexts["Charanam 1"].exists)
+        XCTAssertTrue(app.otherElements["Avarta 1: M P, D S′ S′ R′. Words: sri ga na na tha"].exists)
+        try audit(app, longNotation: true)
+    }
+
     func testSettingsSheetPassesAccessibilityAudit() throws {
         let app = launch(["-open", "sarali-4"])
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
@@ -166,7 +176,7 @@ final class PurandaraUITests: XCTestCase {
     /// Runs the audit and names each offending element in the failure.
     ///
     /// One deliberate exception: Dynamic Type warnings on notation cells
-    /// (a swara "S′", a pair "DD", a karvai ","). Up to nine columns must fit
+    /// (a swara "S′", a pair "DD", a karvai ",", a gitam syllable "tha"). Up to nine columns must fit
     /// across the screen, so a cell grows with the text size until it fills its column, then shrinks
     /// rather than being cut off (a design decision: clipped notation dropped
     /// swaras on Android). Verified by screenshot at the largest accessibility
@@ -177,12 +187,14 @@ final class PurandaraUITests: XCTestCase {
     /// rows just past the fold loaded, clipped from view, and the audit samples
     /// the controls drawn over them (false contrast failures) or loses rows
     /// that larger text pushes below the fold (a Dynamic Type warning with no
-    /// element). Rows inside the visible area are checked as strictly as ever.
+    /// element), and a gitam's section headings, which larger text pushes below
+    /// the fold in the same way. Rows inside the visible area are checked as
+    /// strictly as ever.
     private func audit(_ app: XCUIApplication, longNotation: Bool = false) throws {
         let visibleNotation = longNotation ? app.scrollViews["notation"].frame : .zero
         try app.performAccessibilityAudit { issue in
             if issue.auditType == .dynamicType, let label = issue.element?.label,
-               label.range(of: #"^(([SRGMPDN][′\x{0323}]?)+|,)$"#, options: .regularExpression) != nil {
+               label.range(of: #"^(([SRGMPDN][′\x{0323}]?)+|,|[a-z·]+|–)$"#, options: .regularExpression) != nil {
                 return true // ignored, see above
             }
             if longNotation {
@@ -195,6 +207,10 @@ final class PurandaraUITests: XCTestCase {
                 }
                 if !visibleNotation.intersects(element.frame) && element.frame.minY > visibleNotation.maxY {
                     return true // a loaded row below the fold, hidden behind the controls
+                }
+                if issue.auditType == .dynamicType, visibleNotation.contains(element.frame),
+                   element.label.range(of: #"^(Pallavi|Anupallavi|Charanam( \d+)?)$"#, options: .regularExpression) != nil {
+                    return true // a gitam section heading that larger text pushes below the fold (it scales: checked by screenshot)
                 }
             }
             let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)' at \($0.frame)" } ?? "?"

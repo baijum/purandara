@@ -3,6 +3,7 @@ package com.baijum.purandara.domain.varisai
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.varisai.catalog.ALANKARAM_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.DHATTU_VARISAI_NOTATION
+import com.baijum.purandara.domain.varisai.catalog.GITAM_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.JANTA_VARISAI_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.MADHYA_STHAYI_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.SARALI_VARISAI_NOTATION
@@ -12,7 +13,7 @@ import com.baijum.purandara.domain.varisai.catalog.VAKRA_JANTA_VARISAI_NOTATION
  * All bundled exercises, in teaching order. Parsed once, on first use.
  *
  * Each exercise carries its own raga and tala; the varisais and alankarams
- * are all in [raga].
+ * are all in [raga], the gitams in Malahari.
  */
 object VarisaiCatalog {
     /** The raga of the varisais and alankarams (and of Shruti practice's swara lines). */
@@ -35,6 +36,7 @@ S′ N D P M G R S
             VarisaiSet.VAKRA_JANTA to VAKRA_JANTA_VARISAI_NOTATION,
             VarisaiSet.DHATTU to DHATTU_VARISAI_NOTATION,
             VarisaiSet.ALANKARAM to ALANKARAM_NOTATION,
+            VarisaiSet.GITAM to GITAM_NOTATION,
         ).flatMap { (set, text) -> parser.parse(text, set) }
     }
 

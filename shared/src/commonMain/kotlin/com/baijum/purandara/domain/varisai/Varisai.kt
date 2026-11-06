@@ -41,9 +41,26 @@ sealed interface Akshara {
     }
 }
 
-/** One avarta (tala cycle) of notation. */
-data class Avarta(val aksharas: List<Akshara>) {
+/**
+ * One avarta (tala cycle) of notation. In a gitam, [section] names the part
+ * this avarta starts ("Pallavi", "Charanam 1"; null when it continues one),
+ * and [words] holds the sahityam: one syllable per akshara, `-` where the
+ * previous syllable is held, two joined by `·` when an akshara has two swaras.
+ */
+data class Avarta(
+    val aksharas: List<Akshara>,
+    val section: String? = null,
+    val words: List<String>? = null,
+) {
+    init {
+        require(words == null || words.size == aksharas.size) { "words must match the aksharas" }
+    }
+
     override fun toString(): String = aksharas.joinToString(" ")
+
+    /** The words to read aloud ("sri ga na na tha"), skipping held syllables; null without words. */
+    fun spokenWords(): String? =
+        words?.filter { it != HELD }?.joinToString(" ") { it.replace("·", " ") }
 
     /**
      * Text for screen readers: angas separated by commas, a karvai spoken as
@@ -63,6 +80,20 @@ data class Avarta(val aksharas: List<Akshara>) {
         }.joinToString("")
 }
 
+/** What the notation of a piece with words (a gitam) shows: a practice setting. */
+enum class WordsDisplay {
+    SWARAS,
+    WORDS,
+    BOTH,
+    ;
+
+    val showsSwaras: Boolean get() = this != WORDS
+    val showsWords: Boolean get() = this != SWARAS
+}
+
+/** In [Avarta.words]: the previous syllable is held through this akshara. */
+const val HELD: String = "-"
+
 /** The graded exercise sets, in teaching order, with what each trains (varisais: from the workbook). */
 enum class VarisaiSet(val title: String, val description: String, val shortTitle: String = title) {
     PLAIN_SCALE("Plain scale", "The seven swaras up and down: settle each one against the tanpura."),
@@ -72,6 +103,7 @@ enum class VarisaiSet(val title: String, val description: String, val shortTitle
     VAKRA_JANTA("Vakra Janta Varisai", "Paired notes in zigzags: find the next note without sliding.", "Vakra Janta"),
     DHATTU("Dhattu Varisai", "Leaps over a note and back: reach a distant pitch without sliding."),
     ALANKARAM("Alankaram", "One climbing figure in each of the seven suladi talas: keep the tala as you sing."),
+    GITAM("Gitam", "First songs, with words: Purandara Dasa's gitams in raga Malahari."),
 }
 
 /**

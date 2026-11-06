@@ -18,6 +18,9 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
   alankarams) played on a harmonium in tala over a real tanpura, with the
   cursor following the notation and a tala strip whose clap, finger count and
   wave each have their own click.
+- **Gitams:** Purandara Dasa's four Malahari gitams (Sri Gananatha, Kunda
+  Gaura, Kereya Neeranu, Padumanabha) with their words under the swaras,
+  section headings, and a choice of swaras, words or both.
   Choose your Sa (kattai, fine-tune ±50 cents), tempo, speed (kala), tuning
   (just or equal), count-in, tala click and looping.
 - **Sing-along:** sing with an exercise and see your pitch as you go. Each

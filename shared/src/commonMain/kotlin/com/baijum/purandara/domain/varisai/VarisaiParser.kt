@@ -21,6 +21,10 @@ class VarisaiParseException(val line: Int, val column: Int, detail: String) :
  *
  * A number on its own line starts an exercise. Header lines may follow it:
  * `tala: <key>` ([Talas]), `raga: <key>` ([Ragas]) and `title: <text>`.
+ * Gitams add sections and words: `[pallavi]` starts a named section,
+ * `(pallavi)` sings that section again (expanded here, so playback and
+ * scoring follow the sung order), and a line starting with `"` gives the
+ * words for the notation line above it, one token per akshara.
  * Each whitespace-separated token is one akshara; `||` ends an avarta (a
  * closing `||` at the end of a line is optional); `|` is layout only. `′` after a letter is the upper octave, `ˌ` (U+02CC) the
  * lower. The parser never guesses: unknown characters, letters the raga
@@ -35,6 +39,20 @@ class VarisaiParser(
     private class Draft(val number: Int, val line: Int, var tala: Tala, var raga: Raga) {
         var name: String? = null
         val avartas = mutableListOf<Avarta>()
+
+        /** Avartas of the last notation line, until its words are given. */
+        var lastLine: IntRange? = null
+
+        /** The open section's key and first avarta, and the label for its first avarta. */
+        var openSection: Pair<String, Int>? = null
+        var pendingLabel: String? = null
+        val sections = mutableMapOf<String, IntRange>()
+
+        fun closeSection() {
+            val (key, start) = openSection ?: return
+            sections[key] = start until avartas.size
+            openSection = null
+        }
     }
 
     fun parse(text: String, set: VarisaiSet): List<Varisai> {
@@ -43,6 +61,7 @@ class VarisaiParser(
 
         fun finish() {
             val d = draft ?: return
+            d.closeSection()
             if (d.avartas.isEmpty()) throw VarisaiParseException(d.line, 1, "exercise ${d.number} has no notation")
             result += Varisai(set, d.number, d.avartas.toList(), d.tala, d.raga, d.name)
         }
@@ -51,8 +70,19 @@ class VarisaiParser(
             val lineNo = index + 1
             val line = raw.trim()
             val header = HEADER.matchEntire(line)
+            val section = SECTION.matchEntire(line)
+            val repeat = REPEAT.matchEntire(line)
             when {
                 line.isEmpty() -> Unit
+                section != null || repeat != null || line.startsWith(WORDS_MARK) -> {
+                    val d = draft ?: throw VarisaiParseException(lineNo, 1, "notation before the first exercise number")
+                    when {
+                        section != null -> startSection(d, section.groupValues[1].trim(), lineNo)
+                        repeat != null -> repeatSection(d, repeat.groupValues[1].trim(), lineNo)
+                        else -> words(d, raw, lineNo)
+                    }
+                    return@forEachIndexed
+                }
                 line.all { it.isDigit() } -> {
                     finish()
                     draft = Draft(line.toInt(), lineNo, defaultTala, defaultRaga)
@@ -64,13 +94,56 @@ class VarisaiParser(
                 }
                 else -> {
                     val d = draft ?: throw VarisaiParseException(lineNo, 1, "notation before the first exercise number")
-                    d.avartas += parseLine(raw, lineNo, d, isFirstLine = d.avartas.isEmpty())
+                    val line = parseLine(raw, lineNo, d, isFirstLine = d.avartas.isEmpty()).toMutableList()
+                    d.pendingLabel?.let { label -> line[0] = line[0].copy(section = label) }
+                    d.pendingLabel = null
+                    d.lastLine = d.avartas.size until d.avartas.size + line.size
+                    d.avartas += line
                 }
             }
         }
         finish()
         return result
     }
+
+    private fun startSection(d: Draft, key: String, lineNo: Int) {
+        if (key in d.sections || d.openSection?.first == key) {
+            throw VarisaiParseException(lineNo, 2, "section [$key] appears twice")
+        }
+        d.closeSection()
+        d.openSection = key to d.avartas.size
+        d.pendingLabel = label(key)
+        d.lastLine = null
+    }
+
+    private fun repeatSection(d: Draft, key: String, lineNo: Int) {
+        d.closeSection()
+        val range = d.sections[key] ?: throw VarisaiParseException(lineNo, 2, "no section [$key] to repeat")
+        if (range.isEmpty()) throw VarisaiParseException(lineNo, 2, "section [$key] has no notation")
+        range.forEachIndexed { k, i -> d.avartas += d.avartas[i].copy(section = if (k == 0) label(key) else null) }
+        d.pendingLabel = null
+        d.lastLine = null
+    }
+
+    private fun words(d: Draft, raw: String, lineNo: Int) {
+        val target = d.lastLine ?: throw VarisaiParseException(lineNo, 1, "words must follow a line of notation")
+        val start = raw.indexOf(WORDS_MARK) + 1
+        val tokens = tokens(raw.substring(start).replace("||", " "), start)
+        val needed = target.sumOf { d.avartas[it].aksharas.size }
+        if (tokens.size != needed) {
+            throw VarisaiParseException(lineNo, start + 1, "${tokens.size} words for $needed aksharas")
+        }
+        var next = 0
+        for (i in target) {
+            val n = d.avartas[i].aksharas.size
+            d.avartas[i] = d.avartas[i].copy(words = tokens.subList(next, next + n).map { it.second })
+            next += n
+        }
+        d.lastLine = null
+    }
+
+    /** "charanam 1" → "Charanam 1". */
+    private fun label(key: String): String = key.replaceFirstChar { it.uppercaseChar() }
 
     private fun header(d: Draft, field: String, value: String, lineNo: Int) {
         val column = field.length + 2
@@ -168,5 +241,11 @@ class VarisaiParser(
         const val MANDRA_MARK = 'ˌ'
 
         val HEADER = Regex("""(tala|raga|title):(.*)""")
+        val SECTION = Regex("""\[([^\]]+)]""")
+        val REPEAT = Regex("""\(([^)]+)\)""")
+
+        /** Starts a line of words (sahityam). */
+        const val WORDS_MARK = '"'
+
     }
 }

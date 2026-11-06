@@ -1,6 +1,6 @@
 # Plan: Alankarams and Gitams
 
-Status: **approved** (2026-11-06). Milestones 1–2 done; 3–4 to come.
+Status: **done** (2026-11-06). Milestones 1–4 built on both apps; gitams verified with the synthetic singer only, not yet with a real voice.
 
 The next two stages of the traditional beginner path after the varisais:
 
@@ -210,7 +210,19 @@ Done 2026-11-06. Differences from the plan below:
 - iOS UI test: audit the Dhruva and Jhampa players. Keep the existing audit
   exception for single swaras.
 
-## Milestone 3: shared gitam grammar and catalog
+## Milestone 3: shared gitam grammar and catalog ✅
+
+Done 2026-11-06. Differences from the plan below:
+
+- **Sri Gananatha's refrain** follows shivkumar.org and *Sangeeta Bala Padam,
+  Part 1* (`S , | R M G R`), the user's choice once the book agreed with the
+  archive; karnatik.com's version is noted as a variant.
+- **Kunda Gaura** `d R | R s d p` is read as R′ S′ D P (a missing capital on
+  karnatik.com); a new test fails on any leap of more than an octave in a
+  gitam, to catch such typos.
+- Words are simple Latin with long vowels written single (`sri gananatha`,
+  `ni ra nu`), as decided.
+
 
 **Grammar** (update `docs/plan.md` §3.2)
 
@@ -259,7 +271,16 @@ Done 2026-11-06. Differences from the plan below:
   Sa 43–60. This uses the existing `ScheduleTest` check.
 - Golden tests: the first avarta of each section, with its words.
 
-## Milestone 4: gitams in both apps, docs and site
+## Milestone 4: gitams in both apps, docs and site ✅
+
+Done 2026-11-06. Differences from the plan below:
+
+- The Swaras / Words / Both choice is in the practice settings sheet on both
+  apps, always shown (it applies only to pieces with words).
+- A held syllable is drawn as a bold en dash: the thin hyphen failed contrast.
+- The pitch lane's range and lines come from a shared `PitchLane`, so the
+  lane also drops Ni for Malahari.
+
 
 **Notation**
 

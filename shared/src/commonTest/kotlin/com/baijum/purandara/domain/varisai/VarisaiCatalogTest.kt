@@ -27,9 +27,10 @@ class VarisaiCatalogTest {
             VarisaiSet.VAKRA_JANTA to 2,
             VarisaiSet.DHATTU to 6,
             VarisaiSet.ALANKARAM to 7,
+            VarisaiSet.GITAM to 4,
         )
         assertEquals(expected, VarisaiSet.entries.associateWith { VarisaiCatalog.inSet(it).size })
-        assertEquals(44, VarisaiCatalog.all.size)
+        assertEquals(48, VarisaiCatalog.all.size)
     }
 
     @Test
@@ -46,7 +47,8 @@ class VarisaiCatalogTest {
             v.avartas.forEach { assertEquals(v.tala.aksharas, it.aksharas.size, "${v.id}: $it") }
         }
         // The varisais are all in Adi tala.
-        VarisaiCatalog.all.filter { it.set != VarisaiSet.ALANKARAM }.forEach { assertEquals(Tala.ADI, it.tala, it.id) }
+        VarisaiCatalog.all.filter { it.set !in setOf(VarisaiSet.ALANKARAM, VarisaiSet.GITAM) }
+            .forEach { assertEquals(Tala.ADI, it.tala, it.id) }
     }
 
     @Test
@@ -81,7 +83,7 @@ class VarisaiCatalogTest {
 
     @Test
     fun rangeIsSaToUpperSa() {
-        VarisaiCatalog.all.forEach { v ->
+        VarisaiCatalog.all.filter { it.set != VarisaiSet.GITAM }.forEach { v ->
             swaras(v).forEach { s ->
                 assertTrue(s.octave == Octave.MADHYA || s == WrittenSwara(SwaraLetter.S, Octave.TARA), "${v.id}: $s")
             }

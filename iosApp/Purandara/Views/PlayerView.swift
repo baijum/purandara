@@ -26,6 +26,7 @@ struct PlayerView: View {
                 varisai: varisai,
                 playback: viewModel.playback,
                 marks: viewModel.settings.singAlong ? viewModel.singAlong.marks : [:],
+                words: viewModel.settings.words.kotlin,
                 header: AnyView(VStack(spacing: 8) {
                     // Raga and tala scroll with the notation, so they never push rows off screen.
                     Text("\(varisai.raga.name) · \(varisai.tala.name) tala")
@@ -219,6 +220,21 @@ struct PracticeSettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 } header: {
                     Text("Strictness").foregroundStyle(Color.subdued)
+                }
+                Section {
+                    Picker("Gitam notation", selection: $settings.words) {
+                        Text("Swaras").tag(PracticeSettings.WordsChoice.swaras)
+                        Text("Words").tag(PracticeSettings.WordsChoice.words)
+                        Text("Both").tag(PracticeSettings.WordsChoice.both)
+                    }
+                    .pickerStyle(.inline)
+                    .labelsHidden()
+                    Text("What a gitam shows under each beat: its swaras, its words, or both.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                } header: {
+                    Text("Gitam notation").foregroundStyle(Color.subdued)
                 }
             }
             .navigationTitle("Practice settings")

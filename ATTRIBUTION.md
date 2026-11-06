@@ -91,9 +91,47 @@ The iOS app uses Apple's SF Symbols from the system; none are bundled.
 
 The website's screenshots are of Purandara itself.
 
+## Notation
+
+The compositions are traditional; the gitams are by Purandara Dasa
+(1484–1564), long in the public domain. The notation is re-encoded in the
+app's own format, and every source is credited here. Neither website states
+a licence; the authors are to be asked before a store release.
+
+### Varisais (`shared/.../domain/varisai/catalog/` Sarali … Dhattu)
+
+- From the author's own Mayamalavagowla practice workbook.
+
+### Alankarams (`catalog/Alankaram.kt`)
+
+- **Source:** karnatik.com, Beginners' Lesson 6, by Rani:
+  [karnatik.com/lesson6.shtml](https://karnatik.com/lesson6.shtml).
+- **Changes made:** the site's case-based octaves rewritten in the app's
+  notation (lowercase → plain letters, capital `S` → `S′`); its eighth
+  alankaram (Sankeerna Eka) left out.
+
+### Gitams (`catalog/Gitam.kt`)
+
+- **Source:** karnatik.com, by Rani:
+  [Sri Gananatha](https://karnatik.com/c1806.shtml),
+  [Kunda Gaura](https://karnatik.com/c1807.shtml),
+  [Kereya Neeranu](https://karnatik.com/c1808.shtml),
+  [Padumanabha](https://karnatik.com/c1809.shtml) (swaras, words, section order).
+- **Checked against:** Shivkumar Kalyanaraman's archive,
+  [shivkumar.org/music/varnams](https://www.shivkumar.org/music/varnams/index.html)
+  (swaras, avarta by avarta, with `tools/notation/crosscheck_gitams.py`), and
+  *Sangeeta Bala Padam, Part 1* (English edition, Giri Trading Agency,
+  ISBN 81-7950-877-3), Gitam 1, p. 59.
+- **Changes made:** Sri Gananatha's refrain and its words follow
+  shivkumar.org and the book; words split one syllable per beat in simple
+  Latin; one missing upper-octave mark in Kunda Gaura and one word typo in
+  Padumanabha corrected. Every change is listed in the file's header.
+
 ## Code
 
 Pitch detection (`shared/.../pitch/`), the neural supervisors and parts of
 the audio capture are ported from the author's own
 [Ukulele Companion](https://github.com/baijum/ukulele-companion) (MIT).
+The suladi tala model (`Tala.suladi`) and the clap / finger / wave click
+tones follow the author's own ThaaLam app.
 

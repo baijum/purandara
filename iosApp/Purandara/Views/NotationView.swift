@@ -4,12 +4,14 @@ import shared
 /// The exercise as a grid: one block per avarta, its akshara cells in the
 /// same columns as the tala strip above. Talas longer than eight beats wrap
 /// onto two rows at an anga boundary (`Tala.rowStarts`). The sounding akshara
-/// and swara are highlighted, and the list follows playback. Mirrors
-/// Android's `NotationView`.
+/// and swara are highlighted, and the list follows playback. A gitam's words
+/// go under the swaras (or replace them, per `words`), and each section
+/// starts with a heading. Mirrors Android's `NotationView`.
 struct NotationView: View {
     let varisai: Varisai
     let playback: PlaybackState
     var marks: [MarkKey: NoteResult] = [:]
+    var words: WordsDisplay = .both
     /// Optional content scrolled above the rows (the sing-along panel at accessibility text sizes).
     var header: AnyView?
     private var tala: Tala { varisai.tala }
@@ -23,15 +25,25 @@ struct NotationView: View {
                     if let header { header }
                     ForEach(Array(varisai.avartas.enumerated()), id: \.offset) { index, avarta in
                         let rowMarks = marks.filter { $0.key.avarta == index }
-                        AvartaRow(
-                            avarta: avarta,
-                            tala: tala,
-                            activeAkshara: playback.avarta == index ? playback.akshara : nil,
-                            activeSlot: playback.avarta == index ? playback.slot : nil,
-                            marks: rowMarks)
+                        VStack(alignment: .leading, spacing: 4) {
+                            if let section = avarta.section {
+                                Text(section)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Color.accentColor)
+                                    .padding(.horizontal, 4)
+                                    .accessibilityAddTraits(.isHeader)
+                            }
+                            AvartaRow(
+                                avarta: avarta,
+                                tala: tala,
+                                activeAkshara: playback.avarta == index ? playback.akshara : nil,
+                                activeSlot: playback.avarta == index ? playback.slot : nil,
+                                marks: rowMarks,
+                                words: words)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(Text("Avarta \(index + 1): \(spoken(avarta, index: index, marks: rowMarks))"))
+                        }
                         .id(index)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(Text("Avarta \(index + 1): \(spoken(avarta, index: index, marks: rowMarks))"))
                     }
                 }
                 .padding(.horizontal, 12)
@@ -50,8 +62,15 @@ struct NotationView: View {
 }
 
 extension NotationView {
-    /// Row sentence; after sing-along, each swara with its mark ("S in tune R high…").
+    /// Row sentence, then the words of a gitam ("M P, D S′ S′ R′. Words: sri ga na na tha").
     func spoken(_ avarta: Avarta, index: Int, marks: [MarkKey: NoteResult]) -> String {
+        let swaras = spokenSwaras(avarta, index: index, marks: marks)
+        guard let words = avarta.spokenWords() else { return swaras }
+        return String(localized: "\(swaras). Words: \(words)")
+    }
+
+    /// Row sentence; after sing-along, each swara with its mark ("S in tune R high…").
+    func spokenSwaras(_ avarta: Avarta, index: Int, marks: [MarkKey: NoteResult]) -> String {
         let hold = String(localized: "hold")
         guard !marks.isEmpty else { return avarta.spoken(tala: tala, karvaiWord: hold) }
         return avarta.aksharas.enumerated().map { i, akshara -> String in
@@ -76,9 +95,12 @@ private struct AvartaRow: View {
     let activeAkshara: Int?
     let activeSlot: Int?
     let marks: [MarkKey: NoteResult]
+    let words: WordsDisplay
 
     var body: some View {
         let rows = TalaRows(tala: tala)
+        let rowWords = words.showsWords ? avarta.words : nil
+        let showSwaras = rowWords == nil || words.showsSwaras
         VStack(spacing: 4) {
             ForEach(rows.ranges.indices, id: \.self) { row in
                 let range = rows.ranges[row]
@@ -89,7 +111,9 @@ private struct AvartaRow: View {
                             akshara: avarta.aksharas[i],
                             active: i == activeAkshara,
                             activeSlot: i == activeAkshara ? activeSlot : nil,
-                            marks: Dictionary(uniqueKeysWithValues: marks.filter { $0.key.akshara == i }.map { ($0.key.slot, $0.value) }))
+                            marks: Dictionary(uniqueKeysWithValues: marks.filter { $0.key.akshara == i }.map { ($0.key.slot, $0.value) }),
+                            word: rowWords?[i],
+                            showSwaras: showSwaras)
                     }
                     if row == rows.ranges.count - 1 { AngaBar(double: true) }
                     // Keep a shorter row's columns in line with the longest.
@@ -110,6 +134,8 @@ private struct AksharaCell: View {
     let active: Bool
     let activeSlot: Int?
     let marks: [Int: NoteResult]
+    var word: String?
+    var showSwaras = true
 
     private var swaras: [WrittenSwara] { (akshara as? AksharaSwaras)?.swaras ?? [] }
 
@@ -129,12 +155,24 @@ private struct AksharaCell: View {
 
     var body: some View {
         VStack(spacing: 2) {
-            text
-                // Text styles follow Dynamic Type; rows grow with them.
-                .font(swaras.count > 2 ? .callout : swaras.count == 2 ? .title3 : .title2)
-                .lineLimit(1)
-                .minimumScaleFactor(0.3) // shrink rather than truncate a swara with large text
-                .layoutPriority(1) // the swara keeps its size; its mark yields first
+            if showSwaras {
+                text
+                    // Text styles follow Dynamic Type; rows grow with them.
+                    .font(swaras.count > 2 ? .callout : swaras.count == 2 ? .title3 : .title2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.3) // shrink rather than truncate a swara with large text
+                    .layoutPriority(1) // the swara keeps its size; its mark yields first
+            }
+            if let word {
+                // Words alone are the main text; under swaras they are smaller and italic.
+                // A held syllable ("-") is drawn as a bold en dash: a thin hyphen fails contrast.
+                let held = word == VarisaiKt.HELD
+                Text(held ? "–" : word)
+                    .font(showSwaras ? (held ? .callout.bold() : .callout.italic()) : (held ? .title3.bold() : .title3))
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.3)
+            }
             if !marks.isEmpty && !swaras.isEmpty {
                 // One glyph per slot (shared with Android): ✓ ↑ ↓ ⇣ ⇡ ✕ ○.
                 // SF Symbols sized by the caption text style scale with Dynamic Type

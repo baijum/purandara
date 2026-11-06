@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
+import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.ui.library.LibraryActions
 import com.baijum.purandara.ui.library.LibraryScreen
 import com.baijum.purandara.ui.library.LibraryState
@@ -177,6 +178,25 @@ class AccessibilityTest {
         // The avarta wraps onto two rows but is still one sentence.
         compose.onNodeWithContentDescription("Avarta 1: S R G M, G R, S R G R, S R G M").assertIsDisplayed()
         compose.onAllNodesWithText("x").assertCountEquals(0)
+    }
+
+    @Test
+    fun gitamSectionsAreHeadingsAndAvartasReadTheirWords() {
+        showPlayer(id = "gitam-1")
+        compose.onNodeWithText("Malahari · Rupaka tala").assertIsDisplayed()
+        compose.onNode(hasText("Charanam 1") and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Avarta 1: M P, D S′ S′ R′. Words: sri ga na na tha").assertIsDisplayed()
+        // The syllables are summarised in the avarta's sentence, not read one by one.
+        compose.onAllNodesWithText("tha").assertCountEquals(0)
+    }
+
+    @Test
+    fun gitamNotationChoiceIsInTheSettings() {
+        showPlayer(id = "gitam-1")
+        openSettings()
+        compose.onNodeWithText("Gitam notation").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Words").performScrollTo().performClick()
+        assertEquals(WordsDisplay.WORDS, settings.words)
     }
 
     @Test

@@ -63,6 +63,7 @@ import com.baijum.purandara.R
 import com.baijum.purandara.ui.FineTuneControl
 import com.baijum.purandara.ui.SaPicker
 import com.baijum.purandara.ui.StrictnessPicker
+import com.baijum.purandara.ui.WordsPicker
 import com.baijum.purandara.ui.saLabel
 import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.Shruti
@@ -119,6 +120,7 @@ fun PlayerScreen(
                 varisai = varisai,
                 position = playback.position,
                 marks = if (settings.singAlong) state.singAlong.marks else emptyMap(),
+                words = settings.words,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
             PlaybackStatus(playback, saLabel(settings.saMidi, settings.saCents))
@@ -299,6 +301,7 @@ private fun PracticeSettingsSheet(
             onSettingsChange { it.copy(harmoniumLevel = v) }
         }
         StrictnessPicker(settings.strictness) { strictness -> onSettingsChange { it.copy(strictness = strictness) } }
+        WordsPicker(settings.words) { words -> onSettingsChange { it.copy(words = words) } }
         Text(stringResource(R.string.harmonium_guide), style = MaterialTheme.typography.titleSmall)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             listOf(true to R.string.guide_all, false to R.string.guide_off).forEachIndexed { i, (guide, label) ->

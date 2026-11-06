@@ -22,6 +22,19 @@ struct PracticeSettings: Equatable {
         }
     }
 
+    /// What a gitam's notation shows: swaras, words or both.
+    enum WordsChoice: String, CaseIterable {
+        case swaras, words, both
+
+        var kotlin: WordsDisplay {
+            switch self {
+            case .swaras: return .swaras
+            case .words: return .words
+            case .both: return .both
+            }
+        }
+    }
+
     var saMidi: Int = Int(Shruti.shared.DEFAULT_SA_MIDI)
     var tempo: Int = Int(PerformanceSettings.companion.DEFAULT_TEMPO)
     var kala: Int = 1
@@ -39,6 +52,8 @@ struct PracticeSettings: Equatable {
     /// Sing-along cancels the app's own sound from the mic when playing through the speaker.
     var echoCancellation = true
     var strictness: StrictnessChoice = .precise
+    /// What a gitam's notation shows (shared `WordsDisplay`).
+    var words: WordsChoice = .both
     /// Fine-tune of Sa in cents (`Shruti.FINE_TUNE_RANGE`).
     var saCents = 0
 
@@ -89,6 +104,7 @@ struct PracticeSettingsStore {
         static let history = "practice.history"
         static let strictness = "practice.strictness"
         static let saCents = "practice.saCents"
+        static let words = "practice.words"
     }
 
     func load() -> PracticeSettings {
@@ -108,6 +124,7 @@ struct PracticeSettingsStore {
         if let raw = defaults.string(forKey: Key.strictness), let v = PracticeSettings.StrictnessChoice(rawValue: raw) { s.strictness = v }
         if let v = defaults.object(forKey: Key.saCents) as? Int, PracticeSettings.fineTuneRange.contains(v) { s.saCents = v }
         if let raw = defaults.string(forKey: Key.tuning), let v = PracticeSettings.TuningChoice(rawValue: raw) { s.tuning = v }
+        if let raw = defaults.string(forKey: Key.words), let v = PracticeSettings.WordsChoice(rawValue: raw) { s.words = v }
         return s
     }
 
@@ -135,5 +152,6 @@ struct PracticeSettingsStore {
         defaults.set(s.echoCancellation, forKey: Key.echoCancellation)
         defaults.set(s.strictness.rawValue, forKey: Key.strictness)
         defaults.set(s.saCents, forKey: Key.saCents)
+        defaults.set(s.words.rawValue, forKey: Key.words)
     }
 }

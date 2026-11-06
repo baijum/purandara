@@ -126,8 +126,6 @@ struct PitchLane: View {
         countingIn ? String(localized: "Stay quiet until the harmonium starts: listening to the room") : SingAlongText.live(live)
     }
 
-    private static let lowCents = -150.0
-    private static let highCents = 1350.0
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -149,19 +147,17 @@ struct PitchLane: View {
 
     private func draw(_ context: GraphicsContext, _ size: CGSize) {
         let sa = schedule.settings.saHz
-        let raga = schedule.raga
+        let scale = shared.PitchLane(schedule: schedule) // shared: the piece's range, the raga's swaras
         let labelWidth: CGFloat = 26
-        func y(_ cents: Double) -> CGFloat { size.height * (1 - (cents - Self.lowCents) / (Self.highCents - Self.lowCents)) }
+        func y(_ cents: Double) -> CGFloat { size.height * (1 - scale.fraction(cents: cents)) }
         func cents(_ note: Note) -> Double { 1200 * log2(note.frequency(saHz: sa) / sa) }
-        var lines = SwaraLetter.entries.map { Note(swara: raga.swara(letter: $0), octave: .madhya) }
-        lines.append(Note(swara: .s, octave: .tara))
-        for note in lines {
+        for note in scale.lines {
             let yy = y(cents(note))
             var path = Path()
             path.move(to: CGPoint(x: labelWidth, y: yy))
             path.addLine(to: CGPoint(x: size.width, y: yy))
             context.stroke(path, with: .color(.secondary.opacity(0.4)), lineWidth: 1)
-            let name = String(note.swara.symbol.prefix(1)) + (note.octave == .tara ? "′" : "")
+            let name = shared.PitchLane.companion.label(note: note)
             // Fixed small labels: the lines are fixed-spaced, so scaled labels would collide.
             context.draw(Text(name).font(.system(size: 10)), at: CGPoint(x: 8, y: yy), anchor: .leading)
         }

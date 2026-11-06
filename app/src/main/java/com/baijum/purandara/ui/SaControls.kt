@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import com.baijum.purandara.R
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.VoiceRange
+import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.singalong.Strictness
 import kotlin.math.roundToInt
 
@@ -118,6 +119,33 @@ fun FineTuneControl(cents: Int, onChange: (Int) -> Unit) {
         )
         Text(
             stringResource(R.string.fine_tune_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Swaras / Words / Both: what a gitam's notation shows. */
+@Composable
+fun WordsPicker(words: WordsDisplay, onChange: (WordsDisplay) -> Unit) {
+    Column {
+        Text(stringResource(R.string.gitam_notation), style = MaterialTheme.typography.titleSmall)
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            val choices = listOf(
+                WordsDisplay.SWARAS to R.string.words_swaras,
+                WordsDisplay.WORDS to R.string.words_words,
+                WordsDisplay.BOTH to R.string.words_both,
+            )
+            choices.forEachIndexed { i, (choice, label) ->
+                SegmentedButton(
+                    selected = words == choice,
+                    onClick = { onChange(choice) },
+                    shape = SegmentedButtonDefaults.itemShape(i, choices.size),
+                ) { Text(stringResource(label)) }
+            }
+        }
+        Text(
+            stringResource(R.string.gitam_notation_desc),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

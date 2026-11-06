@@ -94,6 +94,12 @@
     <string name="notation">Notation</string>
     <string name="tala_label">%1$s tala: %2$s</string>
     <string name="raga_tala">%1$s · %2$s tala</string>
+    <string name="gitam_notation">Gitam notation</string>
+    <string name="gitam_notation_desc">What a gitam shows under each beat: its swaras, its words, or both.</string>
+    <string name="words_swaras">Swaras</string>
+    <string name="words_words">Words</string>
+    <string name="words_both">Both</string>
+    <string name="avarta_words">%1$s. Words: %2$s</string>
     <string name="clap">clap</string>
     <string name="wave">wave</string>
     <string name="practice_settings">Practice settings</string>
