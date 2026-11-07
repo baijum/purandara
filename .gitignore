@@ -22,3 +22,4 @@ iosApp/DerivedData/
 xcuserdata/
 iosApp/Frameworks/
 /site/_build/
+__pycache__/
