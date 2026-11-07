@@ -7,7 +7,7 @@ final class PurandaraUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    private func launch(_ arguments: [String] = []) -> XCUIApplication {
+    @MainActor private func launch(_ arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         // Settings persist between launches; every test starts from the defaults.
         app.launchArguments = ["-resetSettings", "YES"] + arguments
@@ -15,7 +15,10 @@ final class PurandaraUITests: XCTestCase {
         return app
     }
 
-    func testOpenPlayCountInAndStop() {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testOpenPlayCountInAndStop() {
         let app = launch()
         let row = app.buttons["Sarali Varisai 4, S R G M P , S R"].firstMatch
         // Below the landing page's cards: scroll until the row is on screen.
@@ -40,14 +43,17 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 3), "stop returns to Play")
     }
 
-    func testLibraryPassesAccessibilityAudit() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testLibraryPassesAccessibilityAudit() throws {
         let app = launch()
         XCTAssertTrue(app.navigationBars["Purandara"].waitForExistence(timeout: 5))
         try audit(app)
     }
 
     /// Taps a landing-page link once samples have loaded, scrolling to it if needed.
-    private func openFromLanding(_ app: XCUIApplication, _ label: String) {
+    @MainActor private func openFromLanding(_ app: XCUIApplication, _ label: String) {
         let link = app.buttons[label].firstMatch
         for _ in 0..<4 where !(link.exists && link.isHittable) { app.swipeUp() }
         let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: link)
@@ -55,7 +61,10 @@ final class PurandaraUITests: XCTestCase {
         link.tap()
     }
 
-    func testShrutiPracticeHoldsSaAndPassesAudit() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testShrutiPracticeHoldsSaAndPassesAudit() throws {
         let app = launch(["-singer", "0"])
         openFromLanding(app, "Practise Sa")
         XCTAssertTrue(app.navigationBars["Shruti practice"].waitForExistence(timeout: 5))
@@ -71,7 +80,10 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(reached.exists, "the synthetic singer holds Sa past the goal")
     }
 
-    func testFindMySaSuggestsASaAndUsesIt() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testFindMySaSuggestsASaAndUsesIt() throws {
         let app = launch(["-singer", "0"])
         openFromLanding(app, "Find my Sa")
         // The synthetic singer sings G2, then G4.
@@ -83,7 +95,10 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(newSa.waitForExistence(timeout: 5), "the landing page shows the new Sa")
     }
 
-    func testLandingPageStartsHereAndPlaysTheTanpura() {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testLandingPageStartsHereAndPlaysTheTanpura() {
         let app = launch()
         XCTAssertTrue(app.staticTexts["Start here"].waitForExistence(timeout: 5), "first run offers a starting point")
         XCTAssertTrue(app.buttons["Plain scale"].exists)
@@ -97,14 +112,20 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Play tanpura"].waitForExistence(timeout: 3))
     }
 
-    func testPlayerPassesAccessibilityAudit() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testPlayerPassesAccessibilityAudit() throws {
         let app = launch(["-open", "sarali-4"])
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
         try audit(app)
     }
 
     /// Long talas wrap onto two rows; the strip and each avarta still read as one element.
-    func testLongTalaPlayersPassAccessibilityAudit() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testLongTalaPlayersPassAccessibilityAudit() throws {
         let app = launch(["-open", "alankaram-1"])
         XCTAssertTrue(app.navigationBars["Alankaram 1"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Mayamalavagowla · Dhruva tala"].exists)
@@ -121,7 +142,10 @@ final class PurandaraUITests: XCTestCase {
 
     /// Exercises longer than the screen: rows pushed off screen by larger text
     /// must still scale, and a long set name must fit the top bar.
-    func testLongExercisePlayersPassAccessibilityAudit() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testLongExercisePlayersPassAccessibilityAudit() throws {
         let app = launch(["-open", "vakra-janta-1"])
         XCTAssertTrue(app.navigationBars["Vakra Janta 1"].waitForExistence(timeout: 5))
         try audit(app, longNotation: true)
@@ -132,7 +156,10 @@ final class PurandaraUITests: XCTestCase {
     }
 
     /// A gitam: section headings, words under the swaras, and the words in each avarta's sentence.
-    func testGitamPlayerPassesAccessibilityAudit() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testGitamPlayerPassesAccessibilityAudit() throws {
         let app = launch(["-open", "gitam-1"])
         XCTAssertTrue(app.navigationBars["Sri Gananatha"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Malahari · Rupaka tala"].exists)
@@ -142,7 +169,10 @@ final class PurandaraUITests: XCTestCase {
     }
 
     /// Analekara climbs to upper Ma: at the highest Sa the player explains and offers a playable Sa.
-    func testSaTooHighForThePieceOffersAPlayableOne() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testSaTooHighForThePieceOffersAPlayableOne() throws {
         let app = launch(["-sa", "60", "-open", "gitam-5"])
         XCTAssertTrue(app.navigationBars["Analekara"].waitForExistence(timeout: 5))
         let notice = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "goes higher than the harmonium can play")).firstMatch
@@ -156,7 +186,10 @@ final class PurandaraUITests: XCTestCase {
     }
 
     /// A swarajati: four cells to a beat, wrapped into rows; each avarta still one sentence.
-    func testSwarajatiPlayerPassesAccessibilityAudit() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testSwarajatiPlayerPassesAccessibilityAudit() throws {
         let app = launch(["-open", "swarajati-1"])
         XCTAssertTrue(app.navigationBars["Rara Venu"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.otherElements["Avarta 1: S R G P D S′ N D, P D P M G R S, R S low N low D S. Words: ra ra ve nu go pa ba la ra ji ta sad gu na ja ya shi la"].exists)
@@ -164,7 +197,10 @@ final class PurandaraUITests: XCTestCase {
     }
 
     /// Practise one section alone: choose it in a sheet; the button shows it.
-    func testASectionCanBePractisedAlone() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testASectionCanBePractisedAlone() throws {
         let app = launch(["-open", "gitam-1"])
         XCTAssertTrue(app.navigationBars["Sri Gananatha"].waitForExistence(timeout: 5))
         let button = app.buttons["Section: Whole piece"]
@@ -176,7 +212,10 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Section: Pallavi"].waitForExistence(timeout: 3))
     }
 
-    func testSettingsSheetPassesAccessibilityAudit() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testSettingsSheetPassesAccessibilityAudit() throws {
         let app = launch(["-open", "sarali-4"])
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
         app.buttons["Practice settings"].tap()
@@ -189,7 +228,10 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
-    func testSingAlongWithASharpSingerMarksEveryNoteHigh() {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testSingAlongWithASharpSingerMarksEveryNoteHigh() {
         // Debug synthetic singer 35 cents sharp on the 16-note plain scale (8 s count-in + 16 s).
         let app = launch(["-open", "plain-scale-1", "-autoplay", "YES", "-singAlong", "YES", "-singer", "35"])
         let summary = app.staticTexts["Pass 1: 0 of 16 notes in tune or close"]
@@ -199,7 +241,10 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertEqual(app.buttons["Sing along"].value as? String, "On")
     }
 
-    func testSingAlongInTuneAndAudit() throws {
+    // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
+    // are: mark each test (not the class, which would break the nonisolated
+    // setUp override) and every helper they call.
+    @MainActor func testSingAlongInTuneAndAudit() throws {
         let app = launch(["-open", "plain-scale-1", "-autoplay", "YES", "-singAlong", "YES", "-singer", "0"])
         XCTAssertTrue(app.staticTexts["Pass 1: 16 of 16 notes in tune or close"].waitForExistence(timeout: 40))
         XCTAssertTrue(app.otherElements["Your pitch"].exists)
@@ -227,7 +272,7 @@ final class PurandaraUITests: XCTestCase {
     /// fold in the same way; every such text uses a scaling text style, checked
     /// by screenshot at the largest size. Contrast, labels and everything outside
     /// the notation area are checked as strictly as ever.
-    private func audit(_ app: XCUIApplication, longNotation: Bool = false) throws {
+    @MainActor private func audit(_ app: XCUIApplication, longNotation: Bool = false) throws {
         let visibleNotation = longNotation ? app.scrollViews["notation"].frame : .zero
         try app.performAccessibilityAudit { issue in
             if issue.auditType == .dynamicType, let label = issue.element?.label,
