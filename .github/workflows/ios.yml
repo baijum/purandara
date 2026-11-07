@@ -16,10 +16,16 @@ concurrency:
 jobs:
   build-and-test:
     name: Build & Test
-    runs-on: macos-15
+    # macos-26 (Xcode 26.6, iOS 26.x runtimes): the UI tests are tuned to the
+    # iOS 26-era accessibility audit (AGENTS.md) and only pass there — Xcode
+    # 16.4's compile-time actor isolation and its iOS 18 audit both fail.
+    runs-on: macos-26
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Pin the documented toolchain rather than the image default (issue #8).
+      - name: Select Xcode 26.6
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -38,6 +44,12 @@ jobs:
         run: bash iosApp/setup_onnxruntime.sh
       - name: Build and test
         run: |
-          SIM=$(xcrun simctl list devices available iPhone -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; print(next(x['udid'] for r in d.values() for x in r))")
+          # Prefer an iPhone 17 Pro, the device class the audit findings were tuned on.
+          SIM=$(xcrun simctl list devices available iPhone -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          phones=[x for r in d.values() for x in r]
+          pick=[p['udid'] for p in phones if p['name']=='iPhone 17 Pro'] or [p['udid'] for p in phones]
+          print(pick[0])")
           xcodebuild -project iosApp/Purandara.xcodeproj -scheme Purandara \
             -destination "id=$SIM" CODE_SIGNING_ALLOWED=NO build test
