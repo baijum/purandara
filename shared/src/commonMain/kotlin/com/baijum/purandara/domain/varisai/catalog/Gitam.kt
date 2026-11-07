@@ -17,10 +17,12 @@ package com.baijum.purandara.domain.varisai.catalog
  *   edition, Giri Trading Agency, ISBN 81-7950-877-3), Gitam 1, p. 59: its
  *   syllable-per-swara words are used for that gitam.
  *
- * The cross-check script's expected output (2026-11-06): Kunda Gaura matches
+ * The cross-check script's expected output (2026-11-07): Kunda Gaura matches
  * both sources; Sri Gananatha differs from karnatik.com only in the refrain
- * (below); every other difference is a hold that shivkumar.org writes as a
- * repeated swara, or a line its HTML wraps (a stray "S", "R , M P , , ,").
+ * (below); Analekara differs from karnatik.com only in the settled "ta - la
+ * di - nam" avarta (below), and from shivkumar.org only in holds that it
+ * writes as a repeated swara, or a line its HTML wraps (a stray "S",
+ * "R , M P , , ,", a stray ",").
  *
  * Conventions: the sites' lowercase letters (middle octave) are capitals
  * here, their capitals (upper octave) carry `′`, and their trailing dot
@@ -49,10 +51,14 @@ package com.baijum.purandara.domain.varisai.catalog
  *   parigatamnam)" out but its page stops mid-line; the repeat is taken to
  *   end at "parigatamnam", as its lyrics say, so the gitam ends on upper Sa.
  *   Its sections are named by their opening words (it has no pallavi).
- *   One note differs between the sources, consistently on each: the first
- *   "ta - la di - nam" is `P , M | D , | D P` on karnatik.com (kept, the
- *   primary source) and `P , P | D D | D P` on shivkumar.org. Open for a
- *   teacher or book to settle.
+ *   One note differed between the sources, consistently on each: the first
+ *   "ta - la di - nam" was `P , M | D , | D P` on karnatik.com and
+ *   `P , P | D D | D P` on shivkumar.org. Settled 2026-11-07 by the user's
+ *   teacher for `P , P` (issue #2): every other source found — eviolinguru.com
+ *   and meanjalisudheer.com sheets, the Gurukulam Academy collection and the
+ *   NIOS Carnatic Music Book 2, p. 54 — agrees, on both occurrences, leaving
+ *   karnatik.com's `P , M` the lone variant. The hold is karnatik.com's
+ *   karvai (`D ,`), as in the parallel "ra - na di - nam" phrase.
  * - shivkumar.org labels Kereya Neeranu and Padumanabha "Chathurasra Jathi"
  *   Triputa, but its notation is 3 + 2 + 2 (Tisra), as karnatik.com says.
  *
@@ -264,7 +270,7 @@ R′ M′ R′ | R′ S′ | D S′ || S′ , S′ | D P | M P ||
 [sakala]
 D D S′ | D , | D P || P M R | D , | D P ||
 " sa ka la | sha - | stra pu || ra - na | di - | nam - ||
-P , M | D , | D P || P , P | M P | D P ||
+P , P | D , | D P || P , P | M P | D P ||
 " ta - la | di - | nam - || ta - la | pa ri | ga tu ||
 P M R | S R | S R || P M P | S R | S R ||
 " re - - | - - | - - || re - - | - - | - - ||
