@@ -20,6 +20,13 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The image default, 16.4, is not supported: its Swift 6 compiler flags
+      # View-member actor isolation the newer SDKs infer correctly, and its
+      # iOS 18 audit reports Contrast / Dynamic Type / clipping failures the
+      # audit on iOS 26+ does not (the UI tests are tuned to that audit; see
+      # AGENTS.md). Select the newest Xcode on the macos-15 image (issue #8).
+      - name: Select Xcode 26.3
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
