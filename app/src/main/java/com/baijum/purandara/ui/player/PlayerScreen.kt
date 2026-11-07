@@ -113,7 +113,7 @@ fun PlayerScreen(
             if (!saPlayable) SaOutOfRange(varisai, settings, actions.onSettingsChange)
             // Also shown after a refused permission, so the student learns why nothing happened.
             if (settings.singAlong || (micDenied && !state.singAlong.micPermitted)) {
-                SingAlongPanel(varisai, state, micDenied, actions.onOpenAppSettings)
+                SingAlongPanel(varisai, saPlayable, state, micDenied, actions.onOpenAppSettings)
             }
             NotationView(
                 varisai = varisai,
@@ -181,15 +181,27 @@ private fun PlayerTopBar(title: String, singAlong: Boolean, onBack: () -> Unit, 
 
 /** Pitch lane, live reading, headphone hint, permission message and the last pass summary. */
 @Composable
-private fun SingAlongPanel(varisai: Varisai, state: PracticeUiState, micDenied: Boolean, onOpenAppSettings: () -> Unit) {
+private fun SingAlongPanel(
+    varisai: Varisai,
+    saPlayable: Boolean,
+    state: PracticeUiState,
+    micDenied: Boolean,
+    onOpenAppSettings: () -> Unit,
+) {
     val sing = state.singAlong
-    val schedule = remember(varisai, state.settings) { Schedule.of(varisai, state.settings.performance()) }
     Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (micDenied && !sing.micPermitted) {
             Text(stringResource(R.string.mic_denied), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
             OutlinedButton(onClick = onOpenAppSettings) { Text(stringResource(R.string.open_settings)) }
             return@Column
         }
+        if (!saPlayable) {
+            // Never build a schedule the samples can't play (issue #9): the
+            // range warning above offers a playable Sa instead.
+            Text(stringResource(R.string.sing_along_out_of_range), style = MaterialTheme.typography.bodyMedium)
+            return@Column
+        }
+        val schedule = remember(varisai, state.settings) { Schedule.of(varisai, state.settings.performance()) }
         PitchLane(
             schedule = schedule,
             avarta = state.playback.position?.avarta,

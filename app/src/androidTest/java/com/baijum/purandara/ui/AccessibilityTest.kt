@@ -78,12 +78,14 @@ class AccessibilityTest {
         playback: PlaybackState = PlaybackState(),
         singAlong: SingAlongState = SingAlongState(micPermitted = true),
         id: String = "sarali-4",
+        micDenied: Boolean = false,
     ) {
         compose.setContent {
             PurandaraTheme {
                 PlayerScreen(
                     varisai = VarisaiCatalog.byId(id)!!,
                     state = PracticeUiState(settings = settings, samplesLoaded = true, playback = playback, singAlong = singAlong),
+                    micDenied = micDenied,
                     actions = PlayerActions(
                         onBack = {},
                         onTogglePlay = {},
@@ -202,6 +204,32 @@ class AccessibilityTest {
         compose.onNodeWithText("Play").assertIsNotEnabled()
         compose.onNodeWithText("Use Sa", substring = true).assertHasClickAction().performClick()
         assertTrue(settings.saMidi in VarisaiCatalog.byId("gitam-5")!!.playableSaMidis)
+    }
+
+    @Test
+    fun singAlongWithAnOutOfRangeSaOffersAPlayableOneInsteadOfCrashing() {
+        // The sing-along panel used to build a schedule the samples can't play (issue #9).
+        settings = settings.copy(saMidi = 60, singAlong = true)
+        showPlayer(id = "gitam-5")
+        compose.onNodeWithText("this piece goes higher than the harmonium can play", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Sing along needs a Sa this piece can play", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Use Sa", substring = true).assertHasClickAction().performClick()
+        assertTrue(settings.saMidi in VarisaiCatalog.byId("gitam-5")!!.playableSaMidis)
+        // The composition is still alive; the panel just repeats its explanation until a Sa is picked for real.
+        compose.onNodeWithText("Sing along needs a Sa this piece can play", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun singAlongWithAnOutOfRangeSaAndNoMicrophoneStaysUsable() {
+        // The permission message and the range recovery must both survive together.
+        settings = settings.copy(saMidi = 60, singAlong = true)
+        showPlayer(id = "gitam-5", singAlong = SingAlongState(micPermitted = false), micDenied = true)
+        compose.onNodeWithText("this piece goes higher than the harmonium can play", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Microphone access is off", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Use Sa", substring = true).assertHasClickAction().performClick()
+        assertTrue(settings.saMidi in VarisaiCatalog.byId("gitam-5")!!.playableSaMidis)
+        // The microphone is still off: the panel keeps explaining that instead of building a schedule.
+        compose.onNodeWithText("Microphone access is off", substring = true).assertIsDisplayed()
     }
 
     @Test

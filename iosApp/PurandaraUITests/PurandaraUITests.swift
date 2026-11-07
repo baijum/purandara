@@ -185,6 +185,25 @@ final class PurandaraUITests: XCTestCase {
         wait(for: [enabled], timeout: 10)
     }
 
+    /// Sing-along on with the Sa out of range: the panel must not build a schedule
+    /// (issue #9); the warning and the recovery stay usable with the microphone not
+    /// yet granted.
+    @MainActor func testSingAlongWithSaTooHighForThePieceOffersAPlayableOne() throws {
+        let app = launch(["-sa", "60", "-open", "gitam-5", "-singAlong", "YES"])
+        XCTAssertTrue(app.navigationBars["Analekara"].waitForExistence(timeout: 5))
+        let notice = app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "goes higher than the harmonium can play")).firstMatch
+        XCTAssertTrue(notice.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Sing along needs a Sa this piece can play")).firstMatch.exists)
+        XCTAssertFalse(app.buttons["Play"].isEnabled)
+        app.buttons.containing(NSPredicate(format: "label BEGINSWITH %@", "Use Sa")).firstMatch.tap()
+        XCTAssertFalse(notice.exists)
+        // The pitch lane builds from the playable Sa; the mic was never granted, so
+        // the reading says the app is not hearing the singer yet.
+        XCTAssertTrue(app.otherElements["Your pitch"].waitForExistence(timeout: 5))
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: app.buttons["Play"])
+        wait(for: [enabled], timeout: 10)
+    }
+
     /// A swarajati: four cells to a beat, wrapped into rows; each avarta still one sentence.
     // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
     // are: mark each test (not the class, which would break the nonisolated

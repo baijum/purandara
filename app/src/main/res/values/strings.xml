@@ -96,6 +96,7 @@
     <string name="raga_tala">%1$s · %2$s tala</string>
     <string name="sa_out_of_range">At Sa %1$s this piece goes higher than the harmonium can play.</string>
     <string name="use_sa">Use Sa %1$s</string>
+    <string name="sing_along_out_of_range">Sing along needs a Sa this piece can play; use the suggestion above.</string>
     <string name="section_whole">Whole piece</string>
     <string name="section_button">Section: %1$s</string>
     <string name="gitam_notation">Gitam notation</string>
