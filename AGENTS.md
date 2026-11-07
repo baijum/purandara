@@ -15,13 +15,35 @@ all four varnams; they wait on their second-source checks, issue #7).
 New features are planned and discussed before they are built; do not add
 features speculatively.
 
+## Reference documents
+
+- [`docs/resources.md`](docs/resources.md) — websites, books, recordings and
+  datasets to check notation, theory, tuning and audio against, including
+  the sources recorded in closed issues #1–#7.
+- [`ATTRIBUTION.md`](ATTRIBUTION.md) — every bundled third-party asset, its
+  licence and the changes made.
+- [`README.md`](README.md) — feature summary, layout, build commands and the
+  docs index.
+- The feature plans: [`docs/plan.md`](docs/plan.md) (varisai player; 3.2 is
+  the notation grammar),
+  [`docs/plan-pitch-monitor.md`](docs/plan-pitch-monitor.md),
+  [`docs/plan-landing.md`](docs/plan-landing.md),
+  [`docs/plan-shruti.md`](docs/plan-shruti.md),
+  [`docs/plan-alankaram-gitam.md`](docs/plan-alankaram-gitam.md) and
+  [`docs/plan-gitam-swarajati-varnam.md`](docs/plan-gitam-swarajati-varnam.md).
+- [`models/README.md`](models/README.md) — the SwiftF0 model and its checksum.
+- [`site/`](site/) — the end-user website and guide; keep it in step with the
+  app when features change.
+
 ## Adding notation (alankarams, gitams, swarajatis, varnams)
 
 - **Two independent sources must agree**, or the piece waits; never write
-  notation from memory. So far: karnatik.com (primary), Shivkumar
-  Kalyanaraman's archive (shivkumar.org) and *Sangeeta Bala Padam* Part 1
-  as cross-checks. Where they differ, keep the primary and list the variant
-  (or ask the user, who decides pathantarams).
+  notation from memory. The per-piece sources and their status are in
+  [`docs/resources.md`](docs/resources.md); the main ones are karnatik.com
+  (primary), Shivkumar Kalyanaraman's archive (shivkumar.org), *Sangeeta
+  Bala Padam* Parts 1–2, the Gurukulam & SF collection and the NIOS
+  textbook. Where they differ, keep the primary and list the variant (or
+  ask the user, who decides pathantarams).
 - Re-encode in the app's grammar (`docs/plan.md` 3.2). karnatik.com marks
   octaves by case (capital = upper) and a trailing dot (lower); shivkumar.org
   often marks *length* by case (capital = two cells, `;` = two-cell hold, a
