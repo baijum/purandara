@@ -146,6 +146,7 @@ enum class VarisaiSet(val title: String, val description: String, val shortTitle
     ALANKARAM("Alankaram", "One climbing figure in each of the seven suladi talas: keep the tala as you sing."),
     GITAM("Gitam", "First songs, with words: Purandara Dasa's gitams in raga Malahari, then others."),
     SWARAJATI("Swarajati", "Longer songs with several swaras to a beat: each charanam sung as swaras, then with words."),
+    VARNAM("Varnam", "The first tana varnams, in two kalai: the purvanga sung in two speeds, the uttaranga in the second."),
 }
 
 /**

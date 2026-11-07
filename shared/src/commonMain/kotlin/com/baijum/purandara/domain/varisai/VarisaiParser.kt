@@ -31,7 +31,8 @@ class VarisaiParseException(val line: Int, val column: Int, detail: String) :
  * `(pallavi @2)`: its avartas play speed-times as fast while the tala keeps
  * its beat, so a @2 section packs speed written avartas into one tala cycle
  * (its avarta count must fill whole cycles; a varnam's purvanga is sung @1
- * then repeated @2, its uttaranga written @2).
+ * then repeated @2, its uttaranga written @2). A repeat without its own @
+ * keeps the section's speed.
  * `beat: <n>` writes n aksharas (cells) to each tala beat, as swarajatis are
  * written; `[charanam 1 +swaram]` sings that section first as swaras, then
  * with its words. A `beat:` line inside a piece (after notation has started)
@@ -183,9 +184,12 @@ class VarisaiParser(
 
     private fun repeatSection(d: Draft, spec: String, lineNo: Int) {
         d.closeSection()
-        val (key, speed) = speedSpec(spec, lineNo)
+        val (key, stated) = speedSpec(spec, lineNo)
         val range = d.sections[key] ?: throw VarisaiParseException(lineNo, 2, "no section [$key] to repeat")
         if (range.isEmpty()) throw VarisaiParseException(lineNo, 2, "section [$key] has no notation")
+        // A repeat without its own @ keeps the section's speed: `(charanam)`
+        // after a `[charanam @2]` sings it at @2 again.
+        val speed = stated ?: d.avartas[range.first].speed
         requireWholeCycles(key, range, speed, lineNo)
         range.forEachIndexed { k, i ->
             d.avartas += d.avartas[i].copy(section = if (k == 0) label(key) else null, speed = speed)

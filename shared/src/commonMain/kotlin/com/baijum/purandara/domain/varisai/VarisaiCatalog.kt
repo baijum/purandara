@@ -9,6 +9,7 @@ import com.baijum.purandara.domain.varisai.catalog.MADHYA_STHAYI_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.SARALI_VARISAI_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.SWARAJATI_NOTATION
 import com.baijum.purandara.domain.varisai.catalog.VAKRA_JANTA_VARISAI_NOTATION
+import com.baijum.purandara.domain.varisai.catalog.VARNAM_NOTATION
 
 /**
  * All bundled exercises, in teaching order. Parsed once, on first use.
@@ -39,6 +40,7 @@ S′ N D P M G R S
             VarisaiSet.ALANKARAM to ALANKARAM_NOTATION,
             VarisaiSet.GITAM to GITAM_NOTATION,
             VarisaiSet.SWARAJATI to SWARAJATI_NOTATION,
+            VarisaiSet.VARNAM to VARNAM_NOTATION,
         ).flatMap { (set, text) -> parser.parse(text, set) }
     }
 

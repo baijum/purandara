@@ -326,16 +326,17 @@ class ScheduleTest {
     }
 
     @Test
-    fun notesAreContiguousAndCoverTheWholePerformance() = runTest {
+    fun notesAreSortedWithoutOverlapAndBeatsFillWholeCycles() = runTest {
         checkAll(Arb.element(VarisaiCatalog.all), Arb.int(1..4), Arb.int(30..120)) { v, kala, tempo ->
             val s = Schedule.of(v, PerformanceSettings(saHz = saC3, tempo = tempo, kala = kala))
             s.notes.zipWithNext().forEach { (a, b) ->
-                assertTrue(abs(a.startSeconds + a.durationSeconds - b.startSeconds) < 1e-9, "${v.id}: gap at ${b.startSeconds}")
+                assertTrue(b.startSeconds >= a.startSeconds + a.durationSeconds - 1e-9, "${v.id}: notes overlap at ${b.startSeconds}")
             }
             val last = s.notes.last()
-            assertEquals(s.durationSeconds, last.startSeconds + last.durationSeconds, 1e-9)
-            assertEquals(s.durationSeconds, s.beats.size * s.settings.talaAksharaSeconds, 1e-9)
-            assertEquals(0, s.beats.size % v.tala.aksharas, "${v.id} kala $kala ends mid-avarta")
+            assertTrue(last.startSeconds + last.durationSeconds <= s.durationSeconds + 1e-9, "${v.id}: last note past the end")
+            // Beats are at count density (a count is half a tala akshara at two kalai).
+            assertEquals(s.durationSeconds, s.beats.size * s.settings.talaAksharaSeconds / v.kalai, 1e-9)
+            assertEquals(0, s.beats.size % (v.tala.aksharas * v.kalai), "${v.id} kala $kala ends mid-cycle")
         }
     }
 

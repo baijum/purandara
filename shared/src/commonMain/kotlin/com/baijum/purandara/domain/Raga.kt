@@ -245,6 +245,55 @@ class Raga(
             avarohanam = scale(Swara.S, Swara.R2, Swara.G2, Swara.M1, Swara.P, Swara.D2, Swara.N2).reversed(),
         )
 
+        /**
+         * Janya of Harikambhoji (28): ascent S R2 G2 M1 D2 S′ (no Pa, no Ni),
+         * descent S′ D2 M1 G2 R2 S. The raga of the Evvari Bodhana varnam.
+         * (Some singers take an anya N2 in the ascent; the chosen source's
+         * notation has none.)
+         */
+        val ABHOGI: Raga = Raga(
+            "Abhogi",
+            mapOf(
+                SwaraLetter.S to Swara.S,
+                SwaraLetter.R to Swara.R2,
+                SwaraLetter.G to Swara.G2,
+                SwaraLetter.M to Swara.M1,
+                SwaraLetter.D to Swara.D2,
+            ),
+            arohanam = scale(Swara.S, Swara.R2, Swara.G2, Swara.M1, Swara.D2),
+            avarohanam = scale(Swara.S, Swara.R2, Swara.G2, Swara.M1, Swara.D2).reversed(),
+        )
+
+        /** The 29th melakarta: S R2 G3 M1 P D2 N3 S′ — the raga of the Sami Ninne Kori varnam. */
+        val SHANKARABHARANAM: Raga = Raga(
+            "Shankarabharanam",
+            mapOf(
+                SwaraLetter.S to Swara.S,
+                SwaraLetter.R to Swara.R2,
+                SwaraLetter.G to Swara.G3,
+                SwaraLetter.M to Swara.M1,
+                SwaraLetter.P to Swara.P,
+                SwaraLetter.D to Swara.D2,
+                SwaraLetter.N to Swara.N3,
+            ),
+            arohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M1, Swara.P, Swara.D2, Swara.N3),
+            avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M1, Swara.P, Swara.D2, Swara.N3).reversed(),
+        )
+
+        /** Janya of Shankarabharanam (29): ascent S R2 G3 P N3 S′ (no M, no D), descent S′ N3 P G3 R2 S. */
+        val HAMSADHWANI: Raga = Raga(
+            "Hamsadhwani",
+            mapOf(
+                SwaraLetter.S to Swara.S,
+                SwaraLetter.R to Swara.R2,
+                SwaraLetter.G to Swara.G3,
+                SwaraLetter.P to Swara.P,
+                SwaraLetter.N to Swara.N3,
+            ),
+            arohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.P, Swara.N3),
+            avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.P, Swara.N3).reversed(),
+        )
+
         /** [swaras] in the middle octave, then upper Sa. */
         private fun scale(vararg swaras: Swara): List<Note> =
             swaras.map { Note(it) } + Note(Swara.S, Octave.TARA)
@@ -256,7 +305,7 @@ object Ragas {
     val all: List<Raga> = listOf(
         Raga.MAYAMALAVAGOWLA, Raga.MALAHARI, Raga.SUDDHA_SAVERI, Raga.MOHANAM,
         Raga.BILAHARI, Raga.KHAMAS, Raga.KALYANI, Raga.ARABHI, Raga.BHAIRAVI,
-        Raga.ANANDABHAIRAVI,
+        Raga.ANANDABHAIRAVI, Raga.ABHOGI, Raga.SHANKARABHARANAM, Raga.HAMSADHWANI,
     )
 
     fun byKey(key: String): Raga? = all.firstOrNull { it.key == key }
