@@ -47,17 +47,14 @@ jobs:
         run: bash iosApp/setup_onnxruntime.sh
       - name: Build and test
         run: |
-          # Prefer the device class the audit findings were tuned on; the
-          # xcode-27 image's iOS 27.0 runtime has no iPhone 17 Pro sim.
-          SIM=$(xcrun simctl list devices available iPhone -j | python3 -c "
-          import json,sys
-          d=json.load(sys.stdin)['devices']
-          phones=[x for r in d.values() for x in r]
-          for name in ('iPhone 17 Pro', 'iPhone 18 Pro'):
-              pick=[p['udid'] for p in phones if p['name']==name]
-              if pick: break
-          else:
-              pick=[p['udid'] for p in phones]
-          print(pick[0])")
+          # The audit findings are sensitive to device/runtime (see issue #8
+          # and AGENTS.md): create the sim deterministically — an iPhone 17
+          # Pro, the device class the tests were tuned on — instead of picking
+          # whatever preset the image happens to ship.
+          SIM=$(xcrun simctl create CI "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro" "com.apple.CoreSimulator.SimRuntime.iOS-27-0")
+          xcrun simctl bootstatus "$SIM" -b
+          xcodebuild -project iosApp/Purandara.xcodeproj -scheme Purandara \
+            -destination "id=$SIM" CODE_SIGNING_ALLOWED=NO build test
+          xcrun simctl delete "$SIM"
           xcodebuild -project iosApp/Purandara.xcodeproj -scheme Purandara \
             -destination "id=$SIM" CODE_SIGNING_ALLOWED=NO build test
