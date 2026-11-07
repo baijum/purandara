@@ -10,9 +10,57 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** Ninnukori: two-kalai Adi at two cells per kriya, purvanga @1 then @2, uttaranga @2. */
+/** The tana varnams: two-kalai Adi at two cells per kriya, purvanga @1 then @2, uttaranga @2. */
 class VarnamCatalogTest {
+    private val varnams = VarisaiCatalog.inSet(VarisaiSet.VARNAM)
     private val ninnukori = VarisaiCatalog.byId("varnam-1")!!
+
+    @Test
+    fun theVarnamsAreInTheTeachingOrderWithTheirRagas() {
+        assertEquals(
+            listOf(
+                Triple("Ninnukori", Raga.MOHANAM, 4),
+                Triple("Evvari Bodhana", Raga.ABHOGI, 4),
+                Triple("Sami Ninne Kori", Raga.SHANKARABHARANAM, 4),
+                Triple("Jalajaksha", Raga.HAMSADHWANI, 4),
+            ),
+            varnams.map { Triple(it.title, it.raga, it.avartas.takeWhile { a -> a.speed == 1 }.size) },
+        )
+        // Each purvanga section is written @1 (its four avartas) and repeated @2.
+        varnams.forEach { v ->
+            assertEquals(1, v.avartas[0].speed, v.id)
+            assertEquals(2, v.avartas[4].speed, v.id)
+            assertEquals(v.avartas[0].aksharas, v.avartas[4].aksharas, v.id)
+        }
+    }
+
+    @Test
+    fun everyVarnamIsTwoKalaiAdiAtTwoCellsPerKriya() {
+        varnams.forEach { v ->
+            assertEquals(2, v.beat, v.id)
+            assertEquals(2, v.kalai, v.id)
+            assertEquals(Tala.ADI, v.tala, v.id)
+            v.avartas.forEach { assertEquals(16, it.aksharas.size, "${v.id}: $it") }
+        }
+    }
+
+    @Test
+    fun everyTwoKalaiSectionFillsWholeCyclesAndPlaysAtEveryKala() {
+        varnams.forEach { v ->
+            val sections = v.sections
+            assertTrue(sections.isNotEmpty(), v.id)
+            sections.forEach { span ->
+                val written = span.lastAvarta - span.firstAvarta + 1
+                val speed = v.avartas[span.firstAvarta].speed
+                assertTrue((written * 1.0 / speed) % 1.0 == 0.0, "${span.label}: $written at @$speed")
+            }
+            for (kala in PerformanceSettings.KALA_RANGE) {
+                val s = Schedule.of(v, PerformanceSettings(saHz = Pitch.midiToHz(48), tempo = 60, kala = kala))
+                assertEquals(0, s.beats.size % 16, "${v.id} kala $kala ends mid-cycle")
+                assertEquals(s.durationSeconds, s.beats.size * 0.5, 1e-9, "${v.id} kala $kala beats at count density")
+            }
+        }
+    }
 
     @Test
     fun ninnukoriIsMohanamAdiTwoCellsPerKriyaInTwoKalai() {
