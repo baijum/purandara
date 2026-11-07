@@ -83,6 +83,7 @@ Copy the text verbatim so it can be compared line by line with the workbook.
 | `short: <text>` after the number | A shorter title for the phone's top bar. |
 | `beat: <n>` after the number | n aksharas (cells) to each tala beat (1, 2, 4 or 5), as swarajatis are written. |
 | `beat: <n>` inside a piece | Overrides the gati from there on (a khanda-gati charanam writes `beat: 5`); the next `[section]` header restores the piece's own beat. |
+| `kalai: <n>` after the number | Counts per tala beat (1 or 2): a varnam's two-kalai Adi counts 16 to the cycle, and the tala strip and click follow the counts. |
 | `[name +swaram]` | The section is sung first as swaras (no words), then with its words. |
 | `@n` in a section or repeat, e.g. `[charanam @2]`, `(pallavi @2)` | Playback speed: the section's avartas play n-times as fast while the tala keeps its beat; n written avartas fill one tala cycle at @n, so an @2 section needs an even avarta count. A varnam's purvanga is sung @1 then repeated @2, its uttaranga written @2. |
 | `[pallavi]` | Starts a named section; its first avarta shows the name as a heading. |

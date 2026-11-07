@@ -15,6 +15,16 @@ enum class Kriya {
 /** One akshara of a tala cycle. [label] is how it is written above the notation. */
 data class TalaBeat(val kriya: Kriya, val label: String, val startsAnga: Boolean)
 
+/**
+ * One count of a cycle counted at more than one count per beat ([Tala.countsAt]):
+ * [countInKriya] 0 is the beat's own kriya (written with the beat's [label]),
+ * the rest are `"·"` second counts.
+ */
+data class TalaCount(val kriya: TalaBeat, val countInKriya: Int) {
+    val startsAnga: Boolean get() = countInKriya == 0 && kriya.startsAnga
+    val label: String get() = if (countInKriya == 0) kriya.label else "·"
+}
+
 /** The kinds of anga a suladi tala is built from. */
 enum class AngaKind {
     /** One clap, then finger counts: as long as the jati (I). */
@@ -92,6 +102,15 @@ class Tala(
     /** Whether notation cell [cell] starts an anga when each beat holds [cellsPerBeat] cells. */
     fun startsAngaAt(cell: Int, cellsPerBeat: Int): Boolean =
         cell % cellsPerBeat == 0 && beats[cell / cellsPerBeat].startsAnga
+
+    /**
+     * The cycle counted at [kalai] counts per beat (two kalai for varnams):
+     * each beat contributes its kriya count, then `"·"` counts. Adi at two
+     * kalai counts 16: `x · 1 · 2 · 3 · x · v · x · v ·`. The strip and the
+     * click follow these counts.
+     */
+    fun countsAt(kalai: Int): List<TalaCount> =
+        beats.flatMap { beat -> (0 until kalai).map { TalaCount(beat, it) } }
 
     /**
      * [rowStarts] for notation written [cellsPerBeat] cells to a beat (a

@@ -257,6 +257,16 @@ class VarisaiParserTest {
     }
 
     @Test
+    fun kalaiCountsTheBeatsTwice() {
+        val v = parseOne("1\nkalai: 2\nS R G M | P D | N S′")
+        assertEquals(2, v.kalai)
+        assertEquals(1, parseOne("1\nS R G M | P D | N S′").kalai)
+        assertFailsWith<VarisaiParseException> { parseOne("1\nkalai: 3\nS R G M | P D | N S′") }
+        assertFailsWith<VarisaiParseException> { parseOne("1\nkalai: x\nS R G M | P D | N S′") }
+        assertFailsWith<VarisaiParseException> { parseOne("1\nS R G M | P D | N S′\nkalai: 2") }
+    }
+
+    @Test
     fun mandraMarkMustFollowASwaraOnce() {
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nˌS R G M") }
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nSˌˌ R G M") }

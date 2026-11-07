@@ -92,4 +92,18 @@ class TalasTest {
         assertEquals(false, Tala.ADI.startsAngaAt(8, 4))
         assertEquals(false, Tala.ADI.startsAngaAt(17, 4))
     }
+
+    @Test
+    fun twoKalaiCountsEveryKriyaTwice() {
+        val counts = Tala.ADI.countsAt(2)
+        assertEquals(16, counts.size)
+        assertEquals(listOf("x", "·", "1", "·", "2", "·", "3", "·", "x", "·", "v", "·", "x", "·", "v", "·"), counts.map { it.label })
+        // Angas start on a kriya count, never on a second count.
+        assertEquals(listOf(0, 8, 12), counts.withIndex().filter { it.value.startsAnga }.map { it.index })
+        // The strip's count rows: the laghu, then both drutams joined (8 + 8).
+        assertEquals(listOf(0, 8), Tala.ADI.rowStartsFor(2))
+        // One kalai counts as before.
+        assertEquals(Tala.ADI.beats.size, Tala.ADI.countsAt(1).size)
+        assertEquals(Tala.ADI.beats.map { it.label }, Tala.ADI.countsAt(1).map { it.label })
+    }
 }

@@ -16,7 +16,7 @@ struct PlayerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TalaStripView(beatInAvarta: viewModel.playback.beatInAvarta, tala: varisai.tala)
+            TalaStripView(beatInAvarta: viewModel.playback.beatInAvarta, tala: varisai.tala, kalai: Int(varisai.kalai))
                 .padding(.horizontal, 12)
                 // Extra top space: the toolbar's glass shadow otherwise lowers the
                 // contrast of the right-most beat (flagged by the accessibility audit).

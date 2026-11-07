@@ -292,18 +292,25 @@ private fun AngaBar(double: Boolean = false) {
 /**
  * The tala being kept: one mark per beat of the avarta, the current beat
  * filled. At higher kalas several written aksharas share one beat, so this is
- * separate from the marks printed above the notation. One accessibility node
- * whose state is read only when focused, so nothing is announced during playback.
+ * separate from the marks printed above the notation. A two-kalai piece
+ * ([kalai] 2) splits each beat into its kriya and a `"·"` second count, 16
+ * columns for Adi. One accessibility node whose state is read only when
+ * focused, so nothing is announced during playback.
  */
 @Composable
-fun TalaStrip(beatInAvarta: Int?, tala: Tala, modifier: Modifier = Modifier) {
+fun TalaStrip(beatInAvarta: Int?, tala: Tala, kalai: Int = 1, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val clap = stringResource(R.string.clap)
     val wave = stringResource(R.string.wave)
-    val talaLabel = stringResource(R.string.tala_label, tala.name, spokenBeats(tala, clap, wave))
-    val beatText = beatInAvarta?.let { stringResource(R.string.beat_of, it + 1, tala.aksharas) } ?: ""
-    val starts = tala.rowStarts
-    val ends = starts.drop(1) + tala.aksharas
+    val counts = tala.countsAt(kalai)
+    val kalaiLabel = if (kalai > 1) stringResource(R.string.kalai_label, kalai) else ""
+    val talaLabel = stringResource(R.string.tala_label, tala.name, "$kalaiLabel ${spokenBeats(tala, clap, wave)}".trim())
+    val beatText = beatInAvarta?.let {
+        if (kalai > 1) stringResource(R.string.count_of, it + 1, counts.size)
+        else stringResource(R.string.beat_of, it + 1, tala.aksharas)
+    } ?: ""
+    val starts = tala.rowStartsFor(kalai) // one count per beat at kalai 1: the same rows as before
+    val ends = starts.drop(1) + counts.size
     Column(
         modifier.fillMaxWidth().clearAndSetSemantics {
             contentDescription = talaLabel
@@ -318,8 +325,8 @@ fun TalaStrip(beatInAvarta: Int?, tala: Tala, modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 for (i in from until to) {
-                    val beat = tala.beats[i]
-                    if (i > from && beat.startsAnga) AngaBar()
+                    val count = counts[i]
+                    if (i > from && count.startsAnga) AngaBar()
                     val current = i == beatInAvarta
                     Box(
                         Modifier
@@ -329,13 +336,13 @@ fun TalaStrip(beatInAvarta: Int?, tala: Tala, modifier: Modifier = Modifier) {
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            beat.label,
+                            count.label,
                             style = MaterialTheme.typography.titleMedium,
                             color = if (current) colors.onPrimary else colors.onSurfaceVariant,
                         )
                     }
                 }
-                val missing = tala.rowAksharas - (to - from)
+                val missing = tala.rowCellsFor(kalai) - (to - from)
                 if (missing > 0) Spacer(Modifier.weight(missing.toFloat()))
             }
         }

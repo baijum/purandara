@@ -168,6 +168,13 @@ data class Varisai(
     val beat: Int = 1,
     /** A shorter [name] for the top bar (`short:`), e.g. "Rara Venu". */
     val shortName: String? = null,
+    /**
+     * Counts per tala beat (`kalai: 2`): a varnam's Adi tala is counted in
+     * two kalai, 16 counts to the cycle. The tala strip and the click follow
+     * these counts ([Tala.countsAt]); the notation itself stays written
+     * [beat] cells to a beat.
+     */
+    val kalai: Int = 1,
 ) {
     /** Written aksharas per tala beat in [avarta]: the piece's [beat], or a section's override. */
     fun cellsPerBeatIn(avarta: Int): Int = avartas[avarta].aksharas.size / tala.aksharas

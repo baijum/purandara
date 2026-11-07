@@ -71,14 +71,16 @@ data class NoteEvent(
     val position: NotationPosition,
 )
 
-/** A tala beat, for the display and the click. */
+/** A tala beat count, for the display and the click. */
 data class BeatEvent(
     val startSeconds: Double,
     /** Beat number from the start of playback. */
     val index: Int,
-    /** 0-based position within the avarta. */
+    /** 0-based position within the avarta (a count at more than one kalai). */
     val beatInAvarta: Int,
     val beat: TalaBeat,
+    /** 0 for the beat's own kriya count, 1 for a two-kalai second count. */
+    val countInKriya: Int = 0,
 )
 
 /** A highlight change: every swara slot and every karvai. */
@@ -219,12 +221,16 @@ class Schedule private constructor(
             }
 
             // The beats keep the tala's tempo across the whole performance: one
-            // tala akshara apart, in whole cycles, whatever the gatis and speeds.
+            // count apart (a count is a tala akshara at one kalai, or its half
+            // at two kalai), in whole cycles, whatever the gatis and speeds.
             val tala = varisai.tala
-            val totalBeats = (reps * cyclesPerPass * tala.aksharas).roundToInt()
+            val kalai = varisai.kalai
+            val countsPerCycle = tala.aksharas * kalai
+            val countSeconds = settings.talaAksharaSeconds / kalai
+            val totalBeats = (reps * cyclesPerPass * countsPerCycle).roundToInt()
             val beats = List(totalBeats) { i ->
-                val inAvarta = i % tala.aksharas
-                BeatEvent(i * settings.talaAksharaSeconds, i, inAvarta, tala.beats[inAvarta])
+                val inAvarta = i % countsPerCycle
+                BeatEvent(i * countSeconds, i, inAvarta, tala.beats[(i / kalai) % tala.aksharas], i % kalai)
             }
             return Schedule(
                 varisai = varisai,

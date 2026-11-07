@@ -107,6 +107,7 @@ fun PlayerScreen(
             TalaStrip(
                 beatInAvarta = playback.beatInAvarta,
                 tala = varisai.tala,
+                kalai = varisai.kalai,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
             if (!saPlayable) SaOutOfRange(varisai, settings, actions.onSettingsChange)

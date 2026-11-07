@@ -216,6 +216,42 @@ class ScheduleTest {
     }
 
     @Test
+    fun twoKalaiCountsSplitEveryBeat() {
+        val parser = VarisaiParser()
+        val v = parser.parse(
+            """
+            1
+            kalai: 2
+            S R G M P D N S′ || S′ N D P M G R S ||
+            """.trimIndent(),
+            VarisaiSet.SARALI,
+        ).single()
+        assertEquals(2, v.kalai)
+        val s = Schedule.of(v, PerformanceSettings(saHz = saC3, tempo = 60))
+        // Two cycles, 32 counts half a second apart; the written swaras are still
+        // one per second (the notation's beat: is 1 here).
+        assertEquals(32, s.beats.size)
+        assertEquals(16.0, s.durationSeconds, 1e-9)
+        assertEquals(0.5, s.beats[1].startSeconds, 1e-9)
+        assertEquals(1.0, s.beats[2].startSeconds, 1e-9)
+        // Count 8 is the drutam clap, four seconds in; count 16 starts the second cycle.
+        assertEquals(4.0, s.beats[8].startSeconds, 1e-9)
+        // The kriya repeats on its second count; the cycle's kriyas follow the tala.
+        assertEquals(1, s.beats[1].countInKriya)
+        assertEquals(s.beats[0].beat, s.beats[1].beat)
+        assertEquals(Kriya.CLAP, s.beats[8].beat.kriya)
+        assertEquals(0, s.beats[8].countInKriya)
+        assertEquals(1, s.beats[9].countInKriya)
+        assertEquals((0 until 32).map { it % 16 }, s.beats.map { it.beatInAvarta })
+        // At every kala the counts stay 16 per cycle and whole.
+        for (kala in PerformanceSettings.KALA_RANGE) {
+            val k = Schedule.of(v, PerformanceSettings(saHz = saC3, tempo = 60, kala = kala))
+            assertEquals(0, k.beats.size % 16, "kala $kala fills whole two-kalai cycles")
+            assertEquals(k.durationSeconds, k.beats.size * 0.5, 1e-9, "kala $kala")
+        }
+    }
+
+    @Test
     fun misraChapuKeepsItsSevenBeatsAtEveryKala() {
         val line = List(7) { "S" }.joinToString(" ")
         val v = VarisaiParser().parse("1\ntala: misra-chapu\n$line\n$line", VarisaiSet.SARALI).single()

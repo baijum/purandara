@@ -37,6 +37,8 @@ class VarisaiParseException(val line: Int, val column: Int, detail: String) :
  * with its words. A `beat:` line inside a piece (after notation has started)
  * overrides the gati from there on — a khanda-gati charanam writes
  * `beat: 5` — and the next `[section]` header restores the piece's own beat.
+ * `kalai: 2` counts each tala beat twice (a varnam's two-kalai Adi): the
+ * tala strip and the click follow the counts.
  * Each whitespace-separated token is one akshara; `||` ends an avarta (a
  * closing `||` at the end of a line is optional); `|` is layout only. `′` after a letter is the upper octave, `ˌ` (U+02CC) the
  * lower. `_` is a rest: silence, unlike a karvai's held sound (a passage that
@@ -58,6 +60,9 @@ class VarisaiParser(
 
         /** The piece's own gati (`beat:` before any notation); a section header restores it. */
         var pieceBeat: Int = 1
+
+        /** Counts per tala beat (`kalai: 2` for a varnam's two-kalai Adi). */
+        var kalai: Int = 1
         var shortName: String? = null
         val avartas = mutableListOf<Avarta>()
 
@@ -113,7 +118,7 @@ class VarisaiParser(
             val d = draft ?: return
             d.closeSection()
             if (d.avartas.isEmpty()) throw VarisaiParseException(d.line, 1, "exercise ${d.number} has no notation")
-            result += Varisai(set, d.number, d.avartas.toList(), d.tala, d.raga, d.name, d.pieceBeat, d.shortName)
+            result += Varisai(set, d.number, d.avartas.toList(), d.tala, d.raga, d.name, d.pieceBeat, d.shortName, d.kalai)
         }
 
         text.lines().forEachIndexed { index, raw ->
@@ -244,6 +249,11 @@ class VarisaiParser(
                 d.beat = value
                 if (d.avartas.isEmpty()) d.pieceBeat = value
             }
+            "kalai" -> {
+                val value = value.toIntOrNull()?.takeIf { it in 1..2 }
+                    ?: throw VarisaiParseException(lineNo, column, "kalai must be 1 or 2")
+                d.kalai = value
+            }
         }
     }
 
@@ -352,7 +362,7 @@ class VarisaiParser(
         /** U+02CC MODIFIER LETTER LOW VERTICAL LINE, the mandra (lower octave) mark; shown as a dot below. */
         const val MANDRA_MARK = 'ˌ'
 
-        val HEADER = Regex("""(tala|raga|title|short|beat):(.*)""")
+        val HEADER = Regex("""(tala|raga|title|short|beat|kalai):(.*)""")
         val BEATS = listOf(1, 2, 4, 5)
         const val SWARAM_FIRST = "+swaram"
         val SECTION = Regex("""\[([^\]]+)]""")

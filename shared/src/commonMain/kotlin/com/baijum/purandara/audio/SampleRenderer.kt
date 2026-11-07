@@ -113,11 +113,11 @@ class SampleRenderer(
     /** Frames of one pass of the performance, without any release tail. */
     val performanceFrames: Int = framesOf(schedule.durationSeconds, sampleRate)
 
-    /** Frames per tala akshara (beat). */
-    private val beatFrames: Int = framesOf(schedule.settings.talaAksharaSeconds, sampleRate)
+    /** Frames per tala count (a beat at one kalai, its half at two). */
+    private val countFrames: Int = framesOf(schedule.settings.talaAksharaSeconds / schedule.varisai.kalai, sampleRate)
 
     /** Frames of count-in before the exercise starts (0 without a count-in). */
-    val countInFrames: Int = if (options.countIn) schedule.tala.aksharas * beatFrames else 0
+    val countInFrames: Int = if (options.countIn) schedule.tala.aksharas * schedule.varisai.kalai * countFrames else 0
 
     /**
      * Total frames when not looping: count-in, performance and release.
@@ -141,6 +141,7 @@ class SampleRenderer(
     private val drones: List<Voice> = if (options.drone) buildDrones() else emptyList()
     private val clickStarts: IntArray
     private val clickKriyas: Array<Kriya>
+    private val clickSoft: BooleanArray
 
     /** One click sound per hand action, so a laghu's counts sound unlike its clap. */
     private val clickWaves: Map<Kriya, FloatArray> = Kriya.entries.associateWith { clickWave(CLICK_TONES.getValue(it)) }
@@ -153,6 +154,7 @@ class SampleRenderer(
         val beats = if (options.click) schedule.beats else emptyList()
         clickStarts = IntArray(beats.size) { framesOf(beats[it].startSeconds, sampleRate) }
         clickKriyas = Array(beats.size) { beats[it].beat.kriya }
+        clickSoft = BooleanArray(beats.size) { beats[it].countInKriya > 0 }
     }
 
     /**
@@ -229,9 +231,9 @@ class SampleRenderer(
         return inPass.toDouble() / sampleRate
     }
 
-    /** 0-based beat of the count-in avarta at [frame], or null outside the count-in. */
+    /** 0-based count of the count-in cycle at [frame], or null outside the count-in. */
     fun countInBeat(frame: Long): Int? =
-        if (frame in 0 until countInFrames) (frame / beatFrames).toInt() else null
+        if (frame in 0 until countInFrames) (frame / countFrames).toInt() else null
 
     private fun mixPassVoices(out: FloatArray, at: Int, from: Int, to: Int) {
         while (firstActiveVoice < voices.size && voices[firstActiveVoice].end <= from) firstActiveVoice++
@@ -305,13 +307,14 @@ class SampleRenderer(
     }
 
     private fun mixCountIn(out: FloatArray, at: Int, from: Int, to: Int) {
-        val beats = schedule.tala.beats
-        for (b in beats.indices) {
-            val wave = clickWaves.getValue(beats[b].kriya)
-            val s = b * beatFrames
+        val counts = schedule.tala.countsAt(schedule.varisai.kalai)
+        for (c in counts.indices) {
+            val wave = clickWaves.getValue(counts[c].kriya.kriya)
+            val s = c * countFrames
             if (s >= to) break
             if (s + wave.size <= from) continue
-            for (t in max(s, from) until min(s + wave.size, to)) out[at + t - from] += wave[t - s] * COUNT_IN_CLICK_GAIN
+            val gain = if (counts[c].countInKriya > 0) SECOND_COUNT_GAIN else 1f
+            for (t in max(s, from) until min(s + wave.size, to)) out[at + t - from] += wave[t - s] * COUNT_IN_CLICK_GAIN * gain
         }
     }
 
@@ -321,7 +324,8 @@ class SampleRenderer(
             val s = clickStarts[c]
             if (s >= to) break
             if (s + wave.size <= from) continue
-            for (t in max(s, from) until min(s + wave.size, to)) out[at + t - from] += wave[t - s] * options.clickGain
+            val gain = options.clickGain * if (clickSoft[c]) SECOND_COUNT_GAIN else 1f
+            for (t in max(s, from) until min(s + wave.size, to)) out[at + t - from] += wave[t - s] * gain
         }
     }
 
@@ -396,6 +400,9 @@ class SampleRenderer(
         const val NOISE_SCALE = 9007199254740992.0 // 2^53
         const val DEFAULT_STOP_FADE_SECONDS = 0.08
         const val COUNT_IN_CLICK_GAIN = 0.4f
+
+        /** A two-kalai second count clicks softer than the kriya it follows. */
+        const val SECOND_COUNT_GAIN = 0.5f
     }
 }
 

@@ -5,6 +5,8 @@ import com.baijum.purandara.domain.Pitch
 import com.baijum.purandara.domain.schedule.PerformanceSettings
 import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
+import com.baijum.purandara.domain.varisai.VarisaiParser
+import com.baijum.purandara.domain.varisai.VarisaiSet
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.log10
@@ -273,6 +275,30 @@ class SampleRendererTest {
         assertEquals(7, r.countInBeat(7L * sr + 10))
         assertEquals(-1.0, r.passSeconds(7L * sr), 1e-9)
         assertEquals(0.5, r.passSeconds(8L * sr + sr / 2), 1e-9)
+    }
+
+    @Test
+    fun twoKalaiCountInTicksSixteenCounts() {
+        val parser = VarisaiParser()
+        val v = parser.parse("1\nkalai: 2\nS R G M | P D | N S′", VarisaiSet.SARALI).single()
+        val s = Schedule.of(v, PerformanceSettings(saHz = saC3, tempo = 60))
+        val r = SampleRenderer(levelBank, s, notesOnly.copy(countIn = true))
+        // One cycle of count-in, but 16 half-second counts.
+        assertEquals(8 * sr, r.countInFrames)
+        val out = renderAll(r)
+        for (count in 0 until 16) {
+            val start = (count * 0.5 * sr).toInt()
+            assertTrue((start until start + sr / 50).maxOf { abs(out[it]) } > 0.05f, "no click on count-in count $count")
+        }
+        // A second count is softer than the kriya it follows.
+        val kriyaPeak = (0 until sr / 50).maxOf { abs(out[it]) }
+        val secondPeak = (sr / 2 until sr / 2 + sr / 50).maxOf { abs(out[it]) }
+        assertTrue(secondPeak < kriyaPeak * 0.8, "second count $secondPeak should be softer than the kriya $kriyaPeak")
+        // The count-in tracks counts, not kriyas.
+        assertEquals(0, r.countInBeat(0))
+        assertEquals(1, r.countInBeat((0.5 * sr).toLong()))
+        assertEquals(15, r.countInBeat((7.5 * sr).toLong()))
+        assertEquals(null, r.countInBeat(8L * sr))
     }
 
     @Test

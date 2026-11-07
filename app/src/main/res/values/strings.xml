@@ -141,4 +141,6 @@
     <string name="guide_all">All notes</string>
     <string name="guide_off">Off (drone and click)</string>
     <string name="beat_of">Beat %1$d of %2$d</string>
+    <string name="count_of">Count %1$d of %2$d</string>
+    <string name="kalai_label">%1$d kalai:</string>
 </resources>

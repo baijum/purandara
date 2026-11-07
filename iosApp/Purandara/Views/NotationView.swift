@@ -257,15 +257,25 @@ struct TalaRows {
         columns = Int(varisai.rowCellsIn(avarta: Int32(index)))
     }
 
+    /// Rows from given start cells, for the tala strip's counts (a two-kalai
+    /// piece counts its beats twice; `Tala.rowStartsFor(kalai)`).
+    init(starts: [Int], columns: Int, total: Int) {
+        let ends = Array(starts.dropFirst()) + [total]
+        ranges = zip(starts, ends).map { $0..<$1 }
+        self.columns = columns
+    }
+
     /// Empty columns after row [row], so its cells line up with the longest row.
     func missing(_ row: Int) -> Int { columns - ranges[row].count }
 }
 
 /// The tala being kept, current beat filled. Separate from the notation
-/// because at higher kalas several written aksharas share one beat.
+/// because at higher kalas several written aksharas share one beat. A
+/// two-kalai piece splits each beat into its kriya and a "·" second count.
 struct TalaStripView: View {
     let beatInAvarta: Int?
     let tala: Tala
+    var kalai: Int = 1
 
     /// "clap 1 2 3, clap wave, clap wave": the marks as words.
     private var spokenBeats: String {
@@ -280,16 +290,24 @@ struct TalaStripView: View {
         }.joined()
     }
 
+    private var counts: [TalaCount] { Array(tala.countsAt(kalai: Int32(kalai))) }
+
+    private var stripRows: TalaRows {
+        TalaRows(starts: tala.rowStartsFor(cellsPerBeat: Int32(kalai)).map { $0.intValue },
+                 columns: Int(tala.rowCellsFor(cellsPerBeat: Int32(kalai))),
+                 total: counts.count)
+    }
+
     var body: some View {
-        let rows = TalaRows(tala: tala)
+        let rows = stripRows
         VStack(spacing: 6) {
             ForEach(rows.ranges.indices, id: \.self) { row in
                 let range = rows.ranges[row]
                 HStack(spacing: 6) {
                     ForEach(Array(range), id: \.self) { i in
-                        let beat = tala.beats[i]
-                        if i > range.lowerBound && beat.startsAnga { AngaBar() }
-                        Text(beat.label)
+                        let count = counts[i]
+                        if i > range.lowerBound && count.startsAnga { AngaBar() }
+                        Text(count.label)
                             .font(.headline)
                             .frame(maxWidth: .infinity, minHeight: 36)
                             .foregroundStyle(i == beatInAvarta ? Color.white : Color.primary)
@@ -308,7 +326,7 @@ struct TalaStripView: View {
         // One element whose value is read only when focused: no announcements
         // during playback, but the beat is there for anyone who asks.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("\(tala.name) tala: \(spokenBeats)"))
-        .accessibilityValue(beatInAvarta.map { Text("Beat \($0 + 1) of \(tala.beats.count)") } ?? Text(""))
+        .accessibilityLabel(Text("\(tala.name) tala\(kalai > 1 ? ", \(kalai) kalai" : ""): \(spokenBeats)"))
+        .accessibilityValue(beatInAvarta.map { Text(kalai > 1 ? "Count \($0 + 1) of \(counts.count)" : "Beat \($0 + 1) of \(tala.beats.count)") } ?? Text(""))
     }
 }
