@@ -179,6 +179,31 @@ class VarisaiParserTest {
     }
 
     @Test
+    fun restsAreSilenceAndMayStartASection() {
+        val v = parseOne(
+            """
+            1
+            tala: eka-4
+            [pallavi]
+            S R G M
+            " sa ri ga ma
+            [anupallavi]
+            _ _ G M
+            " - - ga ma
+            """,
+        )
+        assertEquals(Akshara.Rest, v.avartas[1].aksharas[0])
+        assertEquals(Akshara.Rest, v.avartas[1].aksharas[1])
+        assertEquals(listOf("-", "-", "ga", "ma"), v.avartas[1].words)
+        // The held-syllable placeholders under rests aren't read aloud.
+        assertEquals("ga ma", v.avartas[1].spokenWords())
+        assertEquals("_ _ G M", v.avartas[1].toString())
+        // An exercise's very first akshara can't be a rest.
+        val e = assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\n_ R G M") }
+        assertTrue("cannot start with a rest" in e.message!!, e.message)
+    }
+
+    @Test
     fun mandraMarkMustFollowASwaraOnce() {
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nˌS R G M") }
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nSˌˌ R G M") }

@@ -26,6 +26,7 @@ object Contour {
                 val end = (index + 1) / total
                 when (akshara) {
                     is Akshara.Karvai -> steps.lastOrNull()?.let { steps[steps.lastIndex] = it.copy(end = end) }
+                    is Akshara.Rest -> Unit // silence: a gap the next swara starts after
                     is Akshara.Swaras -> {
                         val width = (end - start) / akshara.swaras.size
                         akshara.swaras.forEachIndexed { i, swara ->

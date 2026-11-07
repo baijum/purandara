@@ -209,6 +209,7 @@ private struct AksharaCell: View {
 
     private var text: Text {
         if akshara is AksharaKarvai { return Text(",") }
+        if akshara is AksharaRest { return Text("_") }
         return swaras.enumerated().reduce(Text("")) { result, item in
             let swara = item.element
             var piece = Text(singleMandra ? swara.letter.name : swara.baseText)

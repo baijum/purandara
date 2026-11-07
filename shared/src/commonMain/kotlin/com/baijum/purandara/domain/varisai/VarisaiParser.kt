@@ -34,8 +34,10 @@ class VarisaiParseException(val line: Int, val column: Int, detail: String) :
  * `beat: 5` — and the next `[section]` header restores the piece's own beat.
  * Each whitespace-separated token is one akshara; `||` ends an avarta (a
  * closing `||` at the end of a line is optional); `|` is layout only. `′` after a letter is the upper octave, `ˌ` (U+02CC) the
- * lower. The parser never guesses: unknown characters, letters the raga
- * doesn't use, avartas of the wrong length, and a leading karvai are errors.
+ * lower. `_` is a rest: silence, unlike a karvai's held sound (a passage that
+ * starts after the beat writes rests until its first swara). The parser never
+ * guesses: unknown characters, letters the raga
+ * doesn't use, avartas of the wrong length, and a leading karvai or rest are errors.
  */
 class VarisaiParser(
     private val defaultTala: Tala = Tala.ADI,
@@ -212,8 +214,11 @@ class VarisaiParser(
             val aksharas = mutableListOf<Akshara>()
             for ((column, token) in tokens(segment, offset)) {
                 val akshara = parseToken(token, lineNo, column, d.raga)
-                if (akshara == Akshara.Karvai && isFirstLine && avartas.isEmpty() && aksharas.isEmpty()) {
-                    throw VarisaiParseException(lineNo, column, "an exercise cannot start with a karvai")
+                if (isFirstLine && avartas.isEmpty() && aksharas.isEmpty() &&
+                    (akshara == Akshara.Karvai || akshara == Akshara.Rest)
+                ) {
+                    val what = if (akshara == Akshara.Karvai) "a karvai" else "a rest"
+                    throw VarisaiParseException(lineNo, column, "an exercise cannot start with $what")
                 }
                 aksharas += akshara
             }
@@ -249,6 +254,7 @@ class VarisaiParser(
 
     private fun parseToken(token: String, lineNo: Int, column: Int, raga: Raga): Akshara {
         if (token == ",") return Akshara.Karvai
+        if (token == "_") return Akshara.Rest
         val swaras = mutableListOf<WrittenSwara>()
         token.forEachIndexed { k, c ->
             val octave = when (c) {

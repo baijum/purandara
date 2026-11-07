@@ -202,6 +202,7 @@ private fun SwaraText(akshara: Akshara, activeSlot: Int?, color: Color, size: Te
     val text = buildAnnotatedString {
         when (akshara) {
             Akshara.Karvai -> append(",")
+            Akshara.Rest -> append("_")
             is Akshara.Swaras -> akshara.swaras.forEachIndexed { slot, swara ->
                 val main = if (slot == activeSlot) SpanStyle(color = accent, fontWeight = FontWeight.Bold) else SpanStyle(color = color)
                 withStyle(main) { append(swara.baseText) }
@@ -263,6 +264,7 @@ private fun markedSpoken(avarta: Avarta, index: Int, marks: Map<MarkKey, NoteRes
         val text = when (akshara) {
             // Written several to a beat (a swarajati), holds inside a beat aren't read out.
             Akshara.Karvai -> if (varisai.cellsPerBeatIn(index) > 1) null else karvaiWord
+            Akshara.Rest -> null // silence: nothing to read
             is Akshara.Swaras -> akshara.swaras.mapIndexed { slot, swara ->
                 val mark = markWords(marks[MarkKey(index, i, slot)])
                 if (mark == null) swara.spoken() else "${swara.spoken()} $mark"

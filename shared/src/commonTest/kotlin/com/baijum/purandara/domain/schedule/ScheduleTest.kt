@@ -85,6 +85,36 @@ class ScheduleTest {
     }
 
     @Test
+    fun restIsSilenceThatHoldsNothing() {
+        // A rest neither sounds nor extends the swara before it.
+        val parser = VarisaiParser()
+        val v = parser.parse(
+            """
+            1
+            S R G M | P _ | M _ || S R G M | P D | N S′
+            """.trimIndent(),
+            VarisaiSet.SARALI,
+        ).single()
+        val s = Schedule.of(v, PerformanceSettings(saHz = saC3, tempo = 60))
+        // Pa at 4.0 lasts its own second — the rest at 5.0 is silence.
+        val pa = s.notes.first { it.position.akshara == 4 }
+        assertEquals(4.0, pa.startSeconds, 1e-9)
+        assertEquals(1.0, pa.durationSeconds, 1e-9)
+        // Ma at 6.0 also lasts one second: the rest after it extends nothing.
+        val ma = s.notes.first { it.position.akshara == 6 }
+        assertEquals(6.0, ma.startSeconds, 1e-9)
+        assertEquals(1.0, ma.durationSeconds, 1e-9)
+        // After the two rests the next avarta starts on time.
+        assertEquals(8.0, s.notes[6].startSeconds, 1e-9)
+        // The cursor still moves through the rests.
+        assertTrue(s.cursor.any { abs(it.startSeconds - 5.0) < 1e-9 && it.position.akshara == 5 })
+        assertTrue(s.cursor.any { abs(it.startSeconds - 7.0) < 1e-9 && it.position.akshara == 7 })
+        // The tala keeps its beat through the silence.
+        assertEquals(16, s.beats.size)
+        assertEquals(16.0, s.durationSeconds, 1e-9)
+    }
+
+    @Test
     fun kalasFillWholeAvartasLikeTheWorkbook() {
         // Plain scale: kala 1 = 2 avartas; kala 2 = 1 avarta;
         // kala 3 = sung twice in one avarta; kala 4 = four times in one avarta.

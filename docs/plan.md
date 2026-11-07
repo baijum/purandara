@@ -72,6 +72,7 @@ Copy the text verbatim so it can be compared line by line with the workbook.
 | A run of letters, e.g. `SR`, `S′S′`, `SRGM` | One akshara divided evenly between its swaras. |
 | A digit after a letter, e.g. `D1`, `N3` | A swara variant: overrides the raga's default for that letter. Only the variants the raga allows (`Raga.allowedVariants`) parse. |
 | `,` | Karvai: hold the previous swara through this akshara. No gap. |
+| `_` | Rest: silence for this akshara — nothing sounds and nothing is held (a passage that starts after the beat writes rests until its first swara). |
 | `\|` | Ends a laghu or druta. Layout only; the parser doesn't use it for timing. |
 | `\|\|` | Ends an avarta. Optional at the end of a line. |
 | A number on its own line | Starts a new exercise. |
@@ -98,7 +99,7 @@ Copy the text verbatim so it can be compared line by line with the workbook.
 Each exercise's tests check:
 
 - Every avarta is one cycle of the exercise's tala (8 aksharas for the Adi varisais).
-- No exercise starts with a karvai.
+- No exercise starts with a karvai or a rest.
 - All swaras are within S to S′.
 
 `|` positions are not enforced. The workbook says its bars are layout aids for
@@ -122,7 +123,7 @@ not encoded until the source book or a teacher confirms them:
 |---|---|
 | `Raga` | Maps the letters S R G M P D N to swaras. `Mayamalavagowla` = S R1 G3 M1 P D1 N3. |
 | `Tala` | Aksharas per avarta and their marks. `Adi` = `x 1 2 3 x v x v`, grouped 4 + 2 + 2. |
-| `Akshara` | Ordered list of swara slots, or a karvai. |
+| `Akshara` | Ordered list of swara slots, a karvai, or a rest. |
 | `Varisai` | Id, set, number, title, and a list of avartas of aksharas. |
 | `VarisaiParser` | Notation text → `Varisai` list, with errors that give the line and column. |
 | `VarisaiCatalog` | All sets, parsed once and in order. |

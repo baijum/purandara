@@ -170,17 +170,21 @@ class Schedule private constructor(
                     // A khanda-gati section packs more cells into the same tala beat, so the
                     // cells are shorter but the avarta still fills the same number of beats.
                     val aksharaSeconds = settings.writtenAksharaSeconds / varisai.cellsPerBeatIn(avartaIndex)
-                    avarta.aksharas.forEachIndexed { aksharaIndex, akshara ->
-                        val aksharaStart = time
-                        when (akshara) {
-                            is Akshara.Karvai -> {
-                                // A section can't start on a karvai in practice; if one did, it would be silent.
-                                if (notes.isNotEmpty()) {
-                                    val previous = notes.removeAt(notes.lastIndex)
-                                    notes += previous.copy(durationSeconds = previous.durationSeconds + aksharaSeconds)
+                        avarta.aksharas.forEachIndexed { aksharaIndex, akshara ->
+                            val aksharaStart = time
+                            when (akshara) {
+                                is Akshara.Karvai -> {
+                                    // A section can't start on a karvai in practice; if one did, it would be silent.
+                                    if (notes.isNotEmpty()) {
+                                        val previous = notes.removeAt(notes.lastIndex)
+                                        notes += previous.copy(durationSeconds = previous.durationSeconds + aksharaSeconds)
+                                    }
+                                    cursor += CursorEvent(aksharaStart, NotationPosition(rep, avartaIndex, aksharaIndex, 0))
                                 }
-                                cursor += CursorEvent(aksharaStart, NotationPosition(rep, avartaIndex, aksharaIndex, 0))
-                            }
+                                is Akshara.Rest -> {
+                                    // Silence: nothing sounds and nothing is held; the cursor still passes through.
+                                    cursor += CursorEvent(aksharaStart, NotationPosition(rep, avartaIndex, aksharaIndex, 0))
+                                }
                             is Akshara.Swaras -> {
                                 val slotSeconds = aksharaSeconds / akshara.swaras.size
                                 akshara.swaras.forEachIndexed { slot, swara ->

@@ -63,6 +63,11 @@ sealed interface Akshara {
     data object Karvai : Akshara {
         override fun toString(): String = ","
     }
+
+    /** A rest (`_`): silence — nothing sounds, and nothing is held through this akshara. */
+    data object Rest : Akshara {
+        override fun toString(): String = "_"
+    }
 }
 
 /**
@@ -96,6 +101,7 @@ data class Avarta(
         return aksharas.mapIndexedNotNull { i, a ->
             val word = when (a) {
                 Akshara.Karvai -> if (perBeat > 1) null else karvaiWord
+                Akshara.Rest -> null
                 is Akshara.Swaras -> a.spoken()
             }
             word?.let { i to it }
