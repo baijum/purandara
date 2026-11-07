@@ -179,8 +179,9 @@ private struct FreePitchTrace: View {
     let trace: [FreeTracePoint]
     let saHz: Double
 
-    private static let low = -800.0
-    private static let high = 1350.0
+    // Pure geometry constants, read from the nonisolated Canvas closure.
+    private nonisolated static let low = -800.0
+    private nonisolated static let high = 1350.0
 
     var body: some View {
         Canvas { context, size in

@@ -281,7 +281,8 @@ struct PracticeSettingsView: View {
     }
 
     /// "C3 · 1 kattai", with " +12¢" when fine-tuned.
-    static func saLabel(_ midi: Int, cents: Int = 0) -> String {
+    /// Pure formatting, also called from nonisolated text helpers (ShrutiText).
+    nonisolated static func saLabel(_ midi: Int, cents: Int = 0) -> String {
         "\(Shruti.shared.noteName(midi: Int32(midi))) · \(Shruti.shared.kattai(midi: Int32(midi))) kattai"
             + Shruti.shared.fineTuneSuffix(cents: Int32(cents))
     }
