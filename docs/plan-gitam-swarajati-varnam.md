@@ -36,6 +36,18 @@ Progress:
   section, and its last charanam is in khanda gati — new engine work: a
   section-scoped `beat: 5` override, per-avarta gati in the schedule and the
   notation rows (`cellsPerBeatIn`), and `beat: 5` allowed by the parser.
+- **V1-V3 complete (2026-11-07): the varnam stage is built.** Rests (`_`),
+  per-section speed (`(pallavi @2)`, also on section headers), the two-kalai
+  strip and click (`kalai: 2`), swara variants (already built), and all four
+  varnams (Ninnukori, Evvari Bodhana, Sami Ninne Kori, Jalajaksha) in a new
+  VARNAM set. Structure settled against rosemuralikrishnan.com: 16 cells per
+  avarta, one per two-kalai count (`beat: 2`), the purvanga sung @1 then @2,
+  the uttaranga @2 only. The letter streams of all four match their
+  shivkumar.org HTML exactly (`tools/notation/crosscheck_varnams.py`: 312,
+  317, 346 and 444 letters); the hooked-comma rests, hyphenated swaras and
+  Sami Ninne's underlined N are flagged in `Varnam.kt` for the teacher. The
+  second sources of issue #7 stay manual checks, so the varnams are
+  effectively single-source, like gitams 6-9.
 - V2 done early: **Practise one section** (`Varisai.sections`,
   `Schedule.ofSection`, keeping the piece's avarta numbers). Both players
   offer "Section: Whole piece" on pieces with sections; it plays once, or
@@ -363,9 +375,9 @@ All are in Adi tala, often counted in two kalai.
 | G1 | Mohanam, Suddha Saveri, Kalyani, Arabhi (+ Misra Chapu if needed); gitams 5–8 | jvmTest (cross-check against both sources), both apps play them, audits pass |
 | S1 | Shared: `beat:` grouping, cell-based rows, swara variants, sahityam sections | Parser, schedule and renderer tests; existing pieces unchanged |
 | S2 | Swarajatis in both apps; Bhairavi and Anandabhairavi gitams if sourced | Both apps play them with words; audits pass |
-| V1 | Shared: per-section speed, rests, two-kalai strip, per-piece Sa ceiling | Timing tests at every kala; every piece playable at every allowed Sa |
+| V1 | Shared: per-section speed, rests, two-kalai strip, per-piece Sa ceiling — **done 2026-11-07** | Timing tests at every kala; every piece playable at every allowed Sa |
 | V2 | Practise one section (both apps) | Start or loop any section; a11y tests |
-| V3 | Varnams in both apps; website guide pages | Both apps play them in two speeds; audits pass; site updated |
+| V3 | Varnams in both apps; website guide pages — **built, audits pending** | Both apps play them in two speeds; audits pass; site updated |
 
 Each milestone ends with a commit to main, an iPad install, and the docs and
 website guide updated.
@@ -393,10 +405,14 @@ varnam engine work #6.
    lessons) either derive from those two or say Triputa. The user settled it
    as Tisra Triputa (karnatik.com's listing and the collection PDF agree);
    the source's 3 + 4 chapu bars are listed as the variant.
-4. **Varnam speeds.** Should the app sing the first half in first speed then
-   second, and the second half in second speed only? Or each section in both
-   speeds?
-5. **Two-kalai counting.** Should the varnams' Adi tala strip show 16 counts
-   (two per beat), or 8 beats with the notation four swaras to a beat?
+4. **Varnam speeds.** *(Settled 2026-11-07, issue #4.)* The app sings each
+   purvanga section (pallavi, anupallavi, muktayi swaram) in first speed
+   then again in second, and the charanam and chitta swarams in second
+   speed only — the common teaching format per the research. It is
+   per-section data (`@2` in the notation), changeable without engine work.
+5. **Two-kalai counting.** *(Settled 2026-11-07, issue #5.)* Both: the
+   notation is written two cells per kriya (`beat: 2`) — the sources write
+   one cell per two-kalai count — and `kalai: 2` splits the strip and the
+   click into 16 counts per cycle.
 6. **Practise one section.** Should this land with the varnams (V2), or
    earlier, for the gitams too?

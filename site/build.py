@@ -31,6 +31,7 @@ GUIDE = [
     ("alankarams.html", "Alankarams"),
     ("gitams.html", "Gitams"),
     ("swarajatis.html", "Swarajatis"),
+    ("varnams.html", "Varnams"),
     ("sing-along.html", "Sing along"),
     ("shruti-practice.html", "Shruti practice"),
     ("find-my-sa.html", "Find my Sa"),

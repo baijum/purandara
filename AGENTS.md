@@ -8,11 +8,10 @@ of Carnatic music.
 the varisai player (`docs/plan.md`), sing-along with pitch feedback
 (`docs/plan-pitch-monitor.md`), the landing page (`docs/plan-landing.md`), and
 Shruti practice, strictness and choosing Sa (`docs/plan-shruti.md`), the
-alankarams and Malahari gitams (`docs/plan-alankaram-gitam.md`), and, in
-progress, more gitams, swarajatis and varnams
-(`docs/plan-gitam-swarajati-varnam.md`: Analekara, Rara Venu and practise one
-section are built; the rest waits on a second notation source and decisions
-tracked in GitHub issues #1–#6).
+alankarams and Malahari gitams (`docs/plan-alankaram-gitam.md`), and the
+gitams, swarajatis and varnams (`docs/plan-gitam-swarajati-varnam.md`: the
+varnam stage is built — rests, per-section speed, the two-kalai strip and
+all four varnams; they wait on their second-source checks, issue #7).
 New features are planned and discussed before they are built; do not add
 features speculatively.
 
@@ -69,7 +68,7 @@ features speculatively.
 | Where | What |
 |---|---|
 | `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
-| `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt`, `Swarajati.kt`, each with its sources and fixes in the header); `WordsDisplay` |
+| `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt`, `Swarajati.kt`, `Varnam.kt`, each with its sources and fixes in the header); `WordsDisplay` |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
 | `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` + `FindSaGuide` (Find my Sa) |
 | `shared/.../practice/` | `PracticeHistory`: practised / best sing-along per exercise, continue and next up (stored on device as JSON) |
@@ -86,7 +85,7 @@ features speculatively.
 | `iosApp/Purandara/Audio/PitchListener.swift` | Mic tap buffers (on the player's engine, for echo cancellation) → windows → pitch frames; debug synthetic singer. Used by `SingAlongEngine`, Shruti practice and Find my Sa |
 | `shared/.../singalong/Display.kt` | Swara labels (R₁, S′) and mark glyphs shared by both apps |
 | `shared/.../singalong/PitchLane.kt` | The sing-along pitch lane's swara lines and range, from the piece's own notes |
-| `tools/notation/crosscheck_gitams.py`, `crosscheck_swarajatis.py` | Compare `Gitam.kt` / `Swarajati.kt` with their web sources (not part of the build) |
+| `tools/notation/crosscheck_gitams.py`, `crosscheck_swarajatis.py`, `crosscheck_varnams.py` | Compare `Gitam.kt` / `Swarajati.kt` / `Varnam.kt` with their web sources (not part of the build) |
 | `shared/src/iosMain/.../audio/FloatBridge.kt` | Bulk float copies between Swift buffers and Kotlin arrays |
 | `site/` | The end-user website and guide (https://baijum.github.io/purandara/): `pages/` HTML fragments with front matter, `templates/`, `static/` (CSS, the hero script, self-hosted fonts, app screenshots), `build.py` (standard library only) → `site/_build`. Published to GitHub Pages by `.github/workflows/site.yml`. Keep the guide in step with the app when features change. |
 
