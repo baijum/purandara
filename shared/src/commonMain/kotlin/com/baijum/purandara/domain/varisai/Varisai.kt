@@ -75,11 +75,14 @@ sealed interface Akshara {
  * this avarta starts ("Pallavi", "Charanam 1"; null when it continues one),
  * and [words] holds the sahityam: one syllable per akshara, `-` where the
  * previous syllable is held, two joined by `·` when an akshara has two swaras.
+ * [speed] is the playback speed of this sung avarta (a `(pallavi @2)` repeat
+ * copies carry 2): the cells play twice as fast while the tala keeps its beat.
  */
 data class Avarta(
     val aksharas: List<Akshara>,
     val section: String? = null,
     val words: List<String>? = null,
+    val speed: Int = 1,
 ) {
     init {
         require(words == null || words.size == aksharas.size) { "words must match the aksharas" }

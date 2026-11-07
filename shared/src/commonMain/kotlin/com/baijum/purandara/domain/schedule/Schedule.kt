@@ -11,6 +11,8 @@ import com.baijum.purandara.domain.varisai.Akshara
 import com.baijum.purandara.domain.varisai.SectionSpan
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.WrittenSwara
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /** How to perform an exercise. Its raga and tala come from the exercise itself. */
 data class PerformanceSettings(
@@ -99,6 +101,8 @@ class Schedule private constructor(
     val beats: List<BeatEvent>,
     val cursor: List<CursorEvent>,
     val durationSeconds: Double,
+    /** When each piece avarta starts within one pass (piece-indexed; one extra entry ends the last played one). */
+    private val avartaStarts: List<Double>,
 ) {
     /** The exercise's tala. */
     val tala: Tala get() = varisai.tala
@@ -109,14 +113,17 @@ class Schedule private constructor(
     /** Seconds per written akshara (notation cell): a swarajati writes several to a beat. */
     val aksharaSeconds: Double get() = settings.writtenAksharaSeconds / varisai.beat
 
-    /** Seconds per written avarta (one row block of notation). */
+    /** Seconds per written avarta (one row block of notation) at the piece's own gati and speed. */
     val avartaSeconds: Double get() = aksharaSeconds * varisai.tala.aksharas * varisai.beat
 
     /** The section played, or null for the whole piece. */
     val section: SectionSpan? get() = varisai.sections.firstOrNull { it.firstAvarta..it.lastAvarta == avartaRange }
 
     /** When avarta [avarta] (a piece-wide index) starts within one pass. */
-    fun avartaStartSeconds(avarta: Int): Double = (avarta - avartaRange.first) * avartaSeconds
+    fun avartaStartSeconds(avarta: Int): Double = avartaStarts[avarta]
+
+    /** Seconds one pass spends in avarta [avarta] (a piece-wide index): a @2 avarta takes half a @1's. */
+    fun avartaSecondsIn(avarta: Int): Double = avartaStarts[avarta + 1] - avartaStarts[avarta]
 
     /** Notation position sounding at [seconds], or null before the start or after the end. */
     fun cursorAt(seconds: Double): NotationPosition? {
@@ -145,6 +152,9 @@ class Schedule private constructor(
         /** Tolerance for float rounding when a lookup lands exactly on an event. */
         private const val TIME_EPSILON = 1e-9
 
+        /** Tolerance for float rounding when whole tala cycles are counted. */
+        private const val CYCLES_EPSILON = 1e-9
+
         /**
          * Builds the schedule.
          *
@@ -159,32 +169,39 @@ class Schedule private constructor(
 
         private fun of(varisai: Varisai, settings: PerformanceSettings, range: IntRange): Schedule {
             require(!range.isEmpty() && range.first >= 0 && range.last < varisai.avartas.size) { "avartas $range outside the piece" }
-            val reps = repetitionsToFillAvartas(range.count(), settings)
+            // A tala cycle is filled by a written avarta at @1, by two at @2, and so on —
+            // whatever the gati, which packs more cells into the same tala beat.
+            val cyclesPerPass = range.sumOf { 1.0 / (settings.aksharasPerBeat * varisai.avartas[it].speed) }
+            val reps = repetitionsToFillCycles(cyclesPerPass)
             val notes = mutableListOf<NoteEvent>()
             val cursor = mutableListOf<CursorEvent>()
+            val avartaStarts = DoubleArray(varisai.avartas.size + 1)
             var time = 0.0 // seconds elapsed
 
             for (rep in 0 until reps) {
                 for (avartaIndex in range) {
+                    if (rep == 0) avartaStarts[avartaIndex] = time
                     val avarta = varisai.avartas[avartaIndex]
-                    // A khanda-gati section packs more cells into the same tala beat, so the
-                    // cells are shorter but the avarta still fills the same number of beats.
-                    val aksharaSeconds = settings.writtenAksharaSeconds / varisai.cellsPerBeatIn(avartaIndex)
-                        avarta.aksharas.forEachIndexed { aksharaIndex, akshara ->
-                            val aksharaStart = time
-                            when (akshara) {
-                                is Akshara.Karvai -> {
-                                    // A section can't start on a karvai in practice; if one did, it would be silent.
-                                    if (notes.isNotEmpty()) {
-                                        val previous = notes.removeAt(notes.lastIndex)
-                                        notes += previous.copy(durationSeconds = previous.durationSeconds + aksharaSeconds)
-                                    }
-                                    cursor += CursorEvent(aksharaStart, NotationPosition(rep, avartaIndex, aksharaIndex, 0))
+                    // A khanda-gati section packs more cells into the same tala beat, and a
+                    // @2 section plays twice as fast: the cells are shorter but the tala
+                    // beats keep their length.
+                    val aksharaSeconds =
+                        settings.writtenAksharaSeconds / (varisai.cellsPerBeatIn(avartaIndex) * avarta.speed)
+                    avarta.aksharas.forEachIndexed { aksharaIndex, akshara ->
+                        val aksharaStart = time
+                        when (akshara) {
+                            is Akshara.Karvai -> {
+                                // A section can't start on a karvai in practice; if one did, it would be silent.
+                                if (notes.isNotEmpty()) {
+                                    val previous = notes.removeAt(notes.lastIndex)
+                                    notes += previous.copy(durationSeconds = previous.durationSeconds + aksharaSeconds)
                                 }
-                                is Akshara.Rest -> {
-                                    // Silence: nothing sounds and nothing is held; the cursor still passes through.
-                                    cursor += CursorEvent(aksharaStart, NotationPosition(rep, avartaIndex, aksharaIndex, 0))
-                                }
+                                cursor += CursorEvent(aksharaStart, NotationPosition(rep, avartaIndex, aksharaIndex, 0))
+                            }
+                            is Akshara.Rest -> {
+                                // Silence: nothing sounds and nothing is held; the cursor still passes through.
+                                cursor += CursorEvent(aksharaStart, NotationPosition(rep, avartaIndex, aksharaIndex, 0))
+                            }
                             is Akshara.Swaras -> {
                                 val slotSeconds = aksharaSeconds / akshara.swaras.size
                                 akshara.swaras.forEachIndexed { slot, swara ->
@@ -198,11 +215,13 @@ class Schedule private constructor(
                         time += aksharaSeconds
                     }
                 }
+                if (rep == 0) avartaStarts[range.last + 1] = time
             }
 
-            // Every avarta fills tala.aksharas / aksharasPerBeat beats, whatever its gati.
-            val totalBeats = reps * range.count() * varisai.tala.aksharas / settings.aksharasPerBeat
+            // The beats keep the tala's tempo across the whole performance: one
+            // tala akshara apart, in whole cycles, whatever the gatis and speeds.
             val tala = varisai.tala
+            val totalBeats = (reps * cyclesPerPass * tala.aksharas).roundToInt()
             val beats = List(totalBeats) { i ->
                 val inAvarta = i % tala.aksharas
                 BeatEvent(i * settings.talaAksharaSeconds, i, inAvarta, tala.beats[inAvarta])
@@ -216,17 +235,14 @@ class Schedule private constructor(
                 beats = beats,
                 cursor = cursor,
                 durationSeconds = time,
+                avartaStarts = avartaStarts.toList(),
             )
         }
 
         /** Smallest number of passes whose avartas fill whole tala cycles. */
-        fun repetitionsToFillAvartas(varisai: Varisai, settings: PerformanceSettings): Int =
-            repetitionsToFillAvartas(varisai.avartas.size, settings)
-
-        private fun repetitionsToFillAvartas(avartaCount: Int, settings: PerformanceSettings): Int {
-            require(avartaCount > 0) { "exercise has no aksharas" }
+        private fun repetitionsToFillCycles(cyclesPerPass: Double): Int {
             var reps = 1
-            while ((avartaCount * reps) % settings.aksharasPerBeat != 0) reps++
+            while (abs(reps * cyclesPerPass - (reps * cyclesPerPass).roundToInt()) > CYCLES_EPSILON) reps++
             return reps
         }
 

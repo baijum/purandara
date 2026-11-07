@@ -27,6 +27,11 @@ class VarisaiParseException(val line: Int, val column: Int, detail: String) :
  * `(pallavi)` sings that section again (expanded here, so playback and
  * scoring follow the sung order), and a line starting with `"` gives the
  * words for the notation line above it, one token per akshara.
+ * A section or a repeat may carry a playback speed — `[charanam @2]` or
+ * `(pallavi @2)`: its avartas play speed-times as fast while the tala keeps
+ * its beat, so a @2 section packs speed written avartas into one tala cycle
+ * (its avarta count must fill whole cycles; a varnam's purvanga is sung @1
+ * then repeated @2, its uttaranga written @2).
  * `beat: <n>` writes n aksharas (cells) to each tala beat, as swarajatis are
  * written; `[charanam 1 +swaram]` sings that section first as swaras, then
  * with its words. A `beat:` line inside a piece (after notation has started)
@@ -62,11 +67,26 @@ class VarisaiParser(
         /** The open section's key and first avarta, and the label for its first avarta. */
         var openSection: Pair<String, Int>? = null
         var openSwaramFirst = false
+        var openLine: Int = 0
+
+        /** The open section's playback speed (`[charanam @2]`): its avartas play speed-times as fast. */
+        var openSpeed: Int = 1
         var pendingLabel: String? = null
         val sections = mutableMapOf<String, IntRange>()
 
         fun closeSection() {
             val (key, start) = openSection ?: return
+            val range = start until avartas.size
+            if (openSpeed > 1) {
+                if (range.count() % openSpeed != 0) {
+                    throw VarisaiParseException(
+                        openLine,
+                        2,
+                        "section [$key] @${openSpeed} needs its ${range.count()} avartas to fill whole cycles",
+                    )
+                }
+                for (i in range) avartas[i] = avartas[i].copy(speed = openSpeed)
+            }
             if (openSwaramFirst && start < avartas.size) {
                 // Sung first as swaras (no words), then with the words.
                 val withWords = avartas.subList(start, avartas.size).toList()
@@ -81,6 +101,7 @@ class VarisaiParser(
             }
             openSection = null
             openSwaramFirst = false
+            openSpeed = 1
         }
     }
 
@@ -140,7 +161,8 @@ class VarisaiParser(
 
     private fun startSection(d: Draft, spec: String, lineNo: Int) {
         val swaramFirst = spec.endsWith(SWARAM_FIRST)
-        val key = spec.removeSuffix(SWARAM_FIRST).trim()
+        val rest = spec.removeSuffix(SWARAM_FIRST).trim()
+        val (key, speed) = speedSpec(rest, lineNo)
         if (key in d.sections || d.openSection?.first == key) {
             throw VarisaiParseException(lineNo, 2, "section [$key] appears twice")
         }
@@ -148,17 +170,45 @@ class VarisaiParser(
         d.beat = d.pieceBeat // a section's `beat:` override ends with the section
         d.openSection = key to d.avartas.size
         d.openSwaramFirst = swaramFirst
+        d.openSpeed = speed
+        d.openLine = lineNo
         d.pendingLabel = label(key)
         d.lastLine = null
     }
 
-    private fun repeatSection(d: Draft, key: String, lineNo: Int) {
+    private fun repeatSection(d: Draft, spec: String, lineNo: Int) {
         d.closeSection()
+        val (key, speed) = speedSpec(spec, lineNo)
         val range = d.sections[key] ?: throw VarisaiParseException(lineNo, 2, "no section [$key] to repeat")
         if (range.isEmpty()) throw VarisaiParseException(lineNo, 2, "section [$key] has no notation")
-        range.forEachIndexed { k, i -> d.avartas += d.avartas[i].copy(section = if (k == 0) label(key) else null) }
+        requireWholeCycles(key, range, speed, lineNo)
+        range.forEachIndexed { k, i ->
+            d.avartas += d.avartas[i].copy(section = if (k == 0) label(key) else null, speed = speed)
+        }
         d.pendingLabel = null
         d.lastLine = null
+    }
+
+    /** `"charanam 1 @2"` → key "charanam 1" and speed 2; `"charanam 1"` → speed 1. */
+    private fun speedSpec(spec: String, lineNo: Int): Pair<String, Int> {
+        val match = SPEED.matchEntire(spec) ?: throw VarisaiParseException(lineNo, 2, "bad section \"[$spec]\"")
+        val key = match.groupValues[1].trim()
+        val speed = match.groupValues[2].takeIf { it.isNotEmpty() }?.let {
+            it.toIntOrNull()?.takeIf { n -> n in 1..4 }
+                ?: throw VarisaiParseException(lineNo, spec.indexOf('@') + 3, "speed must be 1..4")
+        } ?: 1
+        return key to speed
+    }
+
+    /** A section at @s packs s written avartas into one tala cycle; a partial cycle can't be played. */
+    private fun requireWholeCycles(key: String, range: IntRange, speed: Int, lineNo: Int) {
+        if (speed > 1 && range.count() % speed != 0) {
+            throw VarisaiParseException(
+                lineNo,
+                2,
+                "section [$key] @${speed} needs its ${range.count()} avartas to fill whole cycles",
+            )
+        }
     }
 
     private fun words(d: Draft, raw: String, lineNo: Int) {
@@ -307,6 +357,9 @@ class VarisaiParser(
         const val SWARAM_FIRST = "+swaram"
         val SECTION = Regex("""\[([^\]]+)]""")
         val REPEAT = Regex("""\(([^)]+)\)""")
+
+        /** A section key with an optional playback speed: "pallavi" or "pallavi @2". */
+        val SPEED = Regex("""([^@]+?)(?:\s*@(\d+))?${'$'}""")
 
         /** Starts a line of words (sahityam). */
         const val WORDS_MARK = '"'

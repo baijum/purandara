@@ -84,6 +84,7 @@ Copy the text verbatim so it can be compared line by line with the workbook.
 | `beat: <n>` after the number | n aksharas (cells) to each tala beat (1, 2, 4 or 5), as swarajatis are written. |
 | `beat: <n>` inside a piece | Overrides the gati from there on (a khanda-gati charanam writes `beat: 5`); the next `[section]` header restores the piece's own beat. |
 | `[name +swaram]` | The section is sung first as swaras (no words), then with its words. |
+| `@n` in a section or repeat, e.g. `[charanam @2]`, `(pallavi @2)` | Playback speed: the section's avartas play n-times as fast while the tala keeps its beat; n written avartas fill one tala cycle at @n, so an @2 section needs an even avarta count. A varnam's purvanga is sung @1 then repeated @2, its uttaranga written @2. |
 | `[pallavi]` | Starts a named section; its first avarta shows the name as a heading. |
 | `(pallavi)` | Sings that section again; expanded by the parser, so playback, scoring and display follow the sung order. |
 | A line starting with `"` | Words for the notation line above: one token per akshara, `-` where a syllable is held, two joined by `·` when an akshara has two swaras. |

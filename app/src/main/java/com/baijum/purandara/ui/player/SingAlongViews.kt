@@ -60,7 +60,8 @@ fun PitchLane(
 ) {
     val colors = MaterialTheme.colorScheme
     val measurer = rememberTextMeasurer()
-    val avartaSeconds = schedule.avartaSeconds
+    // A @2 avarta takes half a cycle, so each avarta gets its own span.
+    val avartaSeconds = if (avarta != null) schedule.avartaSecondsIn(avarta) else schedule.avartaSeconds
     val reading = if (countingIn) stringResource(R.string.count_in_quiet) else liveText(live)
     val label = stringResource(R.string.pitch_lane)
     val scale = remember(schedule) { PitchLane(schedule) }

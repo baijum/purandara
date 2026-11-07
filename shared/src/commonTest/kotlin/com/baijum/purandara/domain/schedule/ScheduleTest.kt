@@ -115,6 +115,50 @@ class ScheduleTest {
     }
 
     @Test
+    fun varnamSpeedsKeepWholeCyclesAtEveryKala() {
+        // A varnam's shape: the pallavi sung @1 then repeated @2, and a @2
+        // second half — six written avartas filling four tala cycles.
+        val parser = VarisaiParser()
+        val v = parser.parse(
+            """
+            1
+            [pallavi]
+            S R G M P D N S′ || S′ N D P M G R S ||
+            " sa ri ga ma pa da ni sa || sa ni da pa ma ga ri sa ||
+            (pallavi @2)
+            [muktayi @2]
+            S R G M P D N S′ || S′ N D P M G R S ||
+            " - - - - - - - - || - - - - - - - - ||
+            """.trimIndent(),
+            VarisaiSet.SARALI,
+        ).single()
+        for (kala in 1..4) {
+            val s = Schedule.of(v, PerformanceSettings(saHz = saC3, tempo = 60, kala = kala))
+            // Whole cycles: 4 cycles per pass at kala 1, halving per kala; from
+            // kala 4 the piece repeats to fill its last cycle, as the workbook has.
+            val cycles = 4.0 / (1 shl (kala - 1))
+            var reps = 1
+            while (reps * cycles % 1.0 != 0.0) reps++
+            assertEquals(reps, s.repetitions, "kala $kala repetitions")
+            assertEquals(reps * cycles * 8.0, s.durationSeconds, 1e-9, "kala $kala duration")
+            assertEquals(reps * cycles * 8.0, s.beats.size.toDouble(), 1e-9, "kala $kala beats")
+            // Beats land on the tala, not on the notation: one per tala akshara, always.
+            assertEquals(listOf(0.0, 1.0, 2.0, 3.0), s.beats.take(4).map { it.startSeconds }, "kala $kala")
+        }
+        val s = Schedule.of(v, PerformanceSettings(saHz = saC3, tempo = 60))
+        // The @1 pallavi takes 8 seconds an avarta; the @2 repeats take 4.
+        assertEquals(8.0, s.avartaSecondsIn(0), 1e-9)
+        assertEquals(4.0, s.avartaSecondsIn(2), 1e-9)
+        assertEquals(8.0, s.avartaSeconds, 1e-9)
+        // Starts: pallavi 0-8-16, its repeat 16-20-24, muktayi 24-28-32.
+        assertEquals(listOf(0.0, 8.0, 16.0, 20.0, 24.0, 28.0, 32.0), (0..6).map { s.avartaStartSeconds(it) })
+        // A @2 avarta's notes last half a second each (one swara per cell).
+        val fast = s.notes.first { it.position.avarta == 2 }
+        assertEquals(0.5, fast.durationSeconds, 1e-9)
+        assertEquals(16.0, fast.startSeconds, 1e-9)
+    }
+
+    @Test
     fun kalasFillWholeAvartasLikeTheWorkbook() {
         // Plain scale: kala 1 = 2 avartas; kala 2 = 1 avarta;
         // kala 3 = sung twice in one avarta; kala 4 = four times in one avarta.

@@ -204,6 +204,59 @@ class VarisaiParserTest {
     }
 
     @Test
+    fun speedsRideOnSectionsAndRepeats() {
+        val v = parseOne(
+            """
+            1
+            tala: eka-4
+            [pallavi]
+            S R G M || P D N S′ ||
+            " sa ri ga ma || pa da ni sa ||
+            (pallavi @2)
+            [charanam @2]
+            S R G M || P D N S′ ||
+            " sa ri ga ma || pa da ni sa ||
+            """,
+        )
+        // The written pallavi stays at @1; its repeat and the charanam are @2.
+        assertEquals(listOf(1, 1, 2, 2, 2, 2), v.avartas.map { it.speed })
+        assertEquals(
+            listOf("Pallavi", null, "Pallavi", null, "Charanam", null),
+            v.avartas.map { it.section },
+        )
+        // A @2 section must fill whole cycles: two avartas, not three.
+        val odd = assertFailsWith<VarisaiParseException> {
+            parseOne(
+                """
+                1
+                tala: eka-4
+                [charanam @2]
+                S R G M || P D N S′ || S R G M ||
+                """,
+            )
+        }
+        assertTrue("@2 needs its 3 avartas" in odd.message!!, odd.message)
+        val repeatedOdd = assertFailsWith<VarisaiParseException> {
+            parseOne(
+                """
+                1
+                tala: eka-4
+                [pallavi]
+                S R G M || P D N S′ || S R G M ||
+                (pallavi @2)
+                """,
+            )
+        }
+        assertTrue("@2 needs its 3 avartas" in repeatedOdd.message!!, repeatedOdd.message)
+        assertFailsWith<VarisaiParseException> {
+            parseOne("1\ntala: eka-4\n[charanam @5]\nS R G M || P D N S′ || S R G M || S R G M ||")
+        }
+        assertFailsWith<VarisaiParseException> {
+            parseOne("1\ntala: eka-4\n[charanam @x]\nS R G M || P D N S′ || S R G M || S R G M ||")
+        }
+    }
+
+    @Test
     fun mandraMarkMustFollowASwaraOnce() {
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nˌS R G M") }
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: eka-4\nSˌˌ R G M") }
