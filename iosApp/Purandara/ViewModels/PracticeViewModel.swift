@@ -39,6 +39,8 @@ struct SingAlongUI {
     var micDenied = false
     var onSpeaker = true
     var live: SwaraReading?
+    /// Which whole-performance loop the live readings and trace are from (0-based); nil during the count-in.
+    var pass: Int?
     var trace: [TraceSample] = []
     var marks: [MarkKey: NoteResult] = [:]
     /// Last completed pass (1-based) and its summary.
@@ -180,6 +182,7 @@ final class PracticeViewModel: ObservableObject {
         self.schedule = schedule
         self.renderer = renderer
         singAlong.live = nil
+        singAlong.pass = nil
         singAlong.trace = []
         singAlong.marks = [:]
         singAlong.lastSummary = nil
@@ -569,6 +572,9 @@ final class PracticeViewModel: ObservableObject {
         guard which === renderer else { return }
         let live = outcome.live
         singAlong.live = live.reading
+        // Same counter the trace is tagged with: the whole-performance
+        // loop, reported even while no voice is heard (issue #12).
+        singAlong.pass = live.pass.map { Int(truncating: $0) }
         if let reading = live.reading, let pass = live.pass, let t = live.secondsInPass {
             singAlong.trace.append(TraceSample(
                 pass: Int(truncating: pass), secondsInPass: Double(truncating: t),

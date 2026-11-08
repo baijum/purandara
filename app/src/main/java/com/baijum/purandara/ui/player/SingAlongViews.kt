@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baijum.purandara.R
 import com.baijum.purandara.domain.Note
+import com.baijum.purandara.domain.schedule.NotationPosition
 import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.singalong.Attention
 import com.baijum.purandara.singalong.Display
@@ -47,11 +48,15 @@ import kotlin.math.roundToInt
  * The pitch lane: the current avarta's expected swaras as a staircase, the
  * sung pitch as a trace over them, and swara lines S R G M P D N S′. One
  * accessibility node whose state is the live reading (read when focused).
+ *
+ * [position] places the window: the staircase follows its avarta and
+ * internal repetition; [pass] selects the whole-performance loop whose trace
+ * to draw — the same counter [TraceSample.pass] is tagged with (issue #12).
  */
 @Composable
 fun PitchLane(
     schedule: Schedule,
-    avarta: Int?,
+    position: NotationPosition?,
     pass: Int?,
     trace: List<TraceSample>,
     live: SwaraReading?,
@@ -61,7 +66,7 @@ fun PitchLane(
     val colors = MaterialTheme.colorScheme
     val measurer = rememberTextMeasurer()
     // A @2 avarta takes half a cycle, so each avarta gets its own span.
-    val avartaSeconds = if (avarta != null) schedule.avartaSecondsIn(avarta) else schedule.avartaSeconds
+    val avartaSeconds = if (position != null) schedule.avartaSecondsIn(position.avarta) else schedule.avartaSeconds
     val reading = if (countingIn) stringResource(R.string.count_in_quiet) else liveText(live)
     val label = stringResource(R.string.pitch_lane)
     val scale = remember(schedule) { PitchLane(schedule) }
@@ -73,10 +78,19 @@ fun PitchLane(
     }) {
         val laneColors = LaneColors(colors.outlineVariant, colors.onSurfaceVariant, colors.primary, colors.secondary, colors.error)
         Canvas(Modifier.fillMaxWidth().height(LANE_HEIGHT.dp)) {
-            val lane = Lane(size.width, size.height, sa, scale, avarta?.let { schedule.avartaStartSeconds(it) } ?: 0.0, avartaSeconds)
+            // The current occurrence of the avarta (repetitions repeat the whole
+            // range to fill cycles), and the trace of the loop being heard.
+            val lane = Lane(
+                size.width, size.height, sa, scale,
+                position?.let { schedule.avartaStartSeconds(it.avarta, it.repetition) } ?: 0.0, avartaSeconds,
+            )
             drawSwaraLines(lane, scale.lines, laneColors, measurer)
-            val a = avarta ?: return@Canvas
-            drawStaircase(lane, schedule.notes.filter { it.position.avarta == a }, laneColors)
+            val a = position?.avarta ?: return@Canvas
+            drawStaircase(
+                lane,
+                schedule.notes.filter { it.position.avarta == a && it.position.repetition == position.repetition },
+                laneColors,
+            )
             drawTrace(lane, trace.filter { it.pass == (pass ?: 0) && lane.covers(it.secondsInPass) }, laneColors)
         }
         Text(reading, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 4.dp))

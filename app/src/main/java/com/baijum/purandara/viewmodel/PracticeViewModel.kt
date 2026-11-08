@@ -320,7 +320,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         _state.update {
             it.copy(
                 playback = PlaybackState(playing = true, repetitions = schedule.repetitions),
-                singAlong = it.singAlong.copy(onSpeaker = onSpeaker, live = null, trace = emptyList(), marks = emptyMap(), lastSummary = null),
+                singAlong = it.singAlong.copy(onSpeaker = onSpeaker, live = null, pass = null, trace = emptyList(), marks = emptyMap(), lastSummary = null),
             )
         }
         val singAlong = settings.singAlong && (_state.value.singAlong.micPermitted || debugSyntheticSingerCents != null)
@@ -396,6 +396,9 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             s.copy(
                 singAlong = s.singAlong.copy(
                     live = live.reading,
+                    // Same counter the trace is tagged with: the whole-performance
+                    // loop, reported even while no voice is heard (issue #12).
+                    pass = live.pass,
                     trace = trace,
                     marks = s.singAlong.marks + outcome.newMarks.toMarkEntries(),
                     lastSummary = outcome.completedPass?.let { it.pass + 1 to it.summary } ?: s.singAlong.lastSummary,

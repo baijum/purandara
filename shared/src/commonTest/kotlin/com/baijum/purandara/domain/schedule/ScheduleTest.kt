@@ -428,4 +428,18 @@ class SchedulePositionTest {
         assertEquals(NotationPosition(0, 0, 0, 1), j.cursorAt(0.3)) // 4 swaras per beat: S S | R R
         assertEquals(NotationPosition(0, 0, 1, 0), j.cursorAt(0.5))
     }
+
+    @Test
+    fun avartaStartSecondsFollowsTheRepetition() {
+        // Two repetitions fill one whole avarta of beats (issue #12): the
+        // occurrence-aware start must land in the second one, not the first.
+        val line = List(16) { "S" }.joinToString(" ")
+        val v = VarisaiParser().parse("1\nbeat: 2\n$line", VarisaiSet.SARALI).single()
+        val s = Schedule.of(v, PerformanceSettings(saHz = Pitch.midiToHz(48), tempo = 60, kala = 2))
+        assertEquals(2, s.repetitions)
+        assertEquals(s.avartaStartSeconds(0), s.avartaStartSeconds(0, 0), 1e-9)
+        assertEquals(s.avartaStartSeconds(0) + s.durationSeconds / 2, s.avartaStartSeconds(0, 1), 1e-9)
+        val second = s.avartaStartSeconds(0, 1)
+        assertEquals(NotationPosition(1, 0, 0, 0), s.cursorAt(second))
+    }
 }
