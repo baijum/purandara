@@ -101,6 +101,9 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     private var schedule: Schedule? = null
     private var ticker: Job? = null
     private var engine: SingAlongEngine? = null
+
+    /** Read on the mic thread by active listeners ([PitchListener] providers); Main writes it. */
+    @Volatile
     private var supervisor: NeuralPitchSupervisor? = null
     private var supervisorRequested = false
 
@@ -233,7 +236,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
                 micSource(onSpeaker && settings.echoCancellation) { nanos ->
                     player.outputFrameAt(nanos)?.takeIf { it >= ShrutiSession.DEFAULT_ROOM_CHECK_SECONDS * r.sampleRate }?.let { settings.saHz }
                 },
-                supervisor,
+                { supervisor },
                 timeOf = { nanos -> player.outputFrameAt(nanos)?.takeIf { it >= 0 }?.let { it.toDouble() / r.sampleRate } },
             ) { frame ->
                 val outcome = session.onFrame(frame)
@@ -272,7 +275,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         loadSupervisor()
         listener = PitchListener(
             micSource(echoCancellation = false) { nanos -> if ((nanos - start) / NANOS < FAKE_LOW_SECONDS) LOW_DEMO_HZ else HIGH_DEMO_HZ },
-            supervisor,
+            { supervisor },
             timeOf = { nanos -> (nanos - start) / NANOS },
         ) { frame ->
             val hz = frame.frequencyHz?.takeIf { frame.rms >= BleedModel.MIN_VOICE_RMS }
@@ -304,12 +307,16 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun play() {
+        // Stop the sounding session first: a rejected restart (no selection,
+        // samples not loaded, Sa outside the piece's range) must still silence
+        // the previous one instead of leaving it playing with Stop disabled
+        // (issue #13).
+        stop()
         val varisai = _state.value.selected ?: return
         val bank = bank ?: return
         val settings = _state.value.settings
         // The player offers a playable Sa instead; never build a schedule the samples can't play.
         if (settings.saMidi !in varisai.playableSaMidis) return
-        stop()
         val section = _state.value.section
         val schedule = section?.let { Schedule.ofSection(varisai, settings.performance(), it) } ?: Schedule.of(varisai, settings.performance())
         val r = SampleRenderer(bank, schedule, settings.renderOptions())
@@ -325,7 +332,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
         val singAlong = settings.singAlong && (_state.value.singAlong.micPermitted || debugSyntheticSingerCents != null)
         val newEngine = if (singAlong) {
-            SingAlongEngine(micSource(onSpeaker && settings.echoCancellation, exerciseTarget(r, schedule)), player, r, SingAlongEngine.sessionFor(r, schedule, settings.strictness), supervisor) { outcome ->
+            SingAlongEngine(micSource(onSpeaker && settings.echoCancellation, exerciseTarget(r, schedule)), player, r, SingAlongEngine.sessionFor(r, schedule, settings.strictness), { supervisor }) { outcome ->
                 mainHandler.post { onOutcome(r, outcome) }
             }.also { it.attach() }
         } else {

@@ -77,7 +77,9 @@ struct PlayerView: View {
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!viewModel.canPlay || !saPlayable)
+            // Stop stays available even when the Sa is out of range or the samples
+            // are still loading; only starting playback needs those (issue #13).
+            .disabled(!viewModel.playback.playing && (!viewModel.canPlay || !saPlayable))
             .padding()
             // Opaque: controls scrolling behind a translucent bar fail contrast checks.
             .background(Color(uiColor: .systemBackground))

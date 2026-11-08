@@ -168,7 +168,9 @@ final class PracticeViewModel: ObservableObject {
     func play(_ varisai: Varisai) {
         guard let bank else { return }
         // The player offers a playable Sa instead; never build a schedule the samples can't play.
-        guard saPlayable(varisai) else { return }
+        // A rejected restart must still silence the previous session instead of
+        // leaving it playing with Stop disabled (issue #13).
+        guard saPlayable(varisai) else { stop(); return }
         stopTimer()
         let schedule = practiceSection.map { Schedule.companion.ofSection(varisai: varisai, settings: settings.performance(), section: $0) }
             ?? Schedule.companion.of(varisai: varisai, settings: settings.performance())
