@@ -150,6 +150,25 @@ class SaFinderTest {
         assertNotNull(caught)
         assertEquals(55, Pitch.nearestMidi(caught))
     }
+
+    @Test
+    fun aClampedSuggestionThatCannotFitTheRangeSaysSo() {
+        // Issue #17: measured MIDI 36–55; the only feasible Sa is 41, but the
+        // supported range clamps to 43, whose upper Ri (57) sits above 55.
+        val s = SaFinder.suggest(hz(36), hz(55))
+        assertEquals(43, s.saMidi)
+        assertTrue(s.narrowRange)
+    }
+
+    @Test
+    fun aClampedSuggestionThatStillFitsTheRangeDoesNotWarn() {
+        // Measured 34–57: the feasible band is 39–43 and the midpoint (41)
+        // clamps up to 43, which fits both lower Pa (38 ≥ 34) and upper Ri
+        // (57 ≤ 57), so no compromise warning.
+        val s = SaFinder.suggest(hz(34), hz(57))
+        assertEquals(43, s.saMidi)
+        assertFalse(s.narrowRange)
+    }
 }
 
 class FineTuneAndVoiceRangeTest {
@@ -189,5 +208,40 @@ class FindSaGuideTest {
         assertEquals(67, Pitch.nearestMidi(p.highestHz!!))
         assertEquals(SaFinder.suggest(hz(43), hz(67)), p.suggestion)
         assertEquals(1.0, p.holding)
+    }
+
+    @Test
+    fun aDriftingStaircaseOnlyHoldsFromItsLastSteadySpan() {
+        // Issue #15: small cumulative steps (each within the ±50-cent
+        // tolerance of the next) must not credit the out-of-tolerance older
+        // samples to the hold. The stream steps 0 → 49 → 98 → 147 cents
+        // above 130 Hz at 10 ms frames; only the trailing 147-cent span
+        // (from 0.70 s) is a valid hold.
+        val guide = FindSaGuide()
+        fun freq(cents: Double) = 130.0 * 2.0.pow(cents / 1200.0)
+        var p = guide.onFrame(0.0, null)
+        for (i in 1..150) {
+            val cents = when {
+                i < 10 -> 0.0
+                i < 30 -> 49.0
+                i < 70 -> 98.0
+                else -> 147.0
+            }
+            p = guide.onFrame(i * 0.01, freq(cents))
+        }
+        // At 1.50 s the whole stream is 1.5 s long, but the 0- and 49-cent
+        // samples are outside ±50 cents of the final pitch: only the window
+        // from 0.30 s on is within tolerance of the median — 1.20 s, not
+        // 1.50 s — so the guide must still be listening for LOWEST.
+        assertEquals(FindSaStep.LOWEST, p.step)
+        assertEquals(1.2 / NoteCatcher.HOLD_SECONDS, p.holding, 0.01)
+        // Holding steady at the final pitch completes a full 1.5-second hold.
+        var i = 151
+        while (p.step == FindSaStep.LOWEST) {
+            p = guide.onFrame(i * 0.01, freq(147.0))
+            i++
+        }
+        assertEquals(FindSaStep.HIGHEST, p.step)
+        assertEquals(147.0, Pitch.cents(130.0, p.lowestHz!!), 1.0)
     }
 }

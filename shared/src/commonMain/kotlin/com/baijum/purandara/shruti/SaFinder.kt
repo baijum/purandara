@@ -26,8 +26,13 @@ class NoteCatcher {
         }
         times.addLast(timeSeconds)
         pitches.addLast(frequencyHz)
-        // Drop the start of the window while the newest pitch is far from the median.
-        while (pitches.size > 1 && abs(Pitch.cents(median(), frequencyHz)) > TOLERANCE_CENTS) {
+        // Drop the start of the window until every retained pitch is within
+        // tolerance of the window's median: the credited hold must be a
+        // genuinely steady trailing span, not one whose newest pitch merely
+        // matches the median while older drift stays in the window (issue #15).
+        while (pitches.size > 1) {
+            val m = median()
+            if (pitches.all { abs(Pitch.cents(m, it)) <= TOLERANCE_CENTS }) break
             times.removeFirst()
             pitches.removeFirst()
         }
@@ -54,7 +59,10 @@ class NoteCatcher {
 /** A suggested Sa from the student's comfortable range. */
 data class SaSuggestion(
     val saMidi: Int,
-    /** The range is too narrow for both lower Pa and upper Ri at this Sa. */
+    /**
+     * The recorded range cannot fit both lower Pa and upper Ri at this Sa —
+     * a too-narrow range, or one the supported Sas cannot cover (issue #17).
+     */
     val narrowRange: Boolean,
 )
 
@@ -62,7 +70,9 @@ data class SaSuggestion(
  * Suggests Sa from the lowest and highest comfortable notes: lower Pa
  * (Sa − 5 semitones) no lower than the lowest note, upper Ri (Sa + 14) no
  * higher than the highest, taking the middle of the possible Sas, within
- * [Shruti.SA_RANGE]. With too narrow a range, the closest compromise.
+ * [Shruti.SA_RANGE]. With too narrow a range — or when the supported Sas
+ * force a Sa that cannot fit both notes — the closest compromise, and
+ * [SaSuggestion.narrowRange] says so.
  */
 object SaFinder {
     private const val LOWER_PA = 5
@@ -75,6 +85,8 @@ object SaFinder {
         val to = high - UPPER_RI
         val range = Shruti.SA_RANGE
         val sa = ((from + to) / 2.0).roundToInt().coerceIn(range)
-        return SaSuggestion(sa, narrowRange = from > to)
+        // Judge the Sa actually returned: clamping to the supported range can
+        // push it outside the recorded range's feasible band (issue #17).
+        return SaSuggestion(sa, narrowRange = sa < from || sa > to)
     }
 }
