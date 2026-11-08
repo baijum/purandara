@@ -67,6 +67,9 @@ extension Display.MarkTone {
 /// Pitch lane, live reading, headphone hint, permission message and last summary.
 struct SingAlongPanel: View {
     let varisai: Varisai
+    /// False while the chosen Sa is outside the piece's playable range: the
+    /// schedule must not be built (issue #9), the warning above offers a Sa.
+    var saPlayable = true
     @EnvironmentObject private var viewModel: PracticeViewModel
 
     var body: some View {
@@ -78,6 +81,10 @@ struct SingAlongPanel: View {
                 Button("Open settings") {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 }
+            } else if !saPlayable {
+                Text("Sing along needs a Sa this piece can play; use the suggestion above.")
+                    .font(.callout)
+                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 PitchLane(
                     schedule: Schedule.companion.of(varisai: varisai, settings: viewModel.settings.performance()),

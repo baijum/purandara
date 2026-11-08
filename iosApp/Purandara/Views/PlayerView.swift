@@ -34,7 +34,7 @@ struct PlayerView: View {
             let showPanel = viewModel.settings.singAlong || (viewModel.singAlong.micDenied && !viewModel.singAlong.micPermitted)
             // At accessibility text sizes the panel scrolls with the notation so nothing is pushed off screen.
             if showPanel && !typeSize.isAccessibilitySize {
-                SingAlongPanel(varisai: varisai)
+                SingAlongPanel(varisai: varisai, saPlayable: saPlayable)
             }
             NotationView(
                 varisai: varisai,
@@ -58,7 +58,7 @@ struct PlayerView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityHint(Text("Practise one section alone"))
                     }
-                    if showPanel && typeSize.isAccessibilitySize { SingAlongPanel(varisai: varisai) }
+                    if showPanel && typeSize.isAccessibilitySize { SingAlongPanel(varisai: varisai, saPlayable: saPlayable) }
                 }))
                 .frame(maxHeight: .infinity)
             if viewModel.playback.playing {
