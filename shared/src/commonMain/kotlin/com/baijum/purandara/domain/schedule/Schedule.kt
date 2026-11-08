@@ -124,6 +124,15 @@ class Schedule private constructor(
     /** When avarta [avarta] (a piece-wide index) starts within one pass. */
     fun avartaStartSeconds(avarta: Int): Double = avartaStarts[avarta]
 
+    /**
+     * When avarta [avarta]'s [repetition]-th pass through the exercise starts
+     * within one performance (the first occurrence is [avartaStartSeconds]).
+     * Every repetition takes the same time, so this is the first occurrence
+     * shifted by whole repetitions.
+     */
+    fun avartaStartSeconds(avarta: Int, repetition: Int): Double =
+        avartaStarts[avarta] + repetition * (durationSeconds / repetitions)
+
     /** Seconds one pass spends in avarta [avarta] (a piece-wide index): a @2 avarta takes half a @1's. */
     fun avartaSecondsIn(avarta: Int): Double = avartaStarts[avarta + 1] - avartaStarts[avarta]
 

@@ -89,7 +89,8 @@ struct SingAlongPanel: View {
                 PitchLane(
                     schedule: Schedule.companion.of(varisai: varisai, settings: viewModel.settings.performance()),
                     avarta: viewModel.playback.avarta,
-                    pass: viewModel.playback.repetition,
+                    repetition: viewModel.playback.repetition,
+                    pass: sing.pass,
                     trace: sing.trace,
                     live: sing.live,
                     countingIn: viewModel.playback.countingIn)
@@ -120,9 +121,14 @@ struct SingAlongPanel: View {
 
 /// The current avarta's expected swaras as a staircase, the sung pitch over
 /// them, and swara lines. One accessibility element whose value is the live reading.
+///
+/// `repetition` is the notation cursor's internal repetition (the window and
+/// staircase follow it); `pass` is the whole-performance loop whose trace to
+/// draw — the same counter `TraceSample.pass` is tagged with (issue #12).
 struct PitchLane: View {
     let schedule: Schedule
     let avarta: Int?
+    let repetition: Int?
     let pass: Int?
     let trace: [TraceSample]
     let live: SwaraReading?
@@ -169,10 +175,13 @@ struct PitchLane: View {
             context.draw(Text(name).font(.system(size: 10)), at: CGPoint(x: 8, y: yy), anchor: .leading)
         }
         guard let avarta else { return }
+        // The current occurrence of the avarta (repetitions repeat the whole
+        // range to fill cycles), and the trace of the loop being heard.
+        let rep = repetition ?? 0
         let span = schedule.avartaSecondsIn(avarta: Int32(avarta))
-        let start = schedule.avartaStartSeconds(avarta: Int32(avarta))
+        let start = schedule.avartaStartSeconds(avarta: Int32(avarta), repetition: Int32(rep))
         func x(_ t: Double) -> CGFloat { labelWidth + (size.width - labelWidth) * (t - start) / span }
-        for e in schedule.notes where Int(e.position.avarta) == avarta {
+        for e in schedule.notes where Int(e.position.avarta) == avarta && Int(e.position.repetition) == rep {
             var path = Path()
             let yy = y(cents(e.note))
             path.move(to: CGPoint(x: x(e.startSeconds), y: yy))

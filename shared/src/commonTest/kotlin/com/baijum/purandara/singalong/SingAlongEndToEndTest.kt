@@ -124,4 +124,63 @@ class SingAlongEndToEndTest {
         assertEquals(0.0, run.session.leakageRatio, 1e-9)
         assertTrue(run.result.summary.inTune >= 15)
     }
+
+    /**
+     * Continuous repeat (issue #12): with the renderer looping, readings from
+     * the second loop carry pass 1, the first pass completes when the second
+     * begins, and both passes are scored in full.
+     */
+    @Test
+    fun loopingSessionTagsReadingsWithTheLoopAndCompletesEachPass() {
+        val schedule = Schedule.of(VarisaiCatalog.byId("plain-scale-1")!!, PerformanceSettings(saHz = sa, tempo = 90))
+        val renderer = SampleRenderer(bank, schedule, RenderOptions(drone = true, loop = true, countIn = true))
+        val loops = 2
+        val levels = OutputLevels(capacity = 8192)
+        val totalFrames = renderer.countInFrames + loops * renderer.performanceFrames
+        val speaker = FloatArray(totalFrames)
+        var pos = 0
+        val block = FloatArray(1024)
+        while (pos < totalFrames) {
+            // The looping renderer always fills the block; keep only what fits.
+            val n = minOf(renderer.render(block), totalFrames - pos)
+            block.copyInto(speaker, pos, 0, n)
+            var sum = 0.0
+            for (i in 0 until n) sum += block[i] * block[i]
+            levels.record(pos.toLong(), sqrt(sum / n).toFloat())
+            pos += n
+        }
+        val countIn = renderer.countInFrames.toDouble() / sr
+        val passSeconds = renderer.performanceFrames.toDouble() / sr
+        val target = singsSchedule(0.0)
+        val voice = VoiceSignals.follow(speaker.size.toDouble() / sr, sr, amplitude = 0.25f) { t ->
+            if (t < countIn) null else target((t - countIn) % passSeconds)
+        }
+        val mic = FloatArray(speaker.size) { i -> speaker[i] * 0.1f + voice[i] }
+
+        val clock = SingAlongClock(countIn, passSeconds, loop = true, 0.0, 0.0)
+        val session = SingAlongSession(schedule, clock, sr, levels)
+        val pipeline = PitchPipeline(sr)
+        val completed = mutableListOf<PassResult>()
+        var firstPassOne: LiveReading? = null
+        var start = 0
+        while (start + PitchPipeline.WINDOW_SIZE <= mic.size) {
+            pipeline.beginFrame() // no neural model in this test
+            val window = mic.copyOfRange(start, start + PitchPipeline.WINDOW_SIZE)
+            val outcome = session.onFrame(pipeline.process(window, (start + PitchPipeline.WINDOW_SIZE / 2).toDouble() / sr))
+            outcome.completedPass?.let { completed += it }
+            if (outcome.live.pass == 1 && firstPassOne == null) firstPassOne = outcome.live
+            start += PitchPipeline.HOP_SIZE
+        }
+        val final = session.finish()!!
+
+        assertEquals(1, completed.size, "the first pass closes exactly once, when the second begins")
+        assertEquals(0, completed[0].pass)
+        assertEquals(16, completed[0].summary.judged)
+        assertEquals(1, final.pass)
+        assertEquals(16, final.summary.judged)
+        val one = requireNotNull(firstPassOne) { "no reading was tagged with pass 1" }
+        assertEquals(1, one.pass)
+        val oneSeconds = requireNotNull(one.secondsInPass)
+        assertTrue(oneSeconds in 0.0..<passSeconds, "pass-1 reading outside one pass: $oneSeconds")
+    }
 }

@@ -19,6 +19,8 @@ data class SingAlongState(
     val onSpeaker: Boolean = true,
     /** Current reading while singing, null when silent. */
     val live: SwaraReading? = null,
+    /** Which whole-performance loop the live readings and trace are from (0-based); null during the count-in. */
+    val pass: Int? = null,
     /** Recent pitch lane points (about the last avarta). */
     val trace: List<TraceSample> = emptyList(),
     /** Latest mark for each note position. */

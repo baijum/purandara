@@ -204,8 +204,8 @@ private fun SingAlongPanel(
         val schedule = remember(varisai, state.settings) { Schedule.of(varisai, state.settings.performance()) }
         PitchLane(
             schedule = schedule,
-            avarta = state.playback.position?.avarta,
-            pass = state.playback.position?.repetition,
+            position = state.playback.position,
+            pass = sing.pass,
             trace = sing.trace,
             live = sing.live,
             countingIn = state.playback.countingIn,
