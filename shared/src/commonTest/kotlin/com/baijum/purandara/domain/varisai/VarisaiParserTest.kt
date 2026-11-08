@@ -257,6 +257,54 @@ class VarisaiParserTest {
     }
 
     @Test
+    fun aRepeatWithoutItsOwnSpeedInheritsTheSectionSpeed() {
+        // Issue #10: `(charanam)` after `[charanam @2]` must sing at @2 again,
+        // not fall back to @1.
+        val v = parseOne(
+            """
+            1
+            tala: eka-4
+            [charanam @2]
+            S R G M || P D N S′ ||
+            (charanam)
+            """,
+        )
+        assertEquals(listOf(2, 2, 2, 2), v.avartas.map { it.speed })
+        assertEquals(
+            listOf("Charanam", null, "Charanam", null),
+            v.avartas.map { it.section },
+        )
+    }
+
+    @Test
+    fun anExplicitRepeatSpeedOverridesTheSectionSpeed() {
+        val v = parseOne(
+            """
+            1
+            tala: eka-4
+            [charanam @2]
+            S R G M || P D N S′ ||
+            (charanam @1)
+            """,
+        )
+        assertEquals(listOf(2, 2, 1, 1), v.avartas.map { it.speed })
+    }
+
+    @Test
+    fun anUnqualifiedSectionStillDefaultsToSpeed1() {
+        val v = parseOne(
+            """
+            1
+            tala: eka-4
+            [pallavi]
+            S R G M || P D N S′ ||
+            (pallavi)
+            """,
+        )
+        assertEquals(listOf(1, 1, 1, 1), v.avartas.map { it.speed })
+    }
+
+    @Test
     fun kalaiCountsTheBeatsTwice() {
         val v = parseOne("1\nkalai: 2\nS R G M | P D | N S′")
         assertEquals(2, v.kalai)

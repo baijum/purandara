@@ -168,7 +168,7 @@ class VarisaiParser(
     private fun startSection(d: Draft, spec: String, lineNo: Int) {
         val swaramFirst = spec.endsWith(SWARAM_FIRST)
         val rest = spec.removeSuffix(SWARAM_FIRST).trim()
-        val (key, speed) = speedSpec(rest, lineNo)
+        val (key, stated) = speedSpec(rest, lineNo)
         if (key in d.sections || d.openSection?.first == key) {
             throw VarisaiParseException(lineNo, 2, "section [$key] appears twice")
         }
@@ -176,7 +176,7 @@ class VarisaiParser(
         d.beat = d.pieceBeat // a section's `beat:` override ends with the section
         d.openSection = key to d.avartas.size
         d.openSwaramFirst = swaramFirst
-        d.openSpeed = speed
+        d.openSpeed = stated ?: 1
         d.openLine = lineNo
         d.pendingLabel = label(key)
         d.lastLine = null
@@ -198,14 +198,14 @@ class VarisaiParser(
         d.lastLine = null
     }
 
-    /** `"charanam 1 @2"` → key "charanam 1" and speed 2; `"charanam 1"` → speed 1. */
-    private fun speedSpec(spec: String, lineNo: Int): Pair<String, Int> {
+    /** `"charanam 1 @2"` → key "charanam 1" and speed 2; `"charanam 1"` → key and null (an omitted speed). */
+    private fun speedSpec(spec: String, lineNo: Int): Pair<String, Int?> {
         val match = SPEED.matchEntire(spec) ?: throw VarisaiParseException(lineNo, 2, "bad section \"[$spec]\"")
         val key = match.groupValues[1].trim()
         val speed = match.groupValues[2].takeIf { it.isNotEmpty() }?.let {
             it.toIntOrNull()?.takeIf { n -> n in 1..4 }
                 ?: throw VarisaiParseException(lineNo, spec.indexOf('@') + 3, "speed must be 1..4")
-        } ?: 1
+        }
         return key to speed
     }
 
