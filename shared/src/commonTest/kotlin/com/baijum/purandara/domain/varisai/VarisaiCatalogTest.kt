@@ -146,6 +146,25 @@ class VarisaiCatalogTest {
         }
     }
 
+    @Test
+    fun varnamCharanamReturnsStayAtDoubleSpeed() {
+        // Issue #10: the charanam and each chitta swaram are written @2 and
+        // every `(charanam)` return inherits that speed; only the purvanga
+        // repeats carry their own explicit @2.
+        VarisaiCatalog.inSet(VarisaiSet.VARNAM).forEach { v ->
+            val firstCharanam = v.avartas.indexOfFirst { it.section?.startsWith("Charanam") == true }
+            assertTrue(firstCharanam >= 0, "${v.id}: no charanam")
+            val slow = v.avartas.drop(firstCharanam).withIndex().filter { it.value.speed != 2 }
+            assertTrue(
+                slow.isEmpty(),
+                "${v.id}: avartas ${slow.map { it.index + firstCharanam }} are not @2 after the charanam starts",
+            )
+            // The returns exist and are labelled (each chitta swaram returns to the charanam).
+            val returns = v.avartas.filter { it.section == "Charanam" }
+            assertEquals(4, returns.size, "${v.id}: charanam returns")
+        }
+    }
+
     private fun swaras(v: Varisai): List<WrittenSwara> =
         v.avartas.flatMap { it.aksharas }.filterIsInstance<Akshara.Swaras>().flatMap { it.swaras }
 }
