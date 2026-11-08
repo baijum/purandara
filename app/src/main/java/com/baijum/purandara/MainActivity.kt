@@ -43,9 +43,14 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_SINGER = "singer"
     }
 
-    /** Practice audio stops when the app leaves the screen. */
+    /** Practice audio stops when the app leaves the screen, and resumes on return. */
     override fun onStop() {
         super.onStop()
-        practiceViewModel.stop()
+        practiceViewModel.onBackgrounded()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        practiceViewModel.onForegrounded()
     }
 }

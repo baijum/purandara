@@ -117,6 +117,41 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     /** Debug builds only: a synthetic singer offset by this many cents replaces the mic. */
     var debugSyntheticSingerCents: Double? = null
 
+    /** What sounded before the app was backgrounded, to resume on return (issue #11). */
+    private var resumeAfterBackground: Resume? = null
+
+    private enum class Resume { SHRUTI, FIND_SA, PLAYBACK, TANPURA }
+
+    /**
+     * The app left the screen (MainActivity.onStop): remember what was sounding,
+     * then silence everything. The practice destinations stay open — Shruti
+     * practice, an unfinished Find my Sa and playback resume on return, as a
+     * fresh session (hold progress and a half-caught guide start over).
+     */
+    fun onBackgrounded() {
+        val s = _state.value
+        resumeAfterBackground = when {
+            s.shruti.open -> Resume.SHRUTI
+            s.findSa.open -> Resume.FIND_SA
+            s.playback.playing -> Resume.PLAYBACK
+            s.tanpuraPlaying -> Resume.TANPURA
+            else -> null
+        }
+        stop()
+    }
+
+    /** The app is back (MainActivity.onStart): start again what was sounding. */
+    fun onForegrounded() {
+        when (resumeAfterBackground) {
+            Resume.SHRUTI -> startShruti()
+            Resume.FIND_SA -> openFindSa()
+            Resume.PLAYBACK -> play()
+            Resume.TANPURA -> playTanpura()
+            null -> {}
+        }
+        resumeAfterBackground = null
+    }
+
     init {
         viewModelScope.launch {
             try {

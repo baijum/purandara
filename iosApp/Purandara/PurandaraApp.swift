@@ -15,8 +15,10 @@ struct PurandaraApp: App {
             .onAppear(perform: openFromLaunchArguments)
         }
         .onChange(of: scenePhase) { phase in
-            // Practice audio stops when the app leaves the screen.
-            if phase == .background { viewModel.stopImmediately() }
+            // Practice audio stops when the app leaves the screen, and resumes
+            // (a fresh session) on return (issue #11).
+            if phase == .background { viewModel.onBackgrounded() }
+            if phase == .active { viewModel.onForegrounded() }
         }
     }
 
