@@ -100,7 +100,7 @@ fun PlayerScreen(
                 onSettings = { showSettings = true },
             )
         },
-        bottomBar = { PlayButtonBar(playback.playing, canPlay, actions.onTogglePlay) },
+        bottomBar = { PlayButtonBar(playback.playing, canPlay || playback.playing, actions.onTogglePlay) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             RagaTalaLine(varisai, state.section, actions.onSelectSection)

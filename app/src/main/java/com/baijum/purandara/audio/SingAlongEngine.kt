@@ -18,13 +18,17 @@ import com.baijum.purandara.domain.schedule.Schedule
  * The shared clock therefore runs with zero extra latency.
  *
  * [onOutcome] runs on the mic thread; post to the main thread to use it.
+ *
+ * [supervisor] is read for every window, not captured at construction: the
+ * model loads asynchronously, so an engine started before it finishes (sing-along
+ * enabled during playback) must still pick it up when it arrives (issue #14).
  */
 class SingAlongEngine(
     private val mic: MicSource,
     private val player: VarisaiAudioPlayer,
     renderer: SampleRenderer,
     private val session: SingAlongSession,
-    private val supervisor: NeuralPitchSupervisor?,
+    private val supervisor: () -> PitchSupervisor?,
     private val onOutcome: (FrameOutcome) -> Unit,
 ) {
     private val sampleRate = renderer.sampleRate
@@ -38,7 +42,7 @@ class SingAlongEngine(
     fun start() {
         mic.start { window, captureNanos ->
             val heardFrame = player.outputFrameAt(captureNanos) ?: return@start
-            if (pipeline.beginFrame()) pipeline.onNeuralResult(supervisor?.estimate(window))
+            if (pipeline.beginFrame()) pipeline.onNeuralResult(supervisor()?.estimate(window))
             val frame = pipeline.process(window, heardFrame.toDouble() / sampleRate)
             onOutcome(session.onFrame(frame))
         }

@@ -14,13 +14,22 @@ import com.baijum.purandara.pitch.NeuralPitchResult
 import java.nio.FloatBuffer
 
 /**
+ * The SwiftF0 estimate the mic pipelines consult ([NeuralPitchSupervisor] in
+ * production, faked in tests).
+ */
+fun interface PitchSupervisor {
+    /** SwiftF0's estimate for the middle of [window] (capture-rate samples), or null. */
+    fun estimate(window: FloatArray): NeuralPitchResult?
+}
+
+/**
  * Runs the SwiftF0 pitch model (ONNX) on microphone windows.
  *
  * Deliberately tolerant: if the model output is not what is expected it
  * returns null, and the caller keeps using YIN alone. One instance per
  * capture stream; call [estimate] from the capture thread only.
  */
-class NeuralPitchSupervisor(assets: AssetManager, captureSampleRate: Int) : AutoCloseable {
+class NeuralPitchSupervisor(assets: AssetManager, captureSampleRate: Int) : PitchSupervisor, AutoCloseable {
     private val env: OrtEnvironment = OrtEnvironment.getEnvironment()
     private val session: OrtSession
     private val inputName: String
@@ -40,7 +49,7 @@ class NeuralPitchSupervisor(assets: AssetManager, captureSampleRate: Int) : Auto
     }
 
     /** SwiftF0's estimate for the middle of [window] (capture-rate samples), or null. */
-    fun estimate(window: FloatArray): NeuralPitchResult? {
+    override fun estimate(window: FloatArray): NeuralPitchResult? {
         val samples16k = resampler.downsample(window)
         if (samples16k.isEmpty()) return null
         val shape = longArrayOf(1L, samples16k.size.toLong())
