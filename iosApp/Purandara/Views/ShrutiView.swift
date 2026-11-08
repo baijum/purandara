@@ -112,9 +112,13 @@ struct ShrutiView: View {
                 ProgressView(value: min(current / goal, 1))
                     .accessibilityHidden(true)
                 Text(current > 0
-                     ? String(localized: "Holding \(name): \(current.formatted(.number.precision(.fractionLength(1)))) of \(Int(goal)) seconds")
+                     ? String(localized: "Holding \(name): \(Int(current.rounded())) of \(Int(goal)) seconds")
                      : String(localized: "Sing \(name) and hold it"))
                     .fixedSize(horizontal: false, vertical: true)
+                // Whole seconds: the text used to tick at 0.1 s, and the
+                // accessibility audit mis-measures a string that changes under
+                // it ("Dynamic Type font sizes are partially unsupported",
+                // issue #20). The progress bar shows the fine detail.
                 if let hold = shruti.hold, hold.bestSeconds > 0 {
                     Text("Best: \(hold.bestSeconds.formatted(.number.precision(.fractionLength(1)))) s")
                         .foregroundStyle(Color.subdued)
