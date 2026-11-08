@@ -4,6 +4,7 @@ import com.baijum.purandara.domain.Pitch
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Swara
 import com.baijum.purandara.domain.Tuning
+import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -54,6 +55,44 @@ class SwaraMapperTest {
         assertEquals(Zone.OFF, Zone.of(25.1))
         assertNull(just.read(0.0))
         assertNull(just.read(Double.NaN))
+    }
+
+    @Test
+    fun justR1SungSharpIsStillR1NotR2() {
+        // Issue #16: just R1 (+111.7 cents) sung 39 cents sharp rounds to R2's
+        // equal-tempered semitone, but the nearest just target is still R1 —
+        // readable and consistent with the event-relative scorer under Gentle.
+        val gentle = SwaraMapper(sa, Raga.MAYAMALAVAGOWLA, Tuning.JUST, Strictness.GENTLE)
+        val input = sa * (16.0 / 15.0) * 2.0.pow(39.0 / 1200.0)
+        val reading = assertNotNull(gentle.read(input))
+        assertEquals(Swara.R1, reading.swara)
+        assertEquals(0, reading.octave)
+        assertEquals(39.0, reading.centsOff, 0.01)
+        assertTrue(reading.inRaga)
+        assertEquals(Zone.CLOSE, reading.zone)
+        // Equal tuning has no just target to be near: the same pitch sits at
+        // R2's semitone and is named R2.
+        assertEquals(Swara.R2, assertNotNull(equal.read(input)).swara)
+    }
+
+    @Test
+    fun justSelectionFollowsTheNearestTargetNotTheSemitone() {
+        // Midway between just R1 (+111.7) and R2 (+203.9), +156 cents is nearer
+        // R1's just target even though the equal-tempered snap is R2's semitone.
+        val input = sa * 2.0.pow(156.0 / 1200.0)
+        assertEquals(Swara.R1, assertNotNull(just.read(input)).swara)
+        assertEquals(Swara.R2, assertNotNull(equal.read(input)).swara)
+    }
+
+    @Test
+    fun justPitchJustBelowSaIsMandraN3() {
+        // 60 cents below Sa is nearer the mandra N3 target (51.7 cents away)
+        // than Sa itself — the nearest-target choice crosses the octave seam.
+        val reading = assertNotNull(just.read(sa * 2.0.pow(-60.0 / 1200.0)))
+        assertEquals(Swara.N3, reading.swara)
+        assertEquals(-1, reading.octave)
+        assertEquals(51.73, reading.centsOff, 0.01)
+        assertTrue(reading.inRaga)
     }
 }
 

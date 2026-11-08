@@ -77,9 +77,10 @@ class SwaraMapper(
 
     fun read(frequencyHz: Double): SwaraReading? {
         if (frequencyHz <= 0.0 || !frequencyHz.isFinite()) return null
-        val semitones = (SEMITONES * log2(frequencyHz / saHz)).roundToInt()
-        val octave = floor(semitones / SEMITONES).toInt()
-        val position = semitones - octave * SEMITONES.toInt()
+        val (octave, position) = when (tuning) {
+            Tuning.EQUAL -> nearestEqual(frequencyHz)
+            Tuning.JUST -> nearestJust(frequencyHz)
+        }
         val swara = ragaByPosition[position] ?: DEFAULT_NAMES.getValue(position)
         val target = targetHz(swara, octave)
         return SwaraReading(
@@ -102,13 +103,47 @@ class SwaraMapper(
         return madhya * 2.0.pow(octave)
     }
 
+    /** Nearest equal-tempered semitone: the position whose 100-cent step is closest. */
+    private fun nearestEqual(frequencyHz: Double): Pair<Int, Int> {
+        val semitones = (SEMITONES * log2(frequencyHz / saHz)).roundToInt()
+        val octave = floor(semitones / SEMITONES).toInt()
+        return octave to (semitones - octave * SEMITONES.toInt())
+    }
+
+    /**
+     * Nearest swarasthana target in just intonation, across all 12 positions
+     * (issue #16): snapping to the equal-tempered semitone first can pick the
+     * wrong swara — just-tuned R1 sung 39 cents sharp sits nearer R1's target
+     * than R2's, but rounds to R2's semitone and reads out-of-raga and OFF.
+     */
+    private fun nearestJust(frequencyHz: Double): Pair<Int, Int> {
+        val cents = CENTS_PER_OCTAVE * log2(frequencyHz / saHz)
+        var bestPosition = 0
+        var bestDelta = Double.MAX_VALUE
+        for ((position, target) in JUST_TARGET_CENTS) {
+            val delta = cents - target - CENTS_PER_OCTAVE * ((cents - target) / CENTS_PER_OCTAVE).roundToInt()
+            if (abs(delta) < abs(bestDelta)) {
+                bestDelta = delta
+                bestPosition = position
+            }
+        }
+        // cents - bestDelta is the winning target plus a whole number of octaves.
+        val octave = floor((cents - bestDelta) / CENTS_PER_OCTAVE + 1e-9).toInt()
+        return octave to bestPosition
+    }
+
     private companion object {
         const val SEMITONES = 12.0
+        const val CENTS_PER_OCTAVE = 1200.0
 
         /** Name used for a position the raga does not use. */
         val DEFAULT_NAMES = mapOf(
             0 to Swara.S, 1 to Swara.R1, 2 to Swara.R2, 3 to Swara.G2, 4 to Swara.G3, 5 to Swara.M1,
             6 to Swara.M2, 7 to Swara.P, 8 to Swara.D1, 9 to Swara.D2, 10 to Swara.N2, 11 to Swara.N3,
         )
+
+        /** Just-intonation target of each position, in cents above Sa. */
+        val JUST_TARGET_CENTS: Map<Int, Double> =
+            DEFAULT_NAMES.mapValues { (_, swara) -> CENTS_PER_OCTAVE * log2(swara.ratio) }
     }
 }
