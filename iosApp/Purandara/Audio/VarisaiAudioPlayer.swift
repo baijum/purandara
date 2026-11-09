@@ -278,9 +278,38 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
             + "out \(AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue })")
         #endif
         DispatchQueue.main.async {
-            guard self.isPlaying, self.micTapInstalled, !self.reconfiguring,
-                  Self.outputIsBuiltInSpeaker() != self.micOnSpeaker else { return }
-            self.onRestartNeeded?()
+            guard self.isPlaying, !self.reconfiguring else { return }
+            if self.micTapInstalled {
+                // While listening the route decides echo cancellation: speaker
+                // vs headphones needs a restart that reconfigures afresh.
+                guard Self.outputIsBuiltInSpeaker() != self.micOnSpeaker else { return }
+                self.onRestartNeeded?()
+                return
+            }
+            // Plain playback: iOS does not always move a running engine to a
+            // route added mid-playback — a paired Bluetooth device connected
+            // while playing kept the sound on the speaker until the mic
+            // reconfigured the session (issue #21). Restart the engine's I/O
+            // so it picks up the new route; the node keeps its queued buffers
+            // and playhead, so the exercise continues where it was.
+            self.followNewRoute()
+        }
+    }
+
+    /// Restarts the engine's I/O without touching the node's stream. Called on the main thread.
+    private func followNewRoute() {
+        engine.stop()
+        do {
+            try engine.start()
+            #if DEBUG
+            print("[player] engine restarted to follow the new route "
+                + "\(AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue })")
+            #endif
+        } catch {
+            // The new route can't be started (e.g. a device that vanished again):
+            // the caller restarts playback afresh.
+            print("[player] engine restart on route change failed: \(error)")
+            DispatchQueue.main.async { self.onRestartNeeded?() }
         }
     }
 
