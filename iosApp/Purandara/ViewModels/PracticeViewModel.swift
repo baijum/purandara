@@ -121,6 +121,9 @@ final class PracticeViewModel: ObservableObject {
     private var listener: PitchListener?
     private var shrutiSession: ShrutiSession?
 
+    /// What sounded before the app was backgrounded, to resume on return (issue #11).
+    private var resumeAfterBackground: (() -> Void)?
+
     /// Debug builds: launch argument `-singer <cents>` replaces the mic with a synthetic singer.
     let syntheticSingerCents: Double?
 
@@ -516,6 +519,33 @@ final class PracticeViewModel: ObservableObject {
     func stopImmediately() {
         player.stopImmediately()
         finished(renderer)
+    }
+
+    /// The app left the screen (scene phase .background): remember what was sounding,
+    /// then silence everything. The practice destinations stay open — Shruti practice,
+    /// an unfinished Find my Sa and playback resume on return, as a fresh session
+    /// (hold progress and a half-caught guide start over), unlike the plain
+    /// `stopImmediately` the screens call when leaving (issue #11).
+    func onBackgrounded() {
+        let shrutiWasOpen = shruti.open
+        let findSaWasOpen = findSaOpen
+        let tanpuraWasPlaying = tanpuraPlaying
+        let exercise = current
+        let wasPlaying = playback.playing
+        resumeAfterBackground = { [weak self] in
+            guard let self else { return }
+            if shrutiWasOpen { self.startShruti() }
+            else if findSaWasOpen { self.startFindSa() }
+            else if tanpuraWasPlaying { self.playTanpura() }
+            else if wasPlaying, let exercise { self.play(exercise) }
+        }
+        stopImmediately()
+    }
+
+    /// The app is back (scene phase .active): start again what was sounding.
+    func onForegrounded() {
+        resumeAfterBackground?()
+        resumeAfterBackground = nil
     }
 
     private func finished(_ which: SampleRenderer?) {
