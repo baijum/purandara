@@ -1,5 +1,7 @@
 package com.baijum.purandara.ui
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -435,6 +437,74 @@ class AccessibilityTest {
         val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
         compose.onNode(hasText("Suggested Sa: D3 · 2 kattai") and heading).assertExists()
         compose.onNodeWithText("Lowest F2 · Highest G4").assertExists()
+        assertTouchTarget(compose.onNodeWithText("Use this").assertHasClickAction())
+        assertTouchTarget(compose.onNodeWithText("Try again").assertHasClickAction())
+    }
+
+    @Test
+    fun stoppedShrutiAnnouncesTheChangeAndRestartsOnlyFromItsButton() {
+        val stopped = mutableStateOf(true)
+        var starts = 0
+        compose.setContent {
+            PurandaraTheme {
+                ShrutiScreen(
+                    PracticeUiState(
+                        settings = settings, outputChanged = stopped.value,
+                        singAlong = SingAlongState(micPermitted = true),
+                        shruti = ShrutiUiState(open = true, target = HoldTarget.PA, goal = HoldGoal.THIRTY),
+                    ),
+                    ShrutiActions({}, { _, _ -> }, {}, onStartAgain = { starts++; stopped.value = false }),
+                )
+            }
+        }
+        compose.onNodeWithText("Audio output changed. Start again when ready.")
+            .assertIsDisplayed().assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        compose.onAllNodesWithText("Not hearing you yet").assertCountEquals(0)
+        val button = compose.onNodeWithText("Start again").assertHasClickAction()
+        assertTouchTarget(button)
+        assertEquals(0, starts)
+        button.performClick()
+        assertEquals(1, starts)
+        compose.onAllNodesWithText("Audio output changed. Start again when ready.").assertCountEquals(0)
+        compose.onNodeWithContentDescription("Your pitch").assertExists()
+    }
+
+    @Test
+    fun stoppedFindSaOffersAnAccessibleExplicitRestartInsteadOfLivePrompts() {
+        val stopped = mutableStateOf(true)
+        var starts = 0
+        compose.setContent {
+            PurandaraTheme {
+                FindSaScreen(
+                    FindSaProgress(), micPermitted = true,
+                    actions = FindSaActions({}, {}, { starts++; stopped.value = false }, {}),
+                    outputChanged = stopped.value,
+                )
+            }
+        }
+        compose.onNodeWithText("Audio output changed. Start again when ready.")
+            .assertIsDisplayed().assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        compose.onAllNodesWithText("Sing your lowest comfortable note and hold it").assertCountEquals(0)
+        val button = compose.onNodeWithText("Start again").assertHasClickAction()
+        assertTouchTarget(button)
+        assertEquals(0, starts)
+        button.performClick()
+        assertEquals(1, starts)
+        compose.onNodeWithText("Sing your lowest comfortable note and hold it").assertIsDisplayed()
+    }
+
+    @Test
+    fun completedFindSaKeepsItsSuggestionAfterOutputChanges() {
+        compose.setContent {
+            PurandaraTheme {
+                FindSaScreen(
+                    FindSaProgress(step = FindSaStep.DONE, suggestion = SaSuggestion(50, narrowRange = false)),
+                    micPermitted = false, actions = FindSaActions({}, {}, {}, {}), outputChanged = true,
+                )
+            }
+        }
+        compose.onAllNodesWithText("Start again").assertCountEquals(0)
+        compose.onNodeWithText("Suggested Sa: D3 · 2 kattai").assertIsDisplayed()
         assertTouchTarget(compose.onNodeWithText("Use this").assertHasClickAction())
         assertTouchTarget(compose.onNodeWithText("Try again").assertHasClickAction())
     }

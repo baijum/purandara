@@ -275,6 +275,40 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
+    @MainActor func testOutputChangeStopsShrutiAndFindSaUntilStartAgain() throws {
+        for destination in ["shruti", "find-sa"] {
+            let app = launch(["-open", destination, "-singer", "0", "-simulateOutputChange", "YES"])
+            let change = app.buttons["Simulate output change"]
+            XCTAssertTrue(change.waitForExistence(timeout: 10))
+            // Opening is allowed before the bundled samples finish loading.
+            sleep(2)
+            change.tap()
+            let restart = app.buttons["Start again"]
+            XCTAssertTrue(restart.waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["Audio output changed. Start again when ready."].exists)
+            try audit(app)
+            XCUIDevice.shared.press(.home)
+            app.activate()
+            XCTAssertTrue(restart.waitForExistence(timeout: 5), "background/foreground must not restart")
+            restart.tap()
+            XCTAssertTrue(restart.waitForNonExistence(timeout: 5))
+            app.terminate()
+        }
+    }
+
+    @MainActor func testOutputChangeStopsExerciseUntilPlay() {
+        let app = launch(["-open", "sarali-4", "-autoplay", "YES", "-simulateOutputChange", "YES"])
+        XCTAssertTrue(app.buttons["Stop"].waitForExistence(timeout: 10))
+        app.buttons["Simulate output change"].tap()
+        let play = app.buttons["Play"]
+        XCTAssertTrue(play.waitForExistence(timeout: 5))
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(play.waitForExistence(timeout: 5))
+        play.tap()
+        XCTAssertTrue(app.buttons["Stop"].waitForExistence(timeout: 5))
+    }
+
     /// Runs the audit and names each offending element in the failure.
     ///
     /// Two deliberate exceptions. Contrast findings are logged, not fatal: the

@@ -82,7 +82,8 @@ final class PracticeViewModel: ObservableObject {
         didSet {
             guard settings != oldValue else { return }
             store.save(settings)
-            if playback.playing, let current { play(current) }
+            guard !outputChanged else { return }
+            if playback.playing, let current { playExercise(current) }
             if tanpuraPlaying { playTanpura() }
             if shruti.open { startShruti() }
         }
@@ -103,11 +104,12 @@ final class PracticeViewModel: ObservableObject {
     /// Find my Sa: open, and its progress (nil until the first frame).
     @Published private(set) var findSaOpen = false
     @Published private(set) var findSa: FindSaProgress?
+    @Published private(set) var outputChanged = false
 
     let catalog: [Varisai] = VarisaiCatalog.shared.all
 
     private let store: PracticeSettingsStore
-    private let player = VarisaiAudioPlayer()
+    private let player: VarisaiAudioPlayer
     private var bank: SampleBank?
     private var current: Varisai?
     private var recentRestarts: [Date] = []
@@ -123,11 +125,15 @@ final class PracticeViewModel: ObservableObject {
 
     /// What sounded before the app was backgrounded, to resume on return (issue #11).
     private var resumeAfterBackground: (() -> Void)?
+    private var backgroundOutput: VarisaiAudioPlayer.OutputSnapshot?
 
     /// Debug builds: launch argument `-singer <cents>` replaces the mic with a synthetic singer.
     let syntheticSingerCents: Double?
 
-    init(store: PracticeSettingsStore = .standard, loadSamples: Bool = true) {
+    init(store: PracticeSettingsStore = .standard, loadSamples: Bool = true, player: VarisaiAudioPlayer = VarisaiAudioPlayer(), bank: SampleBank? = nil) {
+        self.player = player
+        self.bank = bank
+        samplesLoaded = bank != nil
         self.store = store
         settings = store.load()
         history = store.loadHistory()
@@ -139,7 +145,8 @@ final class PracticeViewModel: ObservableObject {
         #endif
         singAlong.micPermitted = Self.micAuthorized()
         player.onRestartNeeded = { [weak self] in self?.restartPlayback() }
-        guard loadSamples else { return }
+        player.onOutputChanged = { [weak self] in self?.onOutputChanged() }
+        guard loadSamples, bank == nil else { return }
         Task.detached(priority: .userInitiated) {
             do {
                 let bank = try HarmoniumSamples.load()
@@ -147,8 +154,10 @@ final class PracticeViewModel: ObservableObject {
                     self.bank = bank
                     self.samplesLoaded = true
                     // Opened before the samples were ready (e.g. a launch argument).
-                    if self.shruti.open { self.startShruti() }
-                    if self.findSaOpen { self.startFindSa() }
+                    if !self.outputChanged {
+                        if self.shruti.open { self.startShruti() }
+                        if self.findSaOpen { self.startFindSa() }
+                    }
                 }
             } catch {
                 await MainActor.run { self.loadError = true }
@@ -169,6 +178,13 @@ final class PracticeViewModel: ObservableObject {
     }
 
     func play(_ varisai: Varisai) {
+        player.acknowledgeOutputChange()
+        playExercise(varisai)
+    }
+
+    private func playExercise(_ varisai: Varisai) {
+        outputChanged = false
+        resumeAfterBackground = nil
         guard let bank else { return }
         // The player offers a playable Sa instead; never build a schedule the samples can't play.
         // A rejected restart must still silence the previous session instead of
@@ -224,7 +240,10 @@ final class PracticeViewModel: ObservableObject {
 
     /// The drone alone, at the current Sa, until stopped.
     func toggleTanpura() {
-        if tanpuraPlaying { stop() } else { playTanpura() }
+        if tanpuraPlaying { stop() } else {
+            player.acknowledgeOutputChange()
+            playTanpura()
+        }
     }
 
     func stopTanpura() {
@@ -232,6 +251,8 @@ final class PracticeViewModel: ObservableObject {
     }
 
     private func playTanpura() {
+        outputChanged = false
+        resumeAfterBackground = nil
         guard let bank, let first = catalog.first else { return }
         stopTimer()
         _ = engine?.stop()
@@ -257,6 +278,10 @@ final class PracticeViewModel: ObservableObject {
     private var listeningAllowed: Bool { singAlong.micPermitted || syntheticSingerCents != nil }
 
     func openShruti() {
+        guard !shruti.open else { return }
+        player.acknowledgeOutputChange()
+        outputChanged = false
+        resumeAfterBackground = nil
         shruti = ShrutiUI(open: true, target: shruti.target, goal: shruti.goal)
         startShruti()
     }
@@ -284,6 +309,7 @@ final class PracticeViewModel: ObservableObject {
                 guard let self else { return }
                 self.singAlong.micPermitted = granted
                 self.singAlong.micDenied = !granted
+                guard !self.outputChanged else { return }
                 if granted, self.shruti.open { self.startShruti() }
                 if granted, self.findSaOpen { self.startFindSa() }
             }
@@ -292,6 +318,7 @@ final class PracticeViewModel: ObservableObject {
 
     /// The tanpura plus, with the mic allowed, a `ShrutiSession` listening to the student.
     private func startShruti() {
+        guard !outputChanged else { return }
         guard let bank, let first = catalog.first else { return }
         stopEverything()
         let renderer = SampleRenderer(
@@ -356,6 +383,14 @@ final class PracticeViewModel: ObservableObject {
     }
 
     func openFindSa() {
+        guard !findSaOpen else { return }
+        retryFindSa()
+    }
+
+    func retryFindSa() {
+        player.acknowledgeOutputChange()
+        outputChanged = false
+        resumeAfterBackground = nil
         findSaOpen = true
         findSa = nil
         startFindSa()
@@ -375,6 +410,7 @@ final class PracticeViewModel: ObservableObject {
 
     /// Listens without sound (a silent drone keeps the engine, and its mic, running).
     private func startFindSa() {
+        guard !outputChanged else { return }
         guard let bank, let first = catalog.first else { return }
         stopEverything()
         findSa = nil
@@ -497,10 +533,10 @@ final class PracticeViewModel: ObservableObject {
         }
     }
 
-    /// The player can't continue as configured (route change while listening,
-    /// or iOS rebuilt the audio engine): start again so echo cancellation and
-    /// the count-in leakage measurement match. At most a few times in quick succession.
+    /// Only internal engine rebuilds restart. An external output change always
+    /// wins over a queued recovery and waits for an explicit user start.
     private func restartPlayback() {
+        guard !outputChanged else { return }
         if shruti.open { startShruti(); return }
         if findSaOpen { startFindSa(); return }
         // iOS rebuilds the engine after leaving record mode (Practise Sa, Find my Sa):
@@ -512,7 +548,29 @@ final class PracticeViewModel: ObservableObject {
         guard recentRestarts.count <= 3 else { stop(); return }
         _ = engine?.stop()
         engine = nil
-        play(current)
+        playExercise(current)
+    }
+
+    private func onOutputChanged() {
+        guard !outputChanged, renderer != nil || resumeAfterBackground != nil || shruti.open || findSaOpen else { return }
+        outputChanged = true
+        resumeAfterBackground = nil
+        stopImmediately()
+        shruti.listeningToRoom = false
+        shruti.reading = nil
+        shruti.trace = []
+        shruti.hold = nil
+        singAlong.live = nil
+        if findSa?.step != .done { findSa = nil }
+        UIAccessibility.post(notification: .announcement, argument: "Audio output changed. Start again when ready.")
+    }
+
+    func restartAfterOutputChange() {
+        player.acknowledgeOutputChange()
+        outputChanged = false
+        resumeAfterBackground = nil
+        if shruti.open { startShruti() }
+        else if findSaOpen { startFindSa() }
     }
 
     /// Stops at once (leaving the screen, going to the background).
@@ -527,25 +585,39 @@ final class PracticeViewModel: ObservableObject {
     /// (hold progress and a half-caught guide start over), unlike the plain
     /// `stopImmediately` the screens call when leaving (issue #11).
     func onBackgrounded() {
+        guard !outputChanged else { resumeAfterBackground = nil; stopImmediately(); return }
+        backgroundOutput = player.outputSnapshot()
         let shrutiWasOpen = shruti.open
         let findSaWasOpen = findSaOpen
         let tanpuraWasPlaying = tanpuraPlaying
         let exercise = current
         let wasPlaying = playback.playing
+        // Nothing to resume: a route change while away must not count as an
+        // interrupted session (Android's `backgroundAudio()` is null here too).
+        guard shrutiWasOpen || findSaWasOpen || tanpuraWasPlaying || (wasPlaying && exercise != nil) else {
+            resumeAfterBackground = nil
+            stopImmediately()
+            return
+        }
         resumeAfterBackground = { [weak self] in
             guard let self else { return }
             if shrutiWasOpen { self.startShruti() }
             else if findSaWasOpen { self.startFindSa() }
             else if tanpuraWasPlaying { self.playTanpura() }
-            else if wasPlaying, let exercise { self.play(exercise) }
+            else if wasPlaying, let exercise { self.playExercise(exercise) }
         }
         stopImmediately()
     }
 
     /// The app is back (scene phase .active): start again what was sounding.
     func onForegrounded() {
-        resumeAfterBackground?()
+        if let backgroundOutput, backgroundOutput != player.outputSnapshot() {
+            onOutputChanged()
+        }
+        backgroundOutput = nil
+        let resume = resumeAfterBackground
         resumeAfterBackground = nil
+        if !outputChanged { resume?() }
     }
 
     private func finished(_ which: SampleRenderer?) {

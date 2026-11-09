@@ -46,6 +46,8 @@ class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
 
     @Volatile private var running = false
     private var thread: Thread? = null
+    private val recordLock = Any()
+    private var activeRecord: AudioRecord? = null
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     override fun start(onWindow: (FloatArray, Long) -> Unit) {
@@ -73,6 +75,7 @@ class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
             }
         }
         running = true
+        activeRecord = record
         thread = Thread({ capture(record, onWindow, effects) }, "sing-along-mic").also { it.start() }
     }
 
@@ -83,7 +86,9 @@ class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
         val timestamp = AudioTimestamp()
         var framesRead = 0L
         try {
-            record.startRecording()
+            synchronized(recordLock) {
+                if (running) record.startRecording()
+            }
             while (readHop(record, hop)) {
                 window.copyInto(window, 0, hop.size, window.size)
                 hop.copyInto(window, window.size - hop.size)
@@ -101,8 +106,11 @@ class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
             Log.e(TAG, "capture failed", e)
         } finally {
             effects.forEach { it.release() }
-            record.stop()
-            record.release()
+            synchronized(recordLock) {
+                if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) record.stop()
+                record.release()
+                activeRecord = null
+            }
         }
     }
 
@@ -111,7 +119,8 @@ class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
         var off = 0
         while (off < hop.size && running) {
             val n = record.read(hop, off, hop.size - off, AudioRecord.READ_BLOCKING)
-            if (n < 0) error("AudioRecord.read failed: $n")
+            if (!running) return false
+            if (n <= 0) error("AudioRecord.read failed: $n")
             off += n
         }
         return running
@@ -119,6 +128,9 @@ class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
 
     override fun stop() {
         running = false
+        synchronized(recordLock) {
+            activeRecord?.let { if (it.recordingState == AudioRecord.RECORDSTATE_RECORDING) it.stop() }
+        } // stop unblocks READ_BLOCKING, including when the route disappeared
         thread?.join()
         thread = null
     }

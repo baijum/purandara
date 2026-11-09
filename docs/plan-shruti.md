@@ -44,6 +44,20 @@ audit) and leaving it doesn't stop the tanpura; Android shows them inline.
 | Voice-range hints | Sa list grouped: **Lower voices** G2–B2, **Most men** C3–E3, **Most women** F3–A♯3, **Higher voices** B3–C4. |
 | Find my Sa | A held note = 1.5 s of steady pitch (within ±50¢ of its median). Suggested Sa: lower Pa (Sa − 5 semitones) at or above your lowest note, and upper Ri (Sa + 14) at or below your highest, choosing the middle of the possible Sas, within G2–C4. If your range is too narrow for both, choose the closest compromise and say so. |
 
+## Output changes and backgrounding (issue #21)
+
+On **both platforms**, an external output change stops the tanpura and
+listening, with no automatic restart. Shruti practice and Find my Sa offer
+**Start again**; the next start uses the system-selected output (and Shruti
+practice does a fresh room check). Standalone tanpura and the exercise player
+also stop; the user presses **Play** to start again.
+
+The normal fresh-session resume after returning from the background stays,
+unless an output change has cancelled it. On Android, audio-device availability
+changes during mic-only use (including Find my Sa) or while backgrounded
+conservatively stop and cancel pending resume; this is not detection of every
+output selection without playback.
+
 ## Milestones
 
 | | Scope | Tests |

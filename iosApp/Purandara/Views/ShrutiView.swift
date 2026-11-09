@@ -44,7 +44,9 @@ struct ShrutiView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Sa: \(PracticeSettingsView.saLabel(viewModel.settings.saMidi, cents: viewModel.settings.saCents))")
                         .foregroundStyle(Color.subdued)
-                    if !micAllowed {
+                    if viewModel.outputChanged {
+                        OutputChangedNotice()
+                    } else if !micAllowed {
                         Text("Allow the microphone to see your pitch. The tanpura plays either way.")
                             .fixedSize(horizontal: false, vertical: true)
                         Button { viewModel.allowMic() } label: { WrappingText("Allow microphone") }
@@ -61,7 +63,7 @@ struct ShrutiView: View {
                 }
                 .padding(.vertical, 4)
             }
-            if micAllowed {
+            if micAllowed && !viewModel.outputChanged {
                 holdStatus
             }
         }
@@ -223,6 +225,19 @@ private struct WrappingText: View {
     var body: some View { Text(key).fixedSize(horizontal: false, vertical: true) }
 }
 
+private struct OutputChangedNotice: View {
+    @EnvironmentObject private var viewModel: PracticeViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Audio output changed. Start again when ready.")
+                .fixedSize(horizontal: false, vertical: true)
+            Button { viewModel.restartAfterOutputChange() } label: { WrappingText("Start again") }
+                .buttonStyle(.borderedProminent)
+        }
+    }
+}
+
 /// Find my Sa: catch the lowest and highest comfortable notes, then suggest a
 /// Sa (docs/plan-shruti.md). Mirrors Android's `FindSaScreen`.
 struct FindSaView: View {
@@ -240,12 +255,12 @@ struct FindSaView: View {
                     Button { viewModel.allowMic() } label: { WrappingText("Allow microphone") }
                 }
             }
-            if micAllowed {
-                if let progress = viewModel.findSa, progress.step == .done, let suggestion = progress.suggestion {
-                    result(progress, suggestion)
-                } else {
-                    listening(viewModel.findSa)
-                }
+            if let progress = viewModel.findSa, progress.step == .done, let suggestion = progress.suggestion {
+                result(progress, suggestion)
+            } else if viewModel.outputChanged {
+                Section { OutputChangedNotice() }
+            } else if micAllowed {
+                listening(viewModel.findSa)
             }
         }
         .navigationTitle("Find my Sa")
@@ -294,7 +309,7 @@ struct FindSaView: View {
                     dismiss()
                 } label: { WrappingText("Use this") }
                 .buttonStyle(.borderedProminent)
-                Button { viewModel.openFindSa() } label: { WrappingText("Try again") }
+                Button { viewModel.retryFindSa() } label: { WrappingText("Try again") }
                 .buttonStyle(.bordered)
             }
             .padding(.vertical, 4)

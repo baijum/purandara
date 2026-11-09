@@ -150,8 +150,8 @@ the student would look perfect while silent. Defences, in order:
      where available.
    - **iOS:** `inputNode.setVoiceProcessingEnabled(true)` with
      `isVoiceProcessingAGCEnabled = false`, decided after the session enters
-     record mode (the route can change then); playback restarts if the route
-     later moves between speaker and headphones, or when iOS rebuilds the engine.
+     record mode (the route can change during initial setup). A later external
+     output change stops the session instead of restarting it (see below).
    - An **Echo cancellation** setting (default on) turns it off, for a
      microphone away from the speaker. iOS lowers playback volume while it is on.
 3. **Count-in calibration.** Sing-along forces the count-in on, and the screen
@@ -168,6 +168,21 @@ the student would look perfect while silent. Defences, in order:
 5. **Bleed check in the scorer.** If a note's readings match the reference
    exactly but the level is no higher than the calibrated bleed, mark it "no
    voice". This is a safety net, not the main defence.
+
+### Output changes and backgrounding (issue #21)
+
+On **both platforms**, an external output change stops playback (including
+standalone tanpura) and listening, with no automatic restart. The user presses
+**Play**, or **Start again** in Shruti practice / Find my Sa; the next start
+uses the system-selected output. Internal audio setup is not an external change.
+
+Backgrounding still stops the session; returning normally resumes a fresh
+session where it did before. An output change cancels any pending resume, so
+returning after it stays stopped until the user starts again.
+
+On Android, audio-device availability changes during mic-only use or while
+backgrounded conservatively stop the session and cancel pending resume. This
+does not imply detection of every output selection while playback is inactive.
 
 ## 6. Latency
 
@@ -235,7 +250,7 @@ In the player (both platforms):
 | S3 ✅ | Neural runtime on both platforms: bundle SwiftF0, ONNX Runtime AAR and iOS xcframework script, supervisors, CI | Done: model runs on emulator and simulator (within a semitone, 98–659 Hz, 44.1/48 kHz); release APK limited to ARM ABIs (60.7 MB universal, 31.5 MB AAB, was ~5 MB before ONNX Runtime) |
 | S4 ✅ | Android sing-along: permission, capture with echo cancellation, pitch lane, cell marks, summary, guide setting | Done: verified on the Pixel 9 emulator with the debug synthetic singer (in tune → ✓ marks; +35 cents → all ↑ and the right summary); permission refusal flow; 14 instrumented tests. **Pending: on-device check with a real voice and the speaker vs headphones** |
 | S5 ✅ | iOS sing-along: same | Done: mic on the player's own `AVAudioEngine` (voice processing on the speaker for echo cancellation), simulator runs with the synthetic singer (16/16 in tune; +35 cents all high), 4 accessibility audits pass incl. sing-along; large-text layout reworked. **Pending: on-device check with a real voice** |
-| S6 (partly) | Accessibility and latency polish; device testing | **iPad mini, real voice (2026-11-06):** sing-along hears the singer on the built-in speaker (echo cancellation: leakage 0.01–0.06, harmonium cancelled to ~0.002 at the mic) and with Bluetooth headphones. Fixed on the way: a crash on the first mic window; echo cancellation chosen before the route settled; iOS stopping the engine after voice processing switches (now restarts); mic input created on a running engine (silence); Bluetooth playback gaps (buffers refilled when consumed, not heard); the leakage model now measures room noise separately and uses the median click, so room noise or one loud click can't reject every voice. iOS lowers playback volume while echo cancellation is on (accepted; an Echo cancellation setting turns it off). **Still to do:** an Android phone with a real voice, a silent-pass check, and a manual TalkBack/VoiceOver pass |
+| S6 (partly) | Accessibility and latency polish; device testing | **iPad mini, real voice (2026-11-06):** sing-along hears the singer on the built-in speaker (echo cancellation: leakage 0.01–0.06, harmonium cancelled to ~0.002 at the mic) and with Bluetooth headphones. Fixed on the way: a crash on the first mic window; echo cancellation chosen before the route settled; iOS stopping the engine during initial voice-processing setup (recovered within that start, not an automatic restart after an external output change); mic input created on a running engine (silence); Bluetooth playback gaps (buffers refilled when consumed, not heard); the leakage model now measures room noise separately and uses the median click, so room noise or one loud click can't reject every voice. iOS lowers playback volume while echo cancellation is on (accepted; an Echo cancellation setting turns it off). **Still to do:** an Android phone with a real voice, a silent-pass check, and a manual TalkBack/VoiceOver pass |
 
 ## 9. Risks
 

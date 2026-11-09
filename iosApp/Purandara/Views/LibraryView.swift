@@ -49,11 +49,12 @@ struct LibraryView: View {
         .navigationTitle("Purandara")
         .navigationDestination(for: String.self) { id in
             if id == "shruti" {
-                ShrutiView()
+                ShrutiView().outputChangeTestControl()
             } else if id == "find-sa" {
-                FindSaView()
+                FindSaView().outputChangeTestControl()
             } else if let varisai = VarisaiCatalog.shared.byId(id: id) {
                 PlayerView(varisai: varisai)
+                    .outputChangeTestControl()
                     .onAppear { viewModel.stopTanpura() }
             }
         }

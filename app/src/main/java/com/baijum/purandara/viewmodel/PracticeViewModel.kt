@@ -1,6 +1,7 @@
 package com.baijum.purandara.viewmodel
 
 import android.app.Application
+import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.os.Handler
@@ -10,6 +11,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import ai.onnxruntime.OrtException
 import com.baijum.purandara.audio.AudioRecordMicSource
+import com.baijum.purandara.audio.AvailableOutputChanges
 import com.baijum.purandara.audio.HarmoniumSamples
 import com.baijum.purandara.audio.MicSource
 import com.baijum.purandara.audio.PitchListener
@@ -36,7 +38,6 @@ import com.baijum.purandara.shruti.ShrutiOutcome
 import com.baijum.purandara.shruti.ShrutiSession
 import com.baijum.purandara.singalong.BleedModel
 import com.baijum.purandara.singalong.FrameOutcome
-import com.baijum.purandara.singalong.NoteMark
 import com.baijum.purandara.singalong.PassResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -78,6 +79,8 @@ data class PracticeUiState(
     val tanpuraPlaying: Boolean = false,
     val shruti: ShrutiUiState = ShrutiUiState(),
     val findSa: FindSaUiState = FindSaUiState(),
+    /** Transient: only an explicit start can resume after an output change. */
+    val outputChanged: Boolean = false,
 )
 
 /**
@@ -118,9 +121,26 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     var debugSyntheticSingerCents: Double? = null
 
     /** What sounded before the app was backgrounded, to resume on return (issue #11). */
-    private var resumeAfterBackground: Resume? = null
+    private var resumeAfterBackground: BackgroundAudio? = null
+    private var backgrounded = false
+    private var findSaGeneration = 0L
+    private val outputInventory = AvailableOutputChanges(audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.id }.toSet())
+    private val deviceCallback = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+            onOutputChanged(availabilityChanged = outputInventory.added(addedDevices.filter { it.isSink }.map { it.id }.toSet()))
+        }
 
-    private enum class Resume { SHRUTI, FIND_SA, PLAYBACK, TANPURA }
+        override fun onAudioDevicesRemoved(removedDevices: Array<out AudioDeviceInfo>) {
+            onOutputChanged(availabilityChanged = outputInventory.removed(removedDevices.filter { it.isSink }.map { it.id }.toSet()))
+        }
+    }
+
+    private fun onOutputChanged(availabilityChanged: Boolean? = null) {
+        if (availabilityChanged != null && !shouldStopForOutputAvailability(availabilityChanged, player.hasActiveTrack, listener != null || engine != null, resumeAfterBackground)) return
+        resumeAfterBackground = null
+        stop(immediate = true)
+        _state.update { it.afterOutputChange() }
+    }
 
     /**
      * The app left the screen (MainActivity.onStop): remember what was sounding,
@@ -129,30 +149,30 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
      * fresh session (hold progress and a half-caught guide start over).
      */
     fun onBackgrounded() {
-        val s = _state.value
-        resumeAfterBackground = when {
-            s.shruti.open -> Resume.SHRUTI
-            s.findSa.open -> Resume.FIND_SA
-            s.playback.playing -> Resume.PLAYBACK
-            s.tanpuraPlaying -> Resume.TANPURA
-            else -> null
-        }
+        backgrounded = true
+        resumeAfterBackground = _state.value.backgroundAudio()
         stop()
     }
 
     /** The app is back (MainActivity.onStart): start again what was sounding. */
     fun onForegrounded() {
-        when (resumeAfterBackground) {
-            Resume.SHRUTI -> startShruti()
-            Resume.FIND_SA -> openFindSa()
-            Resume.PLAYBACK -> play()
-            Resume.TANPURA -> playTanpura()
+        backgrounded = false
+        onOutputChanged(availabilityChanged = outputInventory.reconcile(audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.id }.toSet()))
+        val resume = resumeAfterBackground
+        resumeAfterBackground = null
+        if (_state.value.outputChanged) return
+        when (resume) {
+            BackgroundAudio.SHRUTI -> startShruti()
+            BackgroundAudio.FIND_SA -> openFindSa()
+            BackgroundAudio.PLAYBACK -> play(automaticRestart = true)
+            BackgroundAudio.TANPURA -> playTanpura(automaticRestart = true)
             null -> {}
         }
-        resumeAfterBackground = null
     }
 
     init {
+        player.onOutputChanged = { onOutputChanged() }
+        audioManager.registerAudioDeviceCallback(deviceCallback, mainHandler)
         viewModelScope.launch {
             try {
                 bank = HarmoniumSamples.load(application.assets)
@@ -206,13 +226,18 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         preferences.save(next)
         _state.update { it.copy(settings = next) }
         if (next.singAlong) loadSupervisor()
-        if (wasPlaying) play()
-        if (wasTanpura) playTanpura()
+        if (!_state.value.canAutoStartAudio(backgrounded)) return
+        if (wasPlaying) play(automaticRestart = true)
+        if (wasTanpura) playTanpura(automaticRestart = true)
         if (_state.value.shruti.open) startShruti()
     }
 
-    fun setMicPermission(granted: Boolean) {
+    fun setMicPermission(granted: Boolean, restartPractice: Boolean = false) {
         _state.update { it.copy(singAlong = it.singAlong.copy(micPermitted = granted)) }
+        if (granted && restartPractice && _state.value.canAutoStartAudio(backgrounded)) {
+            if (_state.value.shruti.open) startShruti()
+            if (_state.value.findSa.open && _state.value.findSa.progress.suggestion == null) openFindSa()
+        }
     }
 
     /** The landing page's drone alone, at the current Sa, until stopped. */
@@ -220,21 +245,24 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         if (_state.value.tanpuraPlaying) stop() else playTanpura()
     }
 
-    private fun playTanpura() {
+    private fun playTanpura(automaticRestart: Boolean = false) {
+        if (backgrounded) return
+        _state.update { it.copy(outputChanged = false) }
         val bank = bank ?: return
         stop()
         val settings = _state.value.settings
         val r = SampleRenderer(bank, Schedule.of(catalog.first(), settings.performance()), RenderOptions.droneOnly(settings.droneLevel))
         renderer = r
-        player.play(r) { mainHandler.post { onPlaybackFinished(r) } }
+        player.play(r, automaticRestart = automaticRestart) { mainHandler.post { onPlaybackFinished(r) } }
         _state.update { it.copy(tanpuraPlaying = true) }
     }
 
     // --- Shruti practice (docs/plan-shruti.md) ---
 
     fun openShruti() {
-        _state.update { it.copy(shruti = ShrutiUiState(open = true, target = it.shruti.target, goal = it.shruti.goal)) }
-        startShruti()
+        if (backgrounded) return
+        _state.update { it.copy(outputChanged = false, shruti = ShrutiUiState(open = true, target = it.shruti.target, goal = it.shruti.goal)) }
+        startShruti(automaticRestart = false)
     }
 
     fun closeShruti() {
@@ -248,7 +276,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     }
 
     /** The tanpura plus, with the mic allowed, a [ShrutiSession] listening to the student. */
-    private fun startShruti() {
+    private fun startShruti(automaticRestart: Boolean = true) {
         val bank = bank ?: return
         stop()
         val settings = _state.value.settings
@@ -263,7 +291,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             player.onRendered = { start, rms -> session.outputLevels.record(start, rms) }
             loadSupervisor()
         }
-        player.play(r) { mainHandler.post { onPlaybackFinished(r) } }
+        player.play(r, automaticRestart = automaticRestart) { mainHandler.post { onPlaybackFinished(r) } }
         if (listening) {
             val onSpeaker = !headphonesConnected()
             listener = PitchListener(
@@ -302,7 +330,10 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     // --- Find my Sa ---
 
     fun openFindSa() {
+        if (backgrounded) return
+        _state.update { it.copy(outputChanged = false) }
         stop()
+        val generation = findSaGeneration
         val guide = FindSaGuide()
         val start = System.nanoTime()
         _state.update { it.copy(findSa = FindSaUiState(open = true)) }
@@ -315,7 +346,11 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         ) { frame ->
             val hz = frame.frequencyHz?.takeIf { frame.rms >= BleedModel.MIN_VOICE_RMS }
             val next = guide.onFrame(frame.timeSeconds, hz)
-            mainHandler.post { if (_state.value.findSa.open) _state.update { it.copy(findSa = FindSaUiState(open = true, progress = next)) } }
+            mainHandler.post {
+                if (_state.value.acceptsFindSaOutcome(generation, findSaGeneration)) {
+                    _state.update { it.copy(findSa = it.findSa.copy(progress = next)) }
+                }
+            }
         }.also { it.start() }
     }
 
@@ -341,7 +376,9 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         if (_state.value.playback.playing) stop() else play()
     }
 
-    fun play() {
+    fun play(automaticRestart: Boolean = false) {
+        if (backgrounded) return
+        _state.update { it.copy(outputChanged = false) }
         // Stop the sounding session first: a rejected restart (no selection,
         // samples not loaded, Sa outside the piece's range) must still silence
         // the previous one instead of leaving it playing with Stop disabled
@@ -374,7 +411,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             null
         }
         engine = newEngine
-        player.play(r) { mainHandler.post { onPlaybackFinished(r) } }
+        player.play(r, automaticRestart = automaticRestart) { mainHandler.post { onPlaybackFinished(r) } }
         newEngine?.start()
         ticker = viewModelScope.launch {
             while (isActive) {
@@ -449,9 +486,6 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    private fun List<NoteMark>.toMarkEntries(): List<Pair<MarkKey, com.baijum.purandara.singalong.NoteResult>> =
-        map { MarkKey(it.event.position.avarta, it.event.position.akshara, it.event.position.slot) to it.result }
-
     private fun recordScore(result: PassResult) {
         if (_state.value.section != null) return // only whole-piece passes are a best result
         val id = _state.value.selected?.id ?: return
@@ -472,17 +506,19 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun stop() {
+    fun stop(immediate: Boolean = false) {
         ticker?.cancel()
         ticker = null
+        findSaGeneration++
+        renderer = null // invalidate queued playback and Shruti outcomes before stopping threads
+        if (immediate) player.stop(immediate = true) // unblock output before waiting for the mic
         listener?.stop()
         listener = null
         if (shrutiSession != null) player.onRendered = null
         shrutiSession = null
         val finalPass = engine?.stop()
         engine = null
-        player.stop()
-        renderer = null
+        if (!immediate) player.stop()
         _state.update {
             it.copy(
                 playback = it.playback.copy(playing = false, position = null, beatInAvarta = null, countingIn = false),
@@ -500,6 +536,8 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { it.type in HEADPHONE_TYPES }
 
     override fun onCleared() {
+        audioManager.unregisterAudioDeviceCallback(deviceCallback)
+        player.onOutputChanged = null
         stop()
         supervisor?.close()
     }
