@@ -1,5 +1,6 @@
 package com.baijum.purandara.singalong
 
+import com.baijum.purandara.audio.HarmoniumArticulation
 import com.baijum.purandara.audio.RenderOptions
 import com.baijum.purandara.audio.SampleBank
 import com.baijum.purandara.audio.SampleRenderer
@@ -38,9 +39,13 @@ class SingAlongEndToEndTest {
 
     private class Run(val session: SingAlongSession, val result: PassResult, val liveMarks: List<NoteMark>)
 
-    private fun run(leakage: Float, singer: ((Double) -> Double?)?): Run {
+    private fun run(
+        leakage: Float,
+        singer: ((Double) -> Double?)?,
+        articulation: HarmoniumArticulation = HarmoniumArticulation.CONNECTED,
+    ): Run {
         val schedule = Schedule.of(VarisaiCatalog.byId("plain-scale-1")!!, PerformanceSettings(saHz = sa, tempo = 90))
-        val renderer = SampleRenderer(bank, schedule, RenderOptions(drone = true, loop = false, countIn = true))
+        val renderer = SampleRenderer(bank, schedule, RenderOptions(drone = true, loop = false, countIn = true, articulation = articulation))
         // Render the speaker output, recording block levels as the platform would.
         val levels = OutputLevels(capacity = 4096)
         val speaker = FloatArray(renderer.totalFrames.toInt())
@@ -88,6 +93,22 @@ class SingAlongEndToEndTest {
         val summary = run.result.summary
         assertEquals(16, summary.judged)
         assertTrue(summary.inTune >= 15, "in tune ${summary.inTune}/16: ${run.result.marks.map { it.result }}")
+    }
+
+    @Test
+    fun lightlySeparatedGuideStillScoresAContinuousSinger() {
+        val run = run(leakage = 0.1f, singer = singsSchedule(0.0), articulation = HarmoniumArticulation.LIGHTLY_SEPARATED)
+        assertEquals(16, run.result.summary.judged)
+        assertTrue(run.result.summary.inTune >= 15, run.result.marks.toString())
+    }
+
+    @Test
+    fun lightlySeparatedGuideLeakageIsNotMistakenForSinging() {
+        for (leakage in listOf(0.05f, 0.1f, 0.3f)) {
+            val run = run(leakage = leakage, singer = null, articulation = HarmoniumArticulation.LIGHTLY_SEPARATED)
+            assertEquals(0, run.result.summary.inTuneOrClose, "leakage $leakage")
+            assertEquals(16, run.result.summary.noVoice, "leakage $leakage")
+        }
     }
 
     @Test

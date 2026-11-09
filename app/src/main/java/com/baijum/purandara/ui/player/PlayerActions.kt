@@ -2,6 +2,7 @@ package com.baijum.purandara.ui.player
 
 import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.varisai.SectionSpan
+import com.baijum.purandara.domain.varisai.PracticePhrase
 
 /** What the player screen can ask for. */
 class PlayerActions(
@@ -14,4 +15,7 @@ class PlayerActions(
     val onOpenAppSettings: () -> Unit = {},
     /** Practise one section alone, or null for the whole piece. */
     val onSelectSection: (SectionSpan?) -> Unit = {},
+    val onContinue: () -> Unit = {},
+    val onWaitForMe: () -> Unit = {},
+    val onSelectPhrase: (PracticePhrase?) -> Unit = {},
 )

@@ -1,12 +1,15 @@
 package com.baijum.purandara.data
 
 import android.content.Context
+import com.baijum.purandara.audio.HarmoniumArticulation
 import com.baijum.purandara.audio.RenderOptions
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.schedule.PerformanceSettings
 import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.practice.PracticeHistory
+import com.baijum.purandara.practice.PracticeMode
+import com.baijum.purandara.practice.RecoveryMode
 import com.baijum.purandara.singalong.Strictness
 
 /** The student's practice settings. */
@@ -33,6 +36,13 @@ data class PracticeSettings(
     val saCents: Int = 0,
     /** What a gitam's notation shows: swaras, words or both. */
     val words: WordsDisplay = WordsDisplay.BOTH,
+    /** How the harmonium joins notes, without changing their scheduled timing. */
+    val articulation: HarmoniumArticulation = HarmoniumArticulation.CONNECTED,
+    val practiceMode: PracticeMode = PracticeMode.NORMAL,
+    val recoveryMode: RecoveryMode = RecoveryMode.CONTINUOUS,
+    val recoverySeconds: Int = 5,
+    /** Harmonium support during Your turn, independent of the always-on model guide. */
+    val responseGuide: Boolean = false,
 ) {
     val saHz: Double get() = Shruti.saHz(saMidi, saCents)
 
@@ -47,6 +57,7 @@ data class PracticeSettings(
         countIn = countIn || singAlong,
         harmoniumLevel = if (singAlong && !harmoniumGuide) 0f else harmoniumLevel,
         droneLevel = droneLevel,
+        articulation = articulation,
     )
 }
 
@@ -73,6 +84,11 @@ class PracticePreferences(context: Context) {
             saCents = prefs.getInt(SA_CENTS, d.saCents).takeIf { it in Shruti.FINE_TUNE_RANGE } ?: d.saCents,
             tuning = Tuning.entries.firstOrNull { it.name == prefs.getString(TUNING, null) } ?: d.tuning,
             words = WordsDisplay.entries.firstOrNull { it.name == prefs.getString(WORDS, null) } ?: d.words,
+            articulation = HarmoniumArticulation.entries.firstOrNull { it.name == prefs.getString(ARTICULATION, null) } ?: d.articulation,
+            practiceMode = PracticeMode.entries.firstOrNull { it.name == prefs.getString(PRACTICE_MODE, null) } ?: d.practiceMode,
+            recoveryMode = RecoveryMode.entries.firstOrNull { it.name == prefs.getString(RECOVERY_MODE, null) } ?: d.recoveryMode,
+            recoverySeconds = prefs.getInt(RECOVERY_SECONDS, d.recoverySeconds).takeIf { it in RECOVERY_RANGE } ?: d.recoverySeconds,
+            responseGuide = prefs.getBoolean(RESPONSE_GUIDE, d.responseGuide),
         )
     }
 
@@ -100,10 +116,16 @@ class PracticePreferences(context: Context) {
             .putString(STRICTNESS, s.strictness.name)
             .putInt(SA_CENTS, s.saCents)
             .putString(WORDS, s.words.name)
+            .putString(ARTICULATION, s.articulation.name)
+            .putString(PRACTICE_MODE, s.practiceMode.name)
+            .putString(RECOVERY_MODE, s.recoveryMode.name)
+            .putInt(RECOVERY_SECONDS, s.recoverySeconds)
+            .putBoolean(RESPONSE_GUIDE, s.responseGuide)
             .apply()
     }
 
     private companion object {
+        val RECOVERY_RANGE = 1..30
         const val SA = "sa_midi"
         const val TEMPO = "tempo"
         const val KALA = "kala"
@@ -121,5 +143,10 @@ class PracticePreferences(context: Context) {
         const val STRICTNESS = "strictness"
         const val SA_CENTS = "sa_cents"
         const val WORDS = "words"
+        const val ARTICULATION = "articulation"
+        const val PRACTICE_MODE = "practice_mode"
+        const val RECOVERY_MODE = "recovery_mode"
+        const val RECOVERY_SECONDS = "recovery_seconds"
+        const val RESPONSE_GUIDE = "response_guide"
     }
 }

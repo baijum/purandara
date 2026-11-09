@@ -61,6 +61,20 @@ struct PurandaraApp: App {
         guard let id = defaults.string(forKey: "open") else { return }
         path = [id]
         if defaults.bool(forKey: "singAlong") { viewModel.settings.singAlong = true }
+        if let raw = defaults.string(forKey: "practiceMode"), let mode = PracticeSettings.ModeChoice(rawValue: raw) {
+            viewModel.settings.practiceMode = mode
+        }
+        if let raw = defaults.string(forKey: "recoveryMode"), let mode = PracticeSettings.RecoveryChoice(rawValue: raw) {
+            viewModel.settings.recoveryMode = mode
+        }
+        if defaults.object(forKey: "repeatPractice") != nil { viewModel.settings.loop = defaults.bool(forKey: "repeatPractice") }
+        let recovery = defaults.integer(forKey: "recoverySeconds")
+        if (1...30).contains(recovery) { viewModel.settings.recoverySeconds = recovery }
+        let tempo = defaults.integer(forKey: "tempo")
+        if PracticeSettings.tempoRange.contains(tempo) { viewModel.settings.tempo = tempo }
+        let kala = defaults.integer(forKey: "kala")
+        if PracticeSettings.kalaRange.contains(kala) { viewModel.settings.kala = kala }
+        if defaults.object(forKey: "countIn") != nil { viewModel.settings.countIn = defaults.bool(forKey: "countIn") }
         if defaults.bool(forKey: "autoplay") {
             Task { @MainActor in
                 while !viewModel.samplesLoaded { try? await Task.sleep(nanoseconds: 50_000_000) }

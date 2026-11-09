@@ -29,6 +29,7 @@ final class PitchListener: @unchecked Sendable {
     private var supervisor: NeuralPitchSupervisor?
     private var ring: [Float] = []
     private var ringStartHost: UInt64 = 0
+    private var ringStartSeconds = 0.0
     private var micRate: Double = 44_100
     private var sinceLastWindow = 0
     private var timer: DispatchSourceTimer?
@@ -70,10 +71,15 @@ final class PitchListener: @unchecked Sendable {
         guard synthetic == nil else { return nil }
         return VarisaiAudioPlayer.MicRequest(echoCancellation: echoCancellation) { [weak self] buffer, when in
             guard let self, let channel = buffer.floatChannelData?[0] else { return }
+            let host = when.isHostTimeValid ? when.hostTime : mach_absolute_time()
+            let latency = AVAudioTime.hostTime(forSeconds: AVAudioSession.sharedInstance().inputLatency)
+            let captureHost = host > latency ? host - latency : 0
+            // Capture the heard timeline while the buffer is admitted, not when
+            // a queued window is later processed after output has stopped.
+            guard let seconds = self.timeOf(captureHost) else { return }
             let samples = Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
             let rate = buffer.format.sampleRate
-            let host = when.isHostTimeValid ? when.hostTime : mach_absolute_time()
-            self.queue.async { self.append(samples, rate: rate, hostTime: host) }
+            self.queue.async { self.append(samples, rate: rate, hostTime: captureHost, seconds: seconds) }
         }
     }
 
@@ -96,7 +102,7 @@ final class PitchListener: @unchecked Sendable {
 
     // MARK: - Queue
 
-    private func append(_ samples: [Float], rate: Double, hostTime: UInt64) {
+    private func append(_ samples: [Float], rate: Double, hostTime: UInt64, seconds: Double) {
         guard !stopped else { return }
         #if DEBUG
         diag.buffers += 1
@@ -110,7 +116,8 @@ final class PitchListener: @unchecked Sendable {
             sinceLastWindow = 0
         }
         if ring.isEmpty {
-            ringStartHost = hostTime - AVAudioTime.hostTime(forSeconds: AVAudioSession.sharedInstance().inputLatency)
+            ringStartHost = hostTime
+            ringStartSeconds = seconds
         }
         ring.append(contentsOf: samples)
         // Windows can only end where a full window of history precedes them,
@@ -123,21 +130,22 @@ final class PitchListener: @unchecked Sendable {
             let start = end - Self.window
             let centreOffset = Double(start + Self.window / 2) / micRate
             let captureHost = ringStartHost + AVAudioTime.hostTime(forSeconds: centreOffset)
-            process(Array(ring[start..<end]), captureHost: captureHost)
+            process(Array(ring[start..<end]), captureHost: captureHost, mappedTime: ringStartSeconds + centreOffset)
         }
         // Keep the history the next window needs.
         let excess = ring.count - Self.window - sinceLastWindow
         if excess > Self.hop * 4 {
             ring.removeFirst(excess)
             ringStartHost += AVAudioTime.hostTime(forSeconds: Double(excess) / micRate)
+            ringStartSeconds += Double(excess) / micRate
         }
     }
 
-    private func process(_ samples: [Float], captureHost: UInt64) {
+    private func process(_ samples: [Float], captureHost: UInt64, mappedTime: Double? = nil) {
         #if DEBUG
         diag.windows += 1
         #endif
-        guard let pipeline, let time = timeOf(captureHost) else {
+        guard let pipeline, let time = mappedTime ?? timeOf(captureHost) else {
             #if DEBUG
             diag.noTime += 1
             #endif
@@ -162,6 +170,9 @@ final class PitchListener: @unchecked Sendable {
         timer.setEventHandler { [weak self] in
             guard let self, !self.stopped else { return }
             let now = mach_absolute_time()
+            // Stable transport capture can exist while this attempt is not
+            // sounding: do not synthesize/copy/infer model or recovery audio.
+            guard self.timeOf(now) != nil else { return }
             let hz = singer.frequency(now).map { $0 * pow(2, singer.cents / 1200) }
             window.removeFirst(Self.hop)
             for _ in 0..<Self.hop {
