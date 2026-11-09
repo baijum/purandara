@@ -11,6 +11,7 @@ import android.media.AudioTrack
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
+import android.os.SystemClock
 import android.util.Log
 
 /**
@@ -34,9 +35,6 @@ class VarisaiAudioPlayer(context: Context) {
 
     /** Main-thread callback, once when an active track's actual output changes. */
     var onOutputChanged: (() -> Unit)? = null
-
-    /** Inventory changes must not substitute for the active track's actual route. */
-    val hasActiveTrack: Boolean get() = session?.finished == false
 
     /** True from [play] until playback finishes or [stop] is called. */
     val isPlaying: Boolean get() = session?.finished == false
@@ -114,7 +112,7 @@ class VarisaiAudioPlayer(context: Context) {
         private fun observeRoute(routing: AudioRouting) {
             val changed = synchronized(trackLock) {
                 if (session !== this || finished || released) return
-                routeChanges.observe(routing.routedDevice?.id).also { expectedOutputId = routeChanges.baselineDeviceId }
+                routeChanges.observe(routing.routedDevice?.id, SystemClock.elapsedRealtime()).also { expectedOutputId = routeChanges.baselineDeviceId }
             }
             if (changed) {
                 hardStop() // stop/flush unblocks a blocking write and prevents a drain

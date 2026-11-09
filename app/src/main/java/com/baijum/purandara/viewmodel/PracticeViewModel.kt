@@ -124,6 +124,8 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     private var resumeAfterBackground: BackgroundAudio? = null
     private var backgrounded = false
     private var findSaGeneration = 0L
+    /** Main thread: bumped for each new mic, so a late failure can't stop a newer session. */
+    private var micGeneration = 0L
     private val outputInventory = AvailableOutputChanges(audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).map { it.id }.toSet())
     private val deviceCallback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
@@ -136,7 +138,8 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun onOutputChanged(availabilityChanged: Boolean? = null) {
-        if (availabilityChanged != null && !shouldStopForOutputAvailability(availabilityChanged, player.hasActiveTrack, listener != null || engine != null, resumeAfterBackground)) return
+        // An active track's own route decides; the device inventory only stands in without one.
+        if (availabilityChanged != null && !shouldStopForOutputAvailability(availabilityChanged, player.isPlaying, listener != null || engine != null, resumeAfterBackground)) return
         resumeAfterBackground = null
         stop(immediate = true)
         _state.update { it.afterOutputChange() }
@@ -454,10 +457,18 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     /** The microphone, or in debug builds a synthetic singer singing [syntheticTarget]. */
     private fun micSource(echoCancellation: Boolean, syntheticTarget: (Long) -> Double?): MicSource {
         val synthetic = debugSyntheticSingerCents
+        val generation = ++micGeneration
         return if (synthetic != null) {
             SyntheticSingerMicSource(synthetic, syntheticTarget)
         } else {
-            AudioRecordMicSource(echoCancellation = echoCancellation)
+            // Capture ending on its own almost always means the input route vanished:
+            // treat it as an output change, so the screen offers Start again instead
+            // of listening to a silent mic. A failure from a replaced mic is ignored.
+            AudioRecordMicSource(echoCancellation = echoCancellation) {
+                mainHandler.post {
+                    if (generation == micGeneration && (listener != null || engine != null)) onOutputChanged()
+                }
+            }
         }
     }
 

@@ -196,6 +196,45 @@ final class PlaybackRecoveryTests: XCTestCase {
         XCTAssertFalse(player.isPlaying)
     }
 
+    @MainActor func testARebuildThatChangedNothingRecoversWithoutAnOutputChange() async throws {
+        let engine = AVAudioEngine()
+        let route = TestOutputRoute()
+        let player = VarisaiAudioPlayer(engine: engine, routeOutputs: { route.outputs })
+        var restarts = 0
+        var finishes = 0
+        var outputChanges = 0
+        player.onRestartNeeded = { restarts += 1 }
+        player.onOutputChanged = { outputChanges += 1 }
+        try player.play(drone()) { finishes += 1 }
+        defer { player.stopImmediately() }
+        try await Task.sleep(for: .milliseconds(2100)) // past the own-reconfiguration window
+        engine.stop()
+        NotificationCenter.default.post(name: .AVAudioEngineConfigurationChange, object: engine)
+        try await Task.sleep(for: .milliseconds(350))
+        XCTAssertEqual(restarts, 1)
+        XCTAssertEqual(outputChanges, 0)
+        XCTAssertEqual(finishes, 0)
+    }
+
+    func testRebuildRecoveriesAreLimitedWithinTheirWindow() {
+        var limiter = RebuildLimiter()
+        for t in 0..<RebuildLimiter.maxRecoveries { XCTAssertTrue(limiter.allow(now: CFTimeInterval(t))) }
+        XCTAssertFalse(limiter.allow(now: 5), "a rebuild loop stops")
+        XCTAssertTrue(limiter.allow(now: RebuildLimiter.window + 0.5), "the oldest has left the window")
+    }
+
+    @MainActor func testAnIdleRouteChangeOnlyNotifies() async throws {
+        let route = TestOutputRoute()
+        let player = VarisaiAudioPlayer(routeOutputs: { route.outputs })
+        var outputChanges = 0
+        player.onOutputChanged = { outputChanges += 1 }
+        route.outputs = ["bluetooth"]
+        postRouteChange()
+        try await Task.sleep(for: .milliseconds(250))
+        XCTAssertEqual(outputChanges, 1, "the view model decides whether a pending resume is cancelled")
+        XCTAssertFalse(player.isPlaying)
+    }
+
     func testIdleAndStopDuringRecoveryDoNotRestart() throws {
         var recovery = PlaybackRecovery()
         XCTAssertNil(recovery.request())

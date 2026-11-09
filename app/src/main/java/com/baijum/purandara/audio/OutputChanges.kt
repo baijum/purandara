@@ -1,24 +1,40 @@
 package com.baijum.purandara.audio
 
-/** One active track's actual route, not the inventory of available devices. */
+/**
+ * One active track's actual route, not the inventory of available devices.
+ *
+ * A user start takes its first route as the baseline, then gives the system
+ * [SETTLE_MILLIS] to finish routing (a Bluetooth device still connecting moves
+ * a fresh track off the speaker a moment later): a move inside that window is
+ * the new baseline, not an output change. A preset baseline (an automatic
+ * restart keeping the previous output) has no window.
+ */
 internal class RoutedOutputChanges(initialDeviceId: Int? = null) {
     var baselineDeviceId: Int? = initialDeviceId
         private set
     private var observedRoute = false
     private var changed = false
+    private var settleUntil = Long.MIN_VALUE
 
-    /** Initial null/first route and repeated notifications are not changes. */
-    fun observe(deviceId: Int?): Boolean {
-        if (changed) return false
-        if (!observedRoute && deviceId == null) return false // a replacement track hasn't routed yet
+    /** Initial null/first route, a move while settling and repeated notifications are not changes. */
+    fun observe(deviceId: Int?, nowMillis: Long): Boolean {
+        val firstRoute = !observedRoute
+        if (changed || (firstRoute && deviceId == null)) return false // a replacement track hasn't routed yet
         observedRoute = true
-        if (baselineDeviceId == null) {
-            baselineDeviceId = deviceId
-            return false
+        when {
+            firstRoute && baselineDeviceId == null -> {
+                baselineDeviceId = deviceId
+                settleUntil = nowMillis + SETTLE_MILLIS
+            }
+            deviceId == baselineDeviceId -> {}
+            nowMillis < settleUntil -> baselineDeviceId = deviceId
+            else -> changed = true
         }
-        if (deviceId == baselineDeviceId) return false
-        changed = true
-        return true
+        return changed
+    }
+
+    companion object {
+        const val SETTLE_MILLIS = 1_500L
     }
 }
 

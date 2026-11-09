@@ -184,6 +184,29 @@ On Android, audio-device availability changes during mic-only use or while
 backgrounded conservatively stop the session and cancel pending resume. This
 does not imply detection of every output selection while playback is inactive.
 
+What does **not** count as an output change:
+
+- **The app's own setup.** iOS recognises a route notification caused by
+  `configure()` (category, voice processing, speaker override) by the move it
+  made, within 2 s; an engine rebuild just after it recovers within that start.
+- **A rebuild that changed nothing.** If iOS rebuilds the engine's I/O with
+  the same outputs (another app changed the sample rate or buffer), playback
+  recovers in place. More than 3 such recoveries in 10 s stop plainly, with
+  no "output changed" notice.
+- **Routing settling after a start.** On Android, a fresh track's route may
+  move within 1.5 s of a user start (a Bluetooth device finishing its
+  connection); that move becomes the baseline. An automatic restart keeps the
+  previous output as its baseline, with no window.
+- **An idle route change** (iOS) only tells the view model, which cancels a
+  pending background resume if there is one; the engine and session are left
+  alone. A stop on a real change releases the session with
+  `.notifyOthersOnDeactivation`.
+
+A **lost microphone** is reported like an output change on Android: an empty
+read is retried (up to about 200 ms in a row); a capture that still ends on
+its own stops listening and shows the notice, rather than leaving the screen
+listening to silence.
+
 ## 6. Latency
 
 **As built on Android (S4):** each mic window's capture time comes from

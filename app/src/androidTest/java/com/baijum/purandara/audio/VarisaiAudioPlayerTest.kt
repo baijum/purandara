@@ -40,7 +40,7 @@ class VarisaiAudioPlayerTest {
             assertTrue("worker started rendering", rendered.await(2, TimeUnit.SECONDS))
             instrumentation.runOnMainSync {
                 player.stop(immediate = true)
-                assertFalse(player.hasActiveTrack)
+                assertFalse(player.isPlaying)
             }
             assertTrue("hard stop did not wait for the endless drone to drain", finished.await(2, TimeUnit.SECONDS))
         }

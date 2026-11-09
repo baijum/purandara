@@ -33,6 +33,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     // Main thread.
     private(set) var isPlaying = false
     private var recovery = PlaybackRecovery()
+    private var unexplainedRebuilds = RebuildLimiter()
     private var playbackOutputs: [String] = []
     private let routeOutputs: @Sendable () -> [String]
     private var stopping = false
@@ -380,19 +381,26 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
                 self.stopForOutputChange()
             } else if CACurrentMediaTime() - self.lastReconfigured < 2 {
                 self.requestRecovery()
+            } else if self.unexplainedRebuilds.allow(now: CACurrentMediaTime()) {
+                // The system rebuilt the I/O (another app changed the sample rate or
+                // buffer) but the output is the same: nothing changed for the user.
+                self.requestRecovery()
             } else {
-                // An unexplained hardware rebuild must not restart practice.
-                self.stopForOutputChange()
+                // A rebuild loop: stop plainly. The output didn't change, so no notice.
+                self.finishImmediately()
             }
         }
     }
 
     @MainActor private func stopForOutputChange() {
+        // Idle (e.g. suspended in the background): leave the engine and session
+        // alone; the view model decides whether a pending resume is cancelled.
+        guard isPlaying else { onOutputChanged?(); return }
         let callback = queue.sync { onFinished }
         stopImmediately()
         engine.stop()
         do {
-            try AVAudioSession.sharedInstance().setActive(false)
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         } catch {
             print("[player] session release on output change failed: \(error)")
         }
@@ -424,6 +432,20 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
             guard self.queue.sync(execute: { self.playGeneration == gen }) else { return }
             self.finishImmediately()
         }
+    }
+}
+
+/// Recovering from rebuilds nobody explains is fine a few times; a loop is not.
+struct RebuildLimiter {
+    static let maxRecoveries = 3
+    static let window: CFTimeInterval = 10
+    private var times: [CFTimeInterval] = []
+
+    mutating func allow(now: CFTimeInterval) -> Bool {
+        times = times.filter { now - $0 < Self.window }
+        guard times.count < Self.maxRecoveries else { return false }
+        times.append(now)
+        return true
     }
 }
 
