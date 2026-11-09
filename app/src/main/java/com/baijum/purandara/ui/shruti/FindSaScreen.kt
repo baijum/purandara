@@ -39,7 +39,7 @@ import com.baijum.purandara.shruti.FindSaStep
 /** Find my Sa: catch the lowest and highest comfortable notes, then suggest a Sa (docs/plan-shruti.md). */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun FindSaScreen(state: FindSaProgress, micPermitted: Boolean, actions: FindSaActions) {
+fun FindSaScreen(state: FindSaProgress, micPermitted: Boolean, actions: FindSaActions, outputChanged: Boolean = false) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -57,7 +57,11 @@ fun FindSaScreen(state: FindSaProgress, micPermitted: Boolean, actions: FindSaAc
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(stringResource(R.string.find_sa_intro), style = MaterialTheme.typography.bodyLarge)
-            if (!micPermitted) {
+            if (outputChanged && state.suggestion == null) {
+                OutputChangedNotice(actions.onRetry)
+                return@Column
+            }
+            if (!micPermitted && state.suggestion == null) {
                 Button(onClick = actions.onAllowMic) { Text(stringResource(R.string.allow_mic)) }
                 return@Column
             }

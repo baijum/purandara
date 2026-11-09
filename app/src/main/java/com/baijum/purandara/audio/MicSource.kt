@@ -40,12 +40,20 @@ interface MicSource {
  *   platform echo canceller, for when the app plays through the speaker
  *   (docs/plan-pitch-monitor.md, section 5). Automatic gain control is
  *   turned off where possible so quiet singing isn't pumped.
+ * @param onFailed runs on the capture thread when capture ends while still
+ *   running (the input route vanished, the record died), so the listener
+ *   isn't left waiting on a silent mic. Not called after [stop].
  */
-class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
+class AudioRecordMicSource(
+    private val echoCancellation: Boolean,
+    private val onFailed: () -> Unit = {},
+) : MicSource {
     override val sampleRate: Int = SAMPLE_RATE
 
     @Volatile private var running = false
     private var thread: Thread? = null
+    private val recordLock = Any()
+    private var activeRecord: AudioRecord? = null
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     override fun start(onWindow: (FloatArray, Long) -> Unit) {
@@ -73,6 +81,7 @@ class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
             }
         }
         running = true
+        activeRecord = record
         thread = Thread({ capture(record, onWindow, effects) }, "sing-along-mic").also { it.start() }
     }
 
@@ -83,7 +92,9 @@ class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
         val timestamp = AudioTimestamp()
         var framesRead = 0L
         try {
-            record.startRecording()
+            synchronized(recordLock) {
+                if (running) record.startRecording()
+            }
             while (readHop(record, hop)) {
                 window.copyInto(window, 0, hop.size, window.size)
                 hop.copyInto(window, window.size - hop.size)
@@ -99,26 +110,26 @@ class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
             }
         } catch (e: IllegalStateException) {
             Log.e(TAG, "capture failed", e)
+            if (running) onFailed()
         } finally {
             effects.forEach { it.release() }
-            record.stop()
-            record.release()
+            synchronized(recordLock) {
+                if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) record.stop()
+                record.release()
+                activeRecord = null
+            }
         }
     }
 
     /** Fills [hop]; false once stopped. */
-    private fun readHop(record: AudioRecord, hop: FloatArray): Boolean {
-        var off = 0
-        while (off < hop.size && running) {
-            val n = record.read(hop, off, hop.size - off, AudioRecord.READ_BLOCKING)
-            if (n < 0) error("AudioRecord.read failed: $n")
-            off += n
-        }
-        return running
-    }
+    private fun readHop(record: AudioRecord, hop: FloatArray): Boolean =
+        fillHop(hop, { running }, { offset, count -> record.read(hop, offset, count, AudioRecord.READ_BLOCKING) })
 
     override fun stop() {
         running = false
+        synchronized(recordLock) {
+            activeRecord?.let { if (it.recordingState == AudioRecord.RECORDSTATE_RECORDING) it.stop() }
+        } // stop unblocks READ_BLOCKING, including when the route disappeared
         thread?.join()
         thread = null
     }
@@ -129,6 +140,40 @@ class AudioRecordMicSource(private val echoCancellation: Boolean) : MicSource {
         const val NANOS_PER_SECOND = 1_000_000_000L
     }
 }
+
+/**
+ * Fills [hop] from [read] (offset, count → samples read or a negative error);
+ * false once [isRunning] turns false. A read that returns nothing is a
+ * transient hiccup (a route or focus change) and is retried after [pause];
+ * only [maxEmptyReads] in a row, or an error code, fail the capture.
+ */
+internal fun fillHop(
+    hop: FloatArray,
+    isRunning: () -> Boolean,
+    read: (offset: Int, count: Int) -> Int,
+    maxEmptyReads: Int = MAX_EMPTY_READS,
+    pause: () -> Unit = { Thread.sleep(EMPTY_READ_PAUSE_MS) },
+): Boolean {
+    var off = 0
+    var emptyReads = 0
+    while (off < hop.size && isRunning()) {
+        val n = read(off, hop.size - off)
+        if (!isRunning()) return false
+        check(n >= 0) { "AudioRecord.read failed: $n" }
+        if (n == 0) {
+            check(++emptyReads <= maxEmptyReads) { "AudioRecord.read returned nothing $emptyReads times" }
+            pause()
+            continue
+        }
+        emptyReads = 0
+        off += n
+    }
+    return isRunning()
+}
+
+/** About 200 ms of empty reads before the capture counts as lost. */
+private const val MAX_EMPTY_READS = 40
+private const val EMPTY_READ_PAUSE_MS = 5L
 
 /**
  * Debug only: a synthetic singer that sings whatever [frequencyAtFrame]

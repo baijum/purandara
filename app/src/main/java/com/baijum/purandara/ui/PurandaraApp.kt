@@ -16,7 +16,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import com.baijum.purandara.R
 import com.baijum.purandara.ui.library.LibraryActions
 import com.baijum.purandara.ui.library.LibraryScreen
 import com.baijum.purandara.ui.library.LibraryState
@@ -48,11 +51,11 @@ fun PurandaraApp(viewModel: PracticeViewModel) {
     }
     // Shruti practice and Find my Sa ask for the mic themselves and restart once allowed.
     val requestMicForShruti = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        viewModel.setMicPermission(granted)
-        if (granted && state.shruti.open) viewModel.openShruti()
-        if (granted && state.findSa.open) viewModel.openFindSa()
+        viewModel.setMicPermission(granted, restartPractice = true)
     }
     val allowMic = { requestMicForShruti.launch(Manifest.permission.RECORD_AUDIO) }
+
+    AnnounceOutputChange(state)
 
     when {
         state.shruti.open -> ShrutiRoute(viewModel, state, allowMic)
@@ -62,12 +65,29 @@ fun PurandaraApp(viewModel: PracticeViewModel) {
     }
 }
 
+/**
+ * Shruti practice and an unfinished Find my Sa show a notice (a live region);
+ * elsewhere (the player, the landing page's tanpura) playback just stops, so
+ * TalkBack is told, as VoiceOver is on iOS.
+ */
+@Composable
+private fun AnnounceOutputChange(state: PracticeUiState) {
+    val hasNotice = state.shruti.open || (state.findSa.open && state.findSa.progress.suggestion == null)
+    val announce = state.outputChanged && !hasNotice
+    val view = LocalView.current
+    val message = stringResource(R.string.audio_output_changed)
+    LaunchedEffect(announce) {
+        @Suppress("DEPRECATION") // no live region to attach to: nothing stays on screen
+        if (announce) view.announceForAccessibility(message)
+    }
+}
+
 @Composable
 private fun ShrutiRoute(viewModel: PracticeViewModel, state: PracticeUiState, allowMic: () -> Unit) {
     BackHandler { viewModel.closeShruti() }
     ShrutiScreen(
         state,
-        ShrutiActions(onBack = viewModel::closeShruti, onHoldChange = viewModel::setHold, onAllowMic = allowMic),
+        ShrutiActions(onBack = viewModel::closeShruti, onHoldChange = viewModel::setHold, onAllowMic = allowMic, onStartAgain = viewModel::openShruti),
         micAllowed = state.singAlong.micPermitted || viewModel.debugSyntheticSingerCents != null,
     )
 }
@@ -84,6 +104,7 @@ private fun FindSaRoute(viewModel: PracticeViewModel, state: PracticeUiState, al
             onRetry = viewModel::openFindSa,
             onAllowMic = allowMic,
         ),
+        outputChanged = state.outputChanged,
     )
 }
 

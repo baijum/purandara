@@ -90,7 +90,10 @@ fun ShrutiScreen(state: PracticeUiState, actions: ShrutiActions, micAllowed: Boo
         Column(
             Modifier.padding(padding).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         ) {
-            if (!micAllowed) {
+            if (state.outputChanged) {
+                OutputChangedNotice(actions.onStartAgain)
+                HoldPanel(state, actions.onHoldChange)
+            } else if (!micAllowed) {
                 Text(stringResource(R.string.mic_needed_shruti), style = MaterialTheme.typography.bodyLarge)
                 Button(onClick = actions.onAllowMic, modifier = Modifier.padding(vertical = 8.dp)) {
                     Text(stringResource(R.string.allow_mic))
@@ -118,6 +121,19 @@ fun ShrutiScreen(state: PracticeUiState, actions: ShrutiActions, micAllowed: Boo
     }
 }
 
+/** Shared stopped message, announced once, with an explicit accessible restart action. */
+@Composable
+internal fun OutputChangedNotice(onStartAgain: () -> Unit) {
+    Text(
+        stringResource(R.string.audio_output_changed),
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+    )
+    Button(onClick = onStartAgain, modifier = Modifier.padding(vertical = 8.dp)) {
+        Text(stringResource(R.string.start_again))
+    }
+}
+
 @Composable
 private fun HoldPanel(state: PracticeUiState, onChange: (HoldTarget, HoldGoal) -> Unit) {
     val shruti = state.shruti
@@ -137,6 +153,7 @@ private fun HoldPanel(state: PracticeUiState, onChange: (HoldTarget, HoldGoal) -
             ChoiceRow(HoldGoal.entries, shruti.goal, { onChange(shruti.target, it) }) {
                 stringResource(R.string.seconds_short, it.seconds.roundToInt())
             }
+            if (state.outputChanged) return@Column
             val current = hold?.currentSeconds ?: 0.0
             LinearProgressIndicator(
                 progress = { (current / shruti.goal.seconds).toFloat().coerceIn(0f, 1f) },

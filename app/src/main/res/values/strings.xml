@@ -55,6 +55,8 @@
     <string name="find_sa_range">Lowest %1$s · Highest %2$s</string>
     <string name="use_this">Use this</string>
     <string name="try_again">Try again</string>
+    <string name="audio_output_changed">Audio output changed. Start again when ready.</string>
+    <string name="start_again">Start again</string>
     <string name="close">Close</string>
     <string name="library_raga">Mayamalavagowla · Adi tala</string>
     <string name="loading_samples">Preparing the harmonium…</string>

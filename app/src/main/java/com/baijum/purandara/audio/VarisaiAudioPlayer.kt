@@ -5,9 +5,13 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioRouting
 import android.media.AudioTimestamp
 import android.media.AudioTrack
+import android.os.Handler
+import android.os.Looper
 import android.os.Process
+import android.os.SystemClock
 import android.util.Log
 
 /**
@@ -24,8 +28,13 @@ class VarisaiAudioPlayer(context: Context) {
         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
         .build()
 
-    private var session: Session? = null
+    private val mainHandler = Handler(Looper.getMainLooper())
+    @Volatile private var session: Session? = null
     private var focusRequest: AudioFocusRequest? = null
+    private var expectedOutputId: Int? = null
+
+    /** Main-thread callback, once when an active track's actual output changes. */
+    var onOutputChanged: (() -> Unit)? = null
 
     /** True from [play] until playback finishes or [stop] is called. */
     val isPlaying: Boolean get() = session?.finished == false
@@ -35,13 +44,15 @@ class VarisaiAudioPlayer(context: Context) {
      * thread when a non-looping performance has been fully heard, or when
      * audio focus is lost.
      */
-    fun play(renderer: SampleRenderer, onFinished: () -> Unit) {
+    fun play(renderer: SampleRenderer, automaticRestart: Boolean = false, onFinished: () -> Unit) {
         stop()
+        if (!automaticRestart) expectedOutputId = null // only a user start acknowledges a new output
+        var ownedSession: Session? = null
         val focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(attributes)
             .setOnAudioFocusChangeListener { change ->
                 if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-                    session?.requestStop()
+                    ownedSession?.takeIf { session === it }?.requestStop()
                 }
             }
             .build()
@@ -51,16 +62,23 @@ class VarisaiAudioPlayer(context: Context) {
         }
         focusRequest = focus
         renderer.reset()
-        session = Session(renderer, onFinished).also { it.start() }
+        val next = Session(renderer, onFinished)
+        ownedSession = next
+        session = next
+        next.start()
     }
 
-    /** Stops with a short fade, waiting for the playback thread to end. */
-    fun stop() {
-        session?.let {
-            it.requestStop()
-            it.join()
+    /** Normal stops fade; a changed output stops immediately, without waiting on a lost route. */
+    fun stop(immediate: Boolean = false) {
+        val previous = session
+        session = null // invalidate queued route/focus callbacks before teardown
+        previous?.let {
+            it.detachRouteListener()
+            if (immediate) it.hardStop() else {
+                it.requestStop()
+                it.awaitFade()
+            }
         }
-        session = null
         focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
         focusRequest = null
     }
@@ -84,6 +102,23 @@ class VarisaiAudioPlayer(context: Context) {
 
     private inner class Session(private val renderer: SampleRenderer, private val onFinished: () -> Unit) {
         @Volatile private var stopRequested = false
+        @Volatile private var immediateStop = false
+        private val trackLock = Any()
+        private var released = false
+        private val renderCallback = onRendered
+        private val routeChanges = RoutedOutputChanges(expectedOutputId)
+        private val routeListener = AudioRouting.OnRoutingChangedListener { routing -> observeRoute(routing) }
+
+        private fun observeRoute(routing: AudioRouting) {
+            val changed = synchronized(trackLock) {
+                if (session !== this || finished || released) return
+                routeChanges.observe(routing.routedDevice?.id, SystemClock.elapsedRealtime()).also { expectedOutputId = routeChanges.baselineDeviceId }
+            }
+            if (changed) {
+                hardStop() // stop/flush unblocks a blocking write and prevents a drain
+                onOutputChanged?.invoke()
+            }
+        }
 
         @Volatile var finished = false
             private set
@@ -111,12 +146,40 @@ class VarisaiAudioPlayer(context: Context) {
                 .build()
         }
 
-        fun start() = thread.start()
+        fun start() {
+            track.addOnRoutingChangedListener(routeListener, mainHandler)
+            thread.start()
+        }
 
-        fun join() = thread.join()
+        fun detachRouteListener() {
+            synchronized(trackLock) {
+                if (!released) track.removeOnRoutingChangedListener(routeListener)
+            }
+        }
+
+        fun awaitFade() {
+            thread.join(STOP_FADE_TIMEOUT_MS)
+            if (thread.isAlive) hardStop() // a vanished route may never consume the fade/drain
+        }
 
         fun requestStop() {
             stopRequested = true
+        }
+
+        fun hardStop() {
+            immediateStop = true
+            synchronized(trackLock) {
+                if (!released) {
+                    try {
+                        track.pause()
+                        track.flush()
+                        track.stop()
+                    } catch (e: IllegalStateException) {
+                        // Never initialised, or its server side died with the route.
+                        Log.w(TAG, "hard stop on an unusable track", e)
+                    }
+                }
+            }
         }
 
         /** Frames played; the head position is an unsigned 32-bit counter. */
@@ -138,39 +201,56 @@ class VarisaiAudioPlayer(context: Context) {
             }
         }
 
+        private fun writeBlock(buffer: FloatArray, size: Int) {
+            var offset = 0
+            while (offset < size && !immediateStop) {
+                val written = track.write(buffer, offset, size - offset, AudioTrack.WRITE_BLOCKING)
+                if (immediateStop) return
+                check(written > 0) { "AudioTrack.write failed: $written" }
+                offset += written
+            }
+        }
+
         private fun run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
             val buffer = FloatArray(CHUNK_FRAMES)
             var written = 0L
             var stopping = false
             try {
-                track.play()
-                while (true) {
+                synchronized(trackLock) {
+                    if (!immediateStop) track.play()
+                }
+                mainHandler.post {
+                    observeRoute(track)
+                }
+                while (!immediateStop) {
                     if (stopRequested && !stopping) {
                         renderer.fadeOut()
                         stopping = true
                     }
                     val n = renderer.render(buffer)
-                    if (n == 0) break
-                    onRendered?.invoke(written, rms(buffer, n))
-                    var off = 0
-                    while (off < n) {
-                        val w = track.write(buffer, off, n - off, AudioTrack.WRITE_BLOCKING)
-                        if (w < 0) error("AudioTrack.write failed: $w")
-                        off += w
-                    }
+                    if (n == 0 || immediateStop) break
+                    renderCallback?.invoke(written, rms(buffer, n))
+                    writeBlock(buffer, n)
                     written += n
                 }
                 // Let the last buffered audio play out before reporting the end.
-                while (playedFrames() < written && track.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                while (!immediateStop && playedFrames() < written && track.playState == AudioTrack.PLAYSTATE_PLAYING) {
                     Thread.sleep(DRAIN_POLL_MS)
                 }
             } catch (e: IllegalStateException) {
                 Log.e(TAG, "playback failed", e)
             } finally {
                 finished = true
-                track.stop()
-                track.release()
+                synchronized(trackLock) {
+                    track.removeOnRoutingChangedListener(routeListener)
+                    try {
+                        track.stop()
+                    } finally {
+                        track.release()
+                        released = true
+                    }
+                }
                 onFinished()
             }
         }
@@ -188,6 +268,7 @@ class VarisaiAudioPlayer(context: Context) {
         const val TAG = "VarisaiAudioPlayer"
         const val CHUNK_FRAMES = 1024
         const val BUFFER_FRAMES = 4096
+        const val STOP_FADE_TIMEOUT_MS = 500L
         const val DRAIN_POLL_MS = 10L
         const val UINT32_MASK = 0xFFFF_FFFFL
     }

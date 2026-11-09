@@ -8,4 +8,5 @@ data class ShrutiActions(
     val onBack: () -> Unit,
     val onHoldChange: (HoldTarget, HoldGoal) -> Unit,
     val onAllowMic: () -> Unit,
+    val onStartAgain: () -> Unit = {},
 )

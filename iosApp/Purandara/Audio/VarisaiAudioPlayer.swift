@@ -12,7 +12,7 @@ import shared
 /// to `queue`.
 final class VarisaiAudioPlayer: @unchecked Sendable {
     // Replaced (main thread, while stopped) when voice processing goes off.
-    private var engine = AVAudioEngine()
+    private var engine: AVAudioEngine
     private var node = AVAudioPlayerNode()
     private let format: AVAudioFormat
     private let queue = DispatchQueue(label: "purandara.varisai-render", qos: .userInteractive)
@@ -24,18 +24,30 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     private var doneRendering = false
     private var stopRequested = false
     private var generation = 0
+    private var playGeneration = 0
+    private var outputRevision = 0
+    private var outputAcknowledgement = 0
+    private var notifiedOutputs: [String] = []
     private var onFinished: (@MainActor () -> Void)?
 
     // Main thread.
     private(set) var isPlaying = false
+    private var recovery = PlaybackRecovery()
+    private var unexplainedRebuilds = RebuildLimiter()
+    private var playbackOutputs: [String] = []
+    private let routeOutputs: @Sendable () -> [String]
+    private var stopping = false
 
     private static let chunkFrames: AVAudioFrameCount = 4096
     private static let buffersAhead = 3
 
-    init() {
+    init(engine: AVAudioEngine = AVAudioEngine(), routeOutputs: @escaping @Sendable () -> [String] = { VarisaiAudioPlayer.outputIDs() }) {
+        self.engine = engine
+        self.routeOutputs = routeOutputs
         format = AVAudioFormat(standardFormatWithSampleRate: HarmoniumSamples.sampleRate, channels: 1)!
         scratch = KotlinFloatArray(size: Int32(Self.chunkFrames))
         wireEngine()
+        notifiedOutputs = routeOutputs()
         NotificationCenter.default.addObserver(
             self, selector: #selector(audioInterrupted), name: AVAudioSession.interruptionNotification, object: nil)
         NotificationCenter.default.addObserver(
@@ -46,7 +58,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         engine.attach(node)
         engine.connect(node, to: engine.mainMixerNode, format: format)
         NotificationCenter.default.addObserver(
-            self, selector: #selector(audioInterrupted), name: .AVAudioEngineConfigurationChange, object: engine)
+            self, selector: #selector(engineConfigurationChanged), name: .AVAudioEngineConfigurationChange, object: engine)
     }
 
     /// A fresh engine and player node. Switching voice processing off on an
@@ -69,6 +81,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         try configure(mic: mic)
         queue.sync {
             generation += 1
+            playGeneration += 1
             self.renderer = renderer
             self.onFinished = onFinished
             renderer.reset()
@@ -79,6 +92,8 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         }
         node.play()
         isPlaying = true
+        playbackOutputs = routeOutputs()
+        recovery.start()
     }
 
     /// Microphone capture on this same engine (needed for echo cancellation).
@@ -99,12 +114,26 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     private var micTapInstalled = false
     private var reconfiguring = false
     private var voiceProcessingOn = false
-    /// When `configure` last changed the session category or voice processing.
     private var lastReconfigured: CFTimeInterval = 0
+    /// The route `configure` found and left, and when: a notification shortly
+    /// after that reports this very move is the app's own doing.
+    private var configuredFrom: [String] = []
+    private var configuredOutputs: [String] = []
+    private var configuredAt: CFTimeInterval = -.infinity
+
+    static func sessionCategory(recording: Bool) -> AVAudioSession.Category {
+        recording ? .playAndRecord : .playback
+    }
 
     private func configure(mic: MicRequest?) throws {
         reconfiguring = true
-        defer { reconfiguring = false }
+        let outputsBefore = routeOutputs()
+        defer {
+            configuredFrom = outputsBefore
+            reconfiguring = false
+            configuredOutputs = routeOutputs()
+            configuredAt = CACurrentMediaTime()
+        }
         let session = AVAudioSession.sharedInstance()
         if micTapInstalled {
             engine.inputNode.removeTap(onBus: 0)
@@ -112,7 +141,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         }
         let wantRecord = mic != nil
         if !wantRecord && voiceProcessingOn { replaceEngine() }
-        if wantRecord != (session.category == .playAndRecord) {
+        if session.category != Self.sessionCategory(recording: wantRecord) {
             engine.stop()
             if wantRecord {
                 try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
@@ -151,12 +180,12 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         }
     }
 
-    /// Called on the main thread when playback can't continue as configured:
-    /// while listening, the sound moved between speaker and headphones (echo
-    /// cancellation no longer matches); or iOS stopped the engine to rebuild
-    /// its audio I/O, which it does just after voice processing or the session
-    /// category changes. The caller restarts playback, configuring afresh.
+    /// Internal session / voice-processing rebuilds can stop the engine just
+    /// after configuration. The caller restarts with the same settings.
     var onRestartNeeded: (@MainActor () -> Void)?
+
+    /// External output changes stop practice, even while suspended in the background.
+    var onOutputChanged: (@MainActor () -> Void)?
 
     /// True when the last `play` with a mic sent sound to the built-in speaker.
     private(set) var micOnSpeaker = false
@@ -183,15 +212,20 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     }
 
     /// Fades out (about a quarter of a second, including audio already queued) and then finishes.
-    func stop() {
+    @MainActor func stop() {
+        recovery.stop()
         guard isPlaying else { return }
+        stopping = true
+        guard engine.isRunning else { finishImmediately(); return }
         queue.async { self.stopRequested = true }
     }
 
     /// Stops at once, without calling `onFinished`. Used when restarting.
     func stopImmediately() {
+        recovery.stop()
         queue.sync {
             generation += 1
+            playGeneration += 1
             renderer = nil
             onFinished = nil
         }
@@ -201,6 +235,13 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         }
         node.stop()
         isPlaying = false
+        stopping = false
+    }
+
+    @MainActor private func finishImmediately() {
+        let callback = queue.sync { onFinished }
+        stopImmediately()
+        callback?()
     }
 
     /// Frames heard since `play`, or nil when idle.
@@ -250,10 +291,10 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
 
     private func finishIfDrained(_ gen: Int) {
         guard gen == generation, pending == 0 else { return }
-        let callback = onFinished
         generation += 1
         renderer = nil
-        onFinished = nil
+        // Keep the completion until delivery: Stop or an interruption can
+        // finish during the output-latency tail, before the delayed closure.
         // The last buffer has been consumed but is still on its way to the
         // speaker or headphones: finish once it has been heard.
         let session = AVAudioSession.sharedInstance()
@@ -262,51 +303,185 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         DispatchQueue.main.asyncAfter(deadline: .now() + tail) {
             // A new play (or stopImmediately) since then owns the node now.
             guard self.queue.sync(execute: { self.generation == finishedGeneration }) else { return }
-            self.node.stop()
-            self.isPlaying = false
-            if self.micTapInstalled {
-                self.engine.inputNode.removeTap(onBus: 0)
-                self.micTapInstalled = false
-            }
-            callback?()
+            self.finishImmediately()
         }
     }
 
+    struct OutputSnapshot: Equatable {
+        let outputs: [String]
+        let revision: Int
+    }
+
+    func outputSnapshot() -> OutputSnapshot {
+        OutputSnapshot(outputs: routeOutputs(), revision: queue.sync { outputRevision })
+    }
+
+    /// Only an explicit user start may acknowledge a previously queued change.
+    func acknowledgeOutputChange() {
+        let outputs = routeOutputs()
+        queue.sync {
+            outputAcknowledgement += 1
+            notifiedOutputs = outputs
+        }
+    }
+
+    private static func outputIDs() -> [String] {
+        AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.uid }
+    }
+
     @objc private func routeChanged(_ notification: Notification) {
+        let acknowledgement = queue.sync { outputAcknowledgement }
+        let raw = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt ?? 0
+        let reason = AVAudioSession.RouteChangeReason(rawValue: raw) ?? .unknown
+        // Record hardware connections before the main-thread handoff, so a
+        // foreground resume cannot overtake a pending route notification.
+        let routeBeforeChange = (notification.userInfo?[AVAudioSessionRouteChangePreviousRouteKey] as? AVAudioSessionRouteDescription)?
+            .outputs.map { $0.uid }
+        let outputs = routeOutputs()
+        let changedAtDelivery = queue.sync {
+            let changed = outputs != (routeBeforeChange ?? notifiedOutputs)
+            notifiedOutputs = outputs
+            if reason != .categoryChange && changed { outputRevision += 1 }
+            return changed
+        }
         #if DEBUG
-        print("[player] route change \(notification.userInfo?[AVAudioSessionRouteChangeReasonKey] ?? "-") "
-            + "out \(AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue })")
+        let session = AVAudioSession.sharedInstance()
+        print("[player] route change \(raw) category \(session.category.rawValue) "
+            + "out \(session.currentRoute.outputs.map { $0.portType.rawValue })")
+        #endif
+        #if DEBUG
+        let simulated = UserDefaults.standard.bool(forKey: "simulateOutputChange")
+            && notification.userInfo?["purandara.testOutputChange"] as? Bool == true
+        #else
+        let simulated = false
         #endif
         DispatchQueue.main.async {
-            guard self.isPlaying, self.micTapInstalled, !self.reconfiguring,
-                  Self.outputIsBuiltInSpeaker() != self.micOnSpeaker else { return }
-            self.onRestartNeeded?()
+            guard self.queue.sync(execute: { self.outputAcknowledgement == acknowledgement }) else { return }
+            // `configure` runs synchronously on this thread, so a notification it
+            // caused arrives after it returns: recognise it by the move it made.
+            // A configure that found the route already changed (a restart racing an
+            // external change) made no move, so that change still stops practice.
+            let ownChange = !simulated && CACurrentMediaTime() - self.configuredAt < 2
+                && self.configuredFrom != self.configuredOutputs
+                && self.routeOutputs() == self.configuredOutputs
+            guard !ownChange,
+                  PlaybackRecovery.routeNeedsStop(reason: reason, outputsChanged: changedAtDelivery || simulated) else { return }
+            self.stopForOutputChange()
+        }
+    }
+
+    @objc private func engineConfigurationChanged(_ notification: Notification) {
+        guard let source = notification.object as? AVAudioEngine else { return }
+        let gen = queue.sync { playGeneration }
+        DispatchQueue.main.async {
+            guard source === self.engine, self.queue.sync(execute: { self.playGeneration == gen }),
+                  self.isPlaying, !self.reconfiguring, !self.engine.isRunning else { return }
+            if self.stopping { self.finishImmediately(); return }
+            if self.routeOutputs() != self.playbackOutputs {
+                self.stopForOutputChange()
+            } else if CACurrentMediaTime() - self.lastReconfigured < 2 {
+                self.requestRecovery()
+            } else if self.unexplainedRebuilds.allow(now: CACurrentMediaTime()) {
+                // The system rebuilt the I/O (another app changed the sample rate or
+                // buffer) but the output is the same: nothing changed for the user.
+                self.requestRecovery()
+            } else {
+                // A rebuild loop: stop plainly. The output didn't change, so no notice.
+                self.finishImmediately()
+            }
+        }
+    }
+
+    @MainActor private func stopForOutputChange() {
+        // Idle (e.g. suspended in the background): leave the engine and session
+        // alone; the view model decides whether a pending resume is cancelled.
+        guard isPlaying else { onOutputChanged?(); return }
+        let callback = queue.sync { onFinished }
+        stopImmediately()
+        engine.stop()
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("[player] session release on output change failed: \(error)")
+        }
+        // Notify before completion so no settings/background path can restart
+        // a stopped listening screen. The normal completion still runs once.
+        onOutputChanged?()
+        callback?()
+    }
+
+    /// Give a related external-route notification time to cancel an internal
+    /// rebuild. Stop or a new play also invalidates the recovery ticket.
+    private func requestRecovery() {
+        guard let ticket = recovery.request() else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            guard self.recovery.take(ticket) else { return }
+            guard self.routeOutputs() == self.playbackOutputs else { self.stopForOutputChange(); return }
+            let callback = self.queue.sync { self.onFinished }
+            self.stopImmediately()
+            self.engine.stop()
+            if let restart = self.onRestartNeeded { restart() } else { callback?() }
         }
     }
 
     @objc private func audioInterrupted(_ notification: Notification) {
-        // Our own category / voice-processing changes post configuration changes too.
-        if notification.name == .AVAudioEngineConfigurationChange && (reconfiguring || !isPlaying) { return }
-        // iOS rebuilds the engine's I/O shortly after our own category or voice
-        // processing changes (and the engine stops): restart rather than give up.
-        // Likewise while listening, where the route decides echo cancellation.
-        let ownChange = CACurrentMediaTime() - lastReconfigured < 2
-        if notification.name == .AVAudioEngineConfigurationChange && (micTapInstalled || ownChange) {
-            #if DEBUG
-            print("[player] engine configuration changed (listening \(micTapInstalled), own change \(ownChange)): restarting")
-            #endif
-            DispatchQueue.main.async { self.onRestartNeeded?() }
-            return
-        }
-        if notification.name == AVAudioSession.interruptionNotification,
-           let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-           AVAudioSession.InterruptionType(rawValue: raw) != .began {
-            return
-        }
+        guard let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              AVAudioSession.InterruptionType(rawValue: raw) == .began else { return }
+        let gen = queue.sync { playGeneration }
         DispatchQueue.main.async {
-            let callback = self.queue.sync { self.onFinished }
-            self.stopImmediately()
-            callback?()
+            guard self.queue.sync(execute: { self.playGeneration == gen }) else { return }
+            self.finishImmediately()
         }
+    }
+}
+
+/// Recovering from rebuilds nobody explains is fine a few times; a loop is not.
+struct RebuildLimiter {
+    static let maxRecoveries = 3
+    static let window: CFTimeInterval = 10
+    private var times: [CFTimeInterval] = []
+
+    mutating func allow(now: CFTimeInterval) -> Bool {
+        times = times.filter { now - $0 < Self.window }
+        guard times.count < Self.maxRecoveries else { return false }
+        times.append(now)
+        return true
+    }
+}
+
+/// Main-thread recovery tickets invalidate delayed work when playback changes.
+struct PlaybackRecovery {
+    static func routeNeedsStop(reason: AVAudioSession.RouteChangeReason, outputsChanged: Bool) -> Bool {
+        guard reason != .categoryChange else { return false }
+        return outputsChanged
+    }
+
+    private var generation = 0
+    private var active = false
+    private var pending = false
+
+    mutating func start() {
+        generation += 1
+        active = true
+        pending = false
+    }
+
+    mutating func stop() {
+        generation += 1
+        active = false
+        pending = false
+    }
+
+    mutating func request() -> Int? {
+        guard active, !pending else { return nil }
+        pending = true
+        return generation
+    }
+
+    mutating func take(_ ticket: Int) -> Bool {
+        guard active, pending, ticket == generation else { return false }
+        pending = false
+        active = false
+        return true
     }
 }

@@ -1,4 +1,27 @@
+import AVFoundation
 import SwiftUI
+
+extension View {
+    @ViewBuilder func outputChangeTestControl() -> some View {
+        #if DEBUG
+        toolbar {
+            if UserDefaults.standard.bool(forKey: "simulateOutputChange") {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        NotificationCenter.default.post(
+                            name: AVAudioSession.routeChangeNotification, object: nil,
+                            userInfo: [AVAudioSessionRouteChangeReasonKey: AVAudioSession.RouteChangeReason.newDeviceAvailable.rawValue,
+                                       "purandara.testOutputChange": true])
+                    } label: { Image(systemName: "headphones") }
+                    .accessibilityLabel("Simulate output change")
+                }
+            }
+        }
+        #else
+        self
+        #endif
+    }
+}
 
 @main
 struct PurandaraApp: App {
