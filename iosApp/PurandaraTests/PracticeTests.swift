@@ -235,6 +235,21 @@ final class PlaybackRecoveryTests: XCTestCase {
         XCTAssertFalse(player.isPlaying)
     }
 
+    @MainActor func testPlaybackAfterRecordingWithoutEchoCancellationStarts() throws {
+        let player = VarisaiAudioPlayer()
+        defer { player.stopImmediately() }
+        let mic = VarisaiAudioPlayer.MicRequest(echoCancellation: false) { _, _ in }
+        do {
+            try player.play(drone(), mic: mic) {}
+        } catch {
+            throw XCTSkip("no microphone input here: \(error)")
+        }
+        // The engine that recorded must not be reused for `.playback` (it fails to start).
+        XCTAssertNoThrow(try player.play(drone()) {})
+        XCTAssertTrue(player.isPlaying)
+        XCTAssertEqual(AVAudioSession.sharedInstance().category, .playback)
+    }
+
     func testIdleAndStopDuringRecoveryDoNotRestart() throws {
         var recovery = PlaybackRecovery()
         XCTAssertNil(recovery.request())

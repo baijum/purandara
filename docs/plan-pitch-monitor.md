@@ -202,6 +202,21 @@ What does **not** count as an output change:
   alone. A stop on a real change releases the session with
   `.notifyOthersOnDeactivation`.
 
+**Recording mode on iOS (iPad mini, 2026-11-09).** In `.playAndRecord`, a
+session on the built-in speaker stays there when a Bluetooth device connects
+later, even across restarts; with echo cancellation (voice processing) on, iOS
+posts no route notification at all, and `AVRouteDetector` gives no usable
+signal either (it already reports other routes, e.g. AirPlay). A category
+change makes iOS choose the route again, so every recording start on the
+speaker passes through `.playback` first (at most once per 5 s, so an internal
+restart can't loop). Result: with echo cancellation off, connecting Bluetooth
+during sing-along stops with the notice as usual; with it on, the sound stays
+on the speaker until the user stops and starts again, which then uses the
+Bluetooth device. Leaving record mode also builds a fresh engine whenever the
+mic was attached: an engine with an input node fails to start in `.playback`,
+which had left the tanpura and plain playback silent after recording with echo
+cancellation off.
+
 A **lost microphone** is reported like an output change on Android: an empty
 read is retried (up to about 200 ms in a row); a capture that still ends on
 its own stops listening and shows the notice, rather than leaving the screen

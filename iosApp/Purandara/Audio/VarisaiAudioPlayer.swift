@@ -70,6 +70,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         node = AVAudioPlayerNode()
         wireEngine()
         voiceProcessingOn = false
+        inputAttached = false
         lastReconfigured = CACurrentMediaTime()
     }
 
@@ -114,6 +115,12 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     private var micTapInstalled = false
     private var reconfiguring = false
     private var voiceProcessingOn = false
+    /// The engine's input node exists: such an engine won't start in `.playback`.
+    private var inputAttached = false
+    /// At most one route re-pick (see `repickRoute`) every few seconds, so a
+    /// restart it causes can't re-pick again in a loop.
+    private var lastRouteRepick: CFTimeInterval = -.infinity
+    private static let recordOptions: AVAudioSession.CategoryOptions = [.defaultToSpeaker, .allowBluetoothA2DP]
     private var lastReconfigured: CFTimeInterval = 0
     /// The route `configure` found and left, and when: a notification shortly
     /// after that reports this very move is the app's own doing.
@@ -140,11 +147,14 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
             micTapInstalled = false
         }
         let wantRecord = mic != nil
-        if !wantRecord && voiceProcessingOn { replaceEngine() }
+        // An engine that recorded (its input node exists) fails to start in
+        // `.playback`, silently leaving playback mute: build a fresh one.
+        if !wantRecord && (voiceProcessingOn || inputAttached) { replaceEngine() }
+        if wantRecord && canRepickRoute(session) { try repickRoute(session) }
         if session.category != Self.sessionCategory(recording: wantRecord) {
             engine.stop()
             if wantRecord {
-                try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP])
+                try session.setCategory(.playAndRecord, mode: .default, options: Self.recordOptions)
             } else {
                 try session.setCategory(.playback, mode: .default)
             }
@@ -170,7 +180,10 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         #endif
         // The input must be part of the engine before it starts: creating it on
         // a running engine (first `inputNode` access) leaves the engine silent.
-        if wantRecord { _ = engine.inputNode }
+        if wantRecord {
+            _ = engine.inputNode
+            inputAttached = true
+        }
         if !engine.isRunning { try engine.start() }
         // After starting: switching voice processing changes the input format,
         // and a tap installed with the stale format never receives buffers.
@@ -390,6 +403,29 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
                 self.finishImmediately()
             }
         }
+    }
+
+    // MARK: Record mode and late outputs
+    //
+    // In `.playAndRecord`, a session on the built-in speaker stays there when a
+    // Bluetooth device connects later, even across restarts; with echo
+    // cancellation iOS posts no route notification at all. A category change
+    // makes it choose the route again, so each recording start on the speaker
+    // passes through `.playback` (iPad mini, 2026-11-09).
+
+    private func canRepickRoute(_ session: AVAudioSession) -> Bool {
+        session.category == .playAndRecord && Self.outputIsBuiltInSpeaker()
+            && CACurrentMediaTime() - lastRouteRepick > 5
+    }
+
+    /// Passes through `.playback` so iOS picks the best output again. The engine
+    /// is stopped; the caller configures and starts it afresh.
+    private func repickRoute(_ session: AVAudioSession) throws {
+        lastRouteRepick = CACurrentMediaTime()
+        engine.stop()
+        try session.setCategory(.playback, mode: .default)
+        try session.setCategory(.playAndRecord, mode: .default, options: Self.recordOptions)
+        lastReconfigured = CACurrentMediaTime()
     }
 
     @MainActor private func stopForOutputChange() {
