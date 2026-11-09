@@ -7,9 +7,9 @@
 @font-face { font-family: "Mukta"; src: url("fonts/mukta-700.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 
 :root {
-  --maroon: #6B1E2E;
+  --maroon: #7A1F2B;          /* brand palette: docs/branding.md */
   --maroon-deep: #521523;
-  --gold: #C9A227;
+  --gold: #C8962E;
   --gold-soft: #E9D59A;
   --teal: #0E5C61;
   --ink: #1F1724;
@@ -48,7 +48,8 @@ a:hover { text-decoration-thickness: 2px; }
 /* Masthead: maroon on every page, so the guide shares the hero's colour. */
 .masthead { background: var(--maroon); color: #fff; }
 .masthead-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 0.9rem; flex-wrap: wrap; }
-.wordmark { font-family: var(--display); font-size: 1.75rem; line-height: 1; color: #fff; text-decoration: none; }
+.wordmark { display: inline-flex; align-items: center; gap: 0.55rem; font-family: var(--display); font-size: 1.75rem; line-height: 1; color: #fff; text-decoration: none; }
+.wordmark img { width: 1.9rem; height: 1.9rem; }
 .masthead ul { display: flex; gap: 1.5rem; list-style: none; margin: 0; padding: 0; flex-wrap: wrap; }
 .masthead nav a { color: #fff; text-decoration: none; font-weight: 600; }
 .masthead nav a:hover { text-decoration: underline; }
@@ -57,7 +58,7 @@ a:hover { text-decoration-thickness: 2px; }
 .zari {
   height: 34px;
   background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='34'%3E%3Cpath d='M0 0H36L18 22Z' fill='%236B1E2E'/%3E%3Cpath d='M0 1L18 22L36 1' fill='none' stroke='%23C9A227' stroke-width='2'/%3E%3Cpath d='M9 1L18 12L27 1' fill='none' stroke='%23C9A227' stroke-width='1.2'/%3E%3Ccircle cx='18' cy='29' r='2.4' fill='%23C9A227'/%3E%3C/svg%3E") repeat-x top left / 36px 34px,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='34'%3E%3Cpath d='M0 0H36L18 22Z' fill='%237A1F2B'/%3E%3Cpath d='M0 1L18 22L36 1' fill='none' stroke='%23C9A227' stroke-width='2'/%3E%3Cpath d='M9 1L18 12L27 1' fill='none' stroke='%23C9A227' stroke-width='1.2'/%3E%3Ccircle cx='18' cy='29' r='2.4' fill='%23C9A227'/%3E%3C/svg%3E") repeat-x top left / 36px 34px,
     linear-gradient(var(--gold), var(--gold)) top / 100% 3px no-repeat;
   /* After the shorthand, which would reset it: the teeth hang onto white. */
   background-color: var(--paper);

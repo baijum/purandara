@@ -13,7 +13,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Placeholder palette: temple maroon and turmeric gold on a warm cream base.
+// Brand palette (docs/branding.md): temple maroon and turmeric gold on a warm cream base.
 private val Maroon = Color(0xFF7A1F2B)
 private val LightMaroon = Color(0xFFF2B8BE)
 private val Gold = Color(0xFFC8962E)

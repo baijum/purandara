@@ -91,6 +91,16 @@ The iOS app uses Apple's SF Symbols from the system; none are bundled.
 
 The website's screenshots are of Purandara itself.
 
+## Logo and icons (`tools/brand/`)
+
+The Arohanam mark (five steps rising to a dot) and every app icon, favicon
+and share image generated from it are original artwork for Purandara, under
+the project's MIT licence. The wordmark and tagline in `tools/brand/` (and in
+the images built from them: `site/static/images/og.png`, the lockups) are
+Rozha One and Mukta SemiBold, credited above, converted to vector outlines
+with fontTools; the SIL Open Font License 1.1 permits this, and the outlines
+are not a font.
+
 ## Notation
 
 The compositions are traditional; the gitams are by Purandara Dasa

@@ -32,6 +32,8 @@ features speculatively.
   [`docs/plan-alankaram-gitam.md`](docs/plan-alankaram-gitam.md) and
   [`docs/plan-gitam-swarajati-varnam.md`](docs/plan-gitam-swarajati-varnam.md).
 - [`models/README.md`](models/README.md) — the SwiftF0 model and its checksum.
+- [`docs/branding.md`](docs/branding.md) — the logo, icons, palette and type;
+  regenerate icons with `python3 tools/brand/build.py`, never hand-edit them.
 - [`site/`](site/) — the end-user website and guide; keep it in step with the
   app when features change.
 
@@ -109,6 +111,7 @@ features speculatively.
 | `shared/.../singalong/PitchLane.kt` | The sing-along pitch lane's swara lines and range, from the piece's own notes |
 | `tools/notation/crosscheck_gitams.py`, `crosscheck_swarajatis.py`, `crosscheck_varnams.py` | Compare `Gitam.kt` / `Swarajati.kt` / `Varnam.kt` with their web sources (not part of the build) |
 | `shared/src/iosMain/.../audio/FloatBridge.kt` | Bulk float copies between Swift buffers and Kotlin arrays |
+| `tools/brand/` | Logo sources (wordmark and tagline outlines) and `build.py`, which generates the Android adaptive icon, the iOS app icons (light, dark, tinted), the favicon, `mark.svg`, the share image and the lockups from one geometry |
 | `site/` | The end-user website and guide (https://baijum.github.io/purandara/): `pages/` HTML fragments with front matter, `templates/`, `static/` (CSS, the hero script, self-hosted fonts, app screenshots), `build.py` (standard library only) → `site/_build`. Published to GitHub Pages by `.github/workflows/site.yml`. Keep the guide in step with the app when features change. |
 
 Swift interop notes: a Kotlin `Char` arrives in Swift as a number (use an enum's

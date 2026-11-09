@@ -1,5 +1,7 @@
 # Purandara
 
+<img src="tools/brand/lockup.svg" alt="Purandara: gold steps rising to a dot, beside the name" height="72">
+
 A free, fully offline companion app for practising Carnatic music, for Android and iOS.
 
 **Website and user guide:** https://baijum.github.io/purandara/
@@ -60,6 +62,7 @@ iosApp/         iOS app (SwiftUI). project.yml is the XcodeGen spec
 audio/          Bundled samples, shared by both apps (Android assets, iOS bundle folder)
 models/         SwiftF0 pitch model (ONNX), shared by both apps
 tools/samples/  Offline scripts that prepare audio/ from source recordings
+tools/brand/    Logo sources and the script that generates every icon (python3 tools/brand/build.py)
 docs/           Feature plans
 site/           The website and user guide (python3 site/build.py; published by .github/workflows/site.yml)
 ```
@@ -92,6 +95,7 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [docs/plan-shruti.md](docs/plan-shruti.md) | Shruti practice, strictness, choosing Sa |
 | [docs/plan-alankaram-gitam.md](docs/plan-alankaram-gitam.md) | Alankarams and the Malahari gitams (done) |
 | [docs/plan-gitam-swarajati-varnam.md](docs/plan-gitam-swarajati-varnam.md) | More gitams, swarajatis, varnams (in progress; open items in issues #1–#6) |
+| [docs/branding.md](docs/branding.md) | The logo, icons, colours and type |
 | [docs/resources.md](docs/resources.md) | Websites, books and datasets to check notation, theory, tuning and audio against |
 
 ## Building
