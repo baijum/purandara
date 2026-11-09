@@ -223,6 +223,7 @@ final class PracticeViewModel: ObservableObject {
             // Decided by the player once the session is in record mode (the route can change then).
             singAlong.onSpeaker = mic != nil ? player.micOnSpeaker : VarisaiAudioPlayer.outputIsBuiltInSpeaker()
         } catch {
+            print("[practice] could not start audio: \(error)")
             engine = nil
             stop()
             return
@@ -267,6 +268,7 @@ final class PracticeViewModel: ObservableObject {
         do {
             try player.play(renderer, mic: nil) { [weak self] in self?.finished(renderer) }
         } catch {
+            print("[practice] could not start audio: \(error)")
             finished(renderer)
             return
         }
@@ -351,6 +353,7 @@ final class PracticeViewModel: ObservableObject {
             try player.play(renderer, mic: mic) { [weak self] in self?.finished(renderer) }
             singAlong.onSpeaker = mic != nil ? player.micOnSpeaker : VarisaiAudioPlayer.outputIsBuiltInSpeaker()
         } catch {
+            print("[practice] could not start audio: \(error)")
             finished(renderer)
             return
         }
@@ -428,6 +431,7 @@ final class PracticeViewModel: ObservableObject {
         do {
             try player.play(renderer, mic: listener.micRequest(echoCancellation: false)) { [weak self] in self?.finished(renderer) }
         } catch {
+            print("[practice] could not start audio: \(error)")
             finished(renderer)
             return
         }
