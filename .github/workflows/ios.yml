@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  # The flake-rerun step reads the failed job's log and reruns it once.
+  actions: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -62,3 +64,20 @@ jobs:
           print(pick[0])")
           xcodebuild -project iosApp/Purandara.xcodeproj -scheme Purandara \
             -destination "id=$SIM" CODE_SIGNING_ALLOWED=NO build test
+      # Runner-load flakes cost a manual rerun on most PRs (issue #28): the
+      # audit machinery timing out, roaming Dynamic Type false positives on
+      # plain scaling texts, the count-in test on a stalled simulator, and
+      # setup-java 504s from the adoptium CDN. Rerun the failed job ONCE —
+      # only when the log matches a known signature — so real regressions
+      # still fail (with two attempts) and every rerun is visible in CI.
+      - name: Rerun once on a known runner-load flake
+        if: failure() && github.run_attempt == 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh run view "$GITHUB_RUN_ID" --log-failed 2>/dev/null | grep -qE "Audit failed to complete in time|Dynamic Type font sizes are partially unsupported|count-in is shown first|Unexpected HTTP response: 504"; then
+            echo "Known runner-load flake signature; rerunning the failed job once"
+            gh run rerun "$GITHUB_RUN_ID" --failed
+          else
+            echo "Failure signature is not a known flake; leaving it failed"
+          fi

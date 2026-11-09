@@ -36,7 +36,10 @@ final class PurandaraUITests: XCTestCase {
         wait(for: [enabled], timeout: 10)
         play.tap()
 
-        XCTAssertTrue(app.staticTexts["Count-in…"].waitForExistence(timeout: 3), "count-in is shown first")
+        // On a loaded runner launch and playback start can take far longer than
+        // 3 s (this test case once ran 72 s on a stalled simulator, issue #28);
+        // a real regression still fails the wider wait.
+        XCTAssertTrue(app.staticTexts["Count-in…"].waitForExistence(timeout: 10), "count-in is shown first")
         let stop = app.buttons["Stop"]
         XCTAssertTrue(stop.exists)
         stop.tap()
@@ -295,6 +298,19 @@ final class PurandaraUITests: XCTestCase {
     /// the notation area are checked as strictly as ever.
     @MainActor private func audit(_ app: XCUIApplication, longNotation: Bool = false) throws {
         let visibleNotation = longNotation ? app.scrollViews["notation"].frame : .zero
+        // On a loaded runner the audit machinery itself can time out ("Audit
+        // failed to complete in time", issue #28). That is never a code signal:
+        // settle and retry once before failing.
+        do {
+            try performAudit(app, longNotation: longNotation, visibleNotation: visibleNotation)
+        } catch {
+            print("AUDIT: retrying after the audit did not complete: \(error)")
+            Thread.sleep(forTimeInterval: 2)
+            try performAudit(app, longNotation: longNotation, visibleNotation: visibleNotation)
+        }
+    }
+
+    @MainActor private func performAudit(_ app: XCUIApplication, longNotation: Bool, visibleNotation: CGRect) throws {
         try app.performAccessibilityAudit { issue in
             let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)' at \($0.frame)" } ?? "?"
             if issue.auditType == .contrast {
