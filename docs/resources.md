@@ -541,6 +541,53 @@ version).
 These references are for checking and explaining it, not for changing it
 casually.
 
+### 5.1 Tanpura string octaves and alternative tunings
+
+Checked 2026-11-11 for the Learn page's drone section (issue #33). Octave
+names need a reference: the layout used by the app is **Pa below the
+singer's Sa, Sa, Sa, Sa one octave below**, in plucking order. Lower Pa is
+Pa within the lower octave, not a perfect fifth below Sa.
+
+| Source and location | What it establishes | Scope / difference |
+|---|---|---|
+| NIOS, *Carnatic Music* Book 1, §6.5 “Tambura”, printed pp. 73–74, tuning paragraph on p. 74 — [PDF](https://www.nios.ac.in/media/documents/Carnatic_Music_243/Carnatic%20Music%20Book1%20(Complete).pdf) | “Madhya Panchamam - Two Taara Shadjam - Saarani, Anusaarani and finally mandra Shadjam.” | A Carnatic teaching source, but its middle Pa / upper Sa pair / lower Sa wording does not establish the app's octave layout relative to the singer. Do not silently rebase its octaves or treat the wording as resolved. |
+| karnatik glossary, T, “tambura” — <https://www.karnatik.com/glosst.shtml> | “mandra staayi pa, middle sa, middle sa, and taara sa” | Puts the fourth string above the paired Sas, unlike the app and the independent instructions below. No evidence found that settles whether this is an error or another convention. |
+| Sangtar, “Tanpura”, May 2007, string-by-string tuning instructions — <https://www.sangtar.com/2007/05/tanpura/> | First string: “fifth (Pa) of the lower octave”; second and third: middle Sa; fourth: lower Sa. | Explicit lower/middle-octave instructions in a Hindustani instructional article. Supports the layout, not a universal Carnatic rule. |
+| Toss Levy, “Male tanpura strings”, pitch/frequency table — <https://www.tosslevy.nl/tanpura/tanpura-strings/tanpura-strings-2/> | Approximate example frequencies: first Pa 196 Hz; second/third Sa 262 Hz; fourth Sa 131 Hz. | Confirms the inter-string relationship numerically (roughly G3–C4–C4–C3). These are example pitches, not fixed values for every voice; this is not a Carnatic-specific prescription. |
+
+Sangtar's named instructional article and Levy's instrument-practitioner
+table are separate sources with no shared tuning-text attribution found.
+They agree on the layout; neither resolves the Carnatic sources' wording.
+Wikipedia remains an orientation source only. Sambamoorthy and Pesch
+(§3.2) remain leads, not sources verified for this question.
+
+The app's own recording is Sankalp Gulati's Dhrupad Sansar recording,
+labelled `pa SA SA sa` in `tools/samples/prepare_tanpura.py` and credited in
+`ATTRIBUTION.md` (§6.1 below). That provenance is an app fact, not another
+independent theory witness. The Learn page therefore explains this
+recording's layout, cites the corroborating Hindustani references and
+states the NIOS/karnatik differences; it does not declare either source
+wrong or claim that all Carnatic tanpuras use this tuning.
+
+**Alternative first-string tunings (research, not beginner Carnatic
+instruction).** Two further references agree on lower-octave Ma and Ni
+alternatives to Pa:
+
+- Toss Levy, “Tanpura tuning variations”, the ma and ni sections —
+  <https://www.tosslevy.nl/tanpura/tuning-the-tanpura/tanpura-tuning-variations/>:
+  lower-octave shuddha Ma and Ni, with Hindustani examples such as Malkauns
+  and Marwa/Puriya/Sohani.
+- Janak Vadgama, “The Tanpura”, Ragasphere, four-string tuning paragraph —
+  <https://www.ragasphere.com/post/the-tanpura>: first string `Pa(0), ma(0),
+  or Ni(0)`, the middle pair `Sa(1)`, last `Sa(0)`; `(0)` means lower register
+  and `(1)` middle. The author explicitly limits the discussion to
+  Hindustani practice, not Carnatic.
+
+These support Hindustani alternatives, not a blanket Carnatic “use Ma or
+Ni whenever Pa is absent” rule. Carnatic-specific corroboration and the
+reason for the NIOS/karnatik octave disagreement remain open. Jivari and
+plucking rhythm were not researched for this change.
+
 ---
 
 ## 6. Recordings, samples and datasets

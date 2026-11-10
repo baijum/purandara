@@ -38,11 +38,25 @@ This plan was agreed and built on 2026-11-10 (stages L1–L5). Built as planned,
   unsourced claims ("traditionally three speeds", typical teacher tempos);
   the guide keeps a two-line pointer with the same anchor.
 - Kattai has one outside source (karnatik glossary: 5 = G); the full mapping
-  is the app's, confirmed by the owner (2026-11-11). The tanpura's string octaves differ between NIOS and
-  karnatik, so the page leaves them out.
+  is the app's, confirmed by the owner (2026-11-11).
 - `build.py` now fails on any broken internal link or anchor.
 - VoiceOver on Safari reads the swara symbols (R₁, S′, Ṇ) acceptably
   (checked by the owner, 2026-11-11), so no spoken forms were added.
+
+## Tanpura follow-up (2026-11-11, issue #33)
+
+The drone section now spells out the app recording's string octaves:
+lower Pa, Sa, Sa, lower Sa. Sangtar's tuning instructions and Toss Levy's
+frequency table independently support that layout in Hindustani practice;
+the page explicitly notes the conflicting NIOS and karnatik descriptions.
+Neither is declared an error, and the layout is not presented as a
+universal Carnatic rule. Exact sources and their limits are recorded in
+`resources.md` §5.1.
+
+Ma/Ni first-string alternatives are corroborated for Hindustani practice,
+not yet for a Carnatic teaching claim, so they stay in the research notes.
+The Carnatic-specific octave disagreement remains unresolved; jivari and
+plucking rhythm were not part of this change.
 
 ## Pages
 
