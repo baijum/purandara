@@ -300,6 +300,10 @@ User-generated, so it is a pointer to a source, never a source on its own.
 - The Gurukulam & SF collection is now public (see 2.4); the separate
   staff-and-sargam sheet for Kamala Sulochana was supplied privately and is
   not online.
+- The workbook was also the outline for the website's Learn section
+  (`docs/plan-learn.md`): it suggested the topics and their order, but no
+  text was taken from it and the site does not name it. Every claim on the
+  Learn pages was checked against two of the public sources below instead.
 - The workbook and the staff sheet are not public. Their provenance is
   recorded in the notation headers; where an online second source exists it
   is used, and where none exists the gap is recorded rather than filled

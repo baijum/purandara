@@ -223,6 +223,23 @@ def index_entries(body: str, path: str, area: str, label: str) -> list[dict]:
     return entries
 
 
+def broken_links(out: Path) -> list[str]:
+    """Internal links (and #anchors) in the built site that lead nowhere."""
+    pages = {f: f.read_text(encoding="utf-8") for f in out.rglob("*.html")}
+    ids = {f: set(re.findall(r'\bid="([^"]+)"', text)) for f, text in pages.items()}
+    bad = []
+    for f, text in pages.items():
+        for path, frag in re.findall(r'href="([^"#:?]*)(?:#([^"]*))?"', text):
+            target = (f.parent / path).resolve() if path else f
+            if path.endswith("/"):
+                target = target / "index.html"
+            if not target.exists():
+                bad.append(f"{f.relative_to(out)} → {path}")
+            elif frag and target.suffix == ".html" and frag not in ids.get(target, set()):
+                bad.append(f"{f.relative_to(out)} → {path}#{frag}")
+    return bad
+
+
 def main() -> None:
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -274,6 +291,9 @@ def main() -> None:
     leftover = [p for p in OUT.rglob("*.html") if "{{" in p.read_text(encoding="utf-8")]
     if leftover:
         raise SystemExit(f"unfilled placeholders in {leftover}")
+    bad = broken_links(OUT)
+    if bad:
+        raise SystemExit("broken internal links:\n  " + "\n  ".join(bad))
     print(f"built {count} pages and {len(index)} search entries into {OUT}")
 
 

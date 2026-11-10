@@ -13,7 +13,8 @@ gitams, swarajatis and varnams (`docs/plan-gitam-swarajati-varnam.md`: the
 varnam stage is built — rests, per-section speed, the two-kalai strip and
 all four varnams; they wait on their second-source checks, issue #7), and
 the notation laid out by tala cycle at every speed
-(`docs/plan-speed-layout.md`).
+(`docs/plan-speed-layout.md`). On the website: search (`docs/plan-site-search.md`)
+and the Learn section, beginner theory for learners (`docs/plan-learn.md`).
 New features are planned and discussed before they are built; do not add
 features speculatively.
 

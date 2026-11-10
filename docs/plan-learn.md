@@ -25,6 +25,24 @@ Outcome: a beginner can read the Learn section in order, understand what
 they are practising and why, and go from each page to the part of the app
 that practises it.
 
+This plan was agreed and built on 2026-11-10 (stages L1–L5). Built as planned, except:
+
+- The search page's old address (`guide/search.html`) forwards with a small
+  script and a meta refresh, keeping the query.
+- *Practise this* and *Further reading* sections are left out of the search
+  index, so link lists don't outrank real sections.
+- Start here gained an *In this section* list of the pages in reading order.
+- Wide tables (kattai, the key chart, the Adi tala hand) scroll sideways in a
+  labelled, focusable region on phones.
+- The guide's "Building up speed" moved to `learn/speeds.html` and lost two
+  unsourced claims ("traditionally three speeds", typical teacher tempos);
+  the guide keeps a two-line pointer with the same anchor.
+- Kattai has one outside source (karnatik glossary: 5 = G); the full mapping
+  is the app's. The tanpura's string octaves differ between NIOS and
+  karnatik, so the page leaves them out.
+- `build.py` now fails on any broken internal link or anchor.
+- Not yet checked with VoiceOver: how swara symbols (R₁, S′, Ṇ) are read.
+
 ## Pages
 
 In reading order (`site/pages/learn/`). Each page ends with **Practise this

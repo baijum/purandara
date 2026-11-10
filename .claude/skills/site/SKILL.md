@@ -1,12 +1,12 @@
 ---
 name: site
-description: Edit, build, preview and publish the Purandara website and guide (site/). Covers writing guide pages for musicians, adding pages and app screenshots, the build and its search index, previewing locally with headless Chrome screenshots (and its narrow-width false alarm), checking search and accessibility, and pushing to publish. Use when the user asks to update the website, the guide or the docs on the site, add a guide page or section, add a screenshot to the site, check or preview the site, or when an app change needs the guide kept in step.
+description: Edit, build, preview and publish the Purandara website (site/): the Learn section (beginner Carnatic theory), the app guide and search. Covers writing Learn and guide pages for musicians (and checking theory against two sources), adding pages and app screenshots, the build and its search index, previewing locally with headless Chrome screenshots (and its narrow-width false alarm), checking search and accessibility, and pushing to publish. Use when the user asks to update the website, the guide, the Learn pages or the docs on the site, add a page or section, explain Carnatic theory on the site, add a screenshot to the site, check or preview the site, or when an app change needs the guide kept in step.
 ---
 
 # Website and guide
 
-The site is https://baijum.github.io/purandara/: a landing page and a guide
-for musicians. Sources are in `site/`; `python3 site/build.py` (standard
+The site is https://baijum.github.io/purandara/: a landing page, **Learn**
+(the music, for beginners) and the **Guide** (the app), with search across both. Sources are in `site/`; `python3 site/build.py` (standard
 library only) writes `site/_build`. Pushing to `main` publishes it:
 `.github/workflows/site.yml` runs the same build and deploys to GitHub Pages.
 Site commits go straight to `main` (no PR) when the user asks to commit.
@@ -19,12 +19,12 @@ Site commits go straight to `main` (no PR) when the user asks to commit.
 | `site/pages/guide/*.html` | Guide pages: HTML fragments with front matter |
 | `site/pages/learn/*.html` | Learn: the music for beginners (plan `docs/plan-learn.md`) |
 | `site/pages/search.html` | The search page at the site root (`guide/search.html` redirects to it) |
-| `site/templates/base.html`, `guide.html` | Masthead, footer; guide sidebar (search box + page list) |
+| `site/templates/base.html`, `guide.html` | Masthead, footer; the sidebar layout of both sections (search box + page list) |
 | `site/static/` | `style.css`, `varisai.js` (landing hero), `search.js`, fonts, `images/` |
-| `site/build.py` | `GUIDE` list (sidebar order and labels), heading ids, `search.json` |
+| `site/build.py` | `LEARN` and `GUIDE` lists (sidebar order and labels) in `SECTIONS`, heading ids, `search.json` |
 | `docs/plan-site-search.md` | How search works |
 
-## Writing a guide page
+## Writing a page (Learn or Guide)
 
 - Front matter first, then one `<h1>`:
 
@@ -36,9 +36,10 @@ Site commits go straight to `main` (no PR) when the user asks to commit.
   <h1>Choose your Sa</h1>
   ```
 
-- A **new page** needs an entry in `GUIDE` in `site/build.py` (file name and
-  sidebar label, in reading order); the sidebar and previous/next links follow
-  from it.
+- A **new page** needs an entry in `LEARN` or `GUIDE` in `site/build.py` (file
+  name and sidebar label, in reading order); the sidebar and previous/next
+  links follow from it. New Learn pages also go in Start here's *In this
+  section* list, and new terms in the glossary (`learn/glossary.html`).
 - Links and images inside the site use `{{root}}` (`{{root}}guide/settings.html`,
   `{{root}}images/app-play.jpg`); links between guide pages may also be
   relative (`settings.html#tempo-speed`). The build fails on any unfilled
@@ -65,6 +66,48 @@ settings page (`settings.html`, including *Defaults at a glance*), and
 defaults) come from the code, not memory: e.g. tempo range is
 `Schedule.TEMPO_RANGE`. `site/pages/guide/tuning.html` mirrors
 `docs/tuning.md`; update both if `Swara.ratio` changes.
+
+## Learn pages: the music
+
+Learn explains Carnatic theory and practice to beginners; the Guide explains
+the app. Keep them apart: a Learn page teaches the idea and ends with
+**Practise this in Purandara** (links into the guide); a guide page explains a
+control and links to Learn for the music (as `varisai-player.html` links to
+`learn/speeds.html`).
+
+- **Two independent sources for every factual claim**, the notation rule
+  applied to theory (plan `docs/plan-learn.md`). The usual pair is the NIOS
+  Carnatic Music textbooks (Book 1: key concepts ch. 2, the first lessons
+  ch. 4, instruments ch. 6, notation ch. 7; Book 2: the lessons in notation)
+  and karnatik.com (lessons, practice, melakarta, tala, symbols, glossary
+  `gloss<letter>.shtml`). Shivkumar's basics borrow from karnatik, so they
+  don't count as independent. Wikipedia is for vocabulary only. Other sources
+  are in `docs/resources.md`. The NIOS PDFs are about 23 MB, too big for
+  WebFetch: download them and use `pdftotext -layout`.
+- **Where sources differ, say so on the page** (the order of the varisai
+  sets, three speeds or four, the tanpura's strings) rather than picking one
+  silently. Where only one source exists, either attribute it ("some books")
+  or tell the user.
+- **Advice is fine; invented facts are not.** "Start around 50 to 60 beats a
+  minute" is advice; "teachers usually start at 40" is a claim needing a
+  source.
+- **Check descriptions of the exercises against the app's notation**
+  (`shared/.../varisai/catalog/`), not memory: numbering (the app's Sarali 1 is
+  the first figure; books that count the plain scale as 1 are one higher),
+  counts and shapes.
+- **Never quote or name the owner's private workbook** on the site; it was
+  only the outline.
+- End each page with *Practise this in Purandara* and *Further reading* (the
+  sources a learner can open). Both are left out of the search index.
+- Swara symbols use Unicode: R₁ G₃ (subscripts), S′ (upper), Ṇ Ḍ (dot below),
+  ♯ for black keys, as the app does. Wide tables go in
+  `<div class="table-scroll" role="region" aria-label="…" tabindex="0">` so
+  they scroll on phones without losing table semantics. The keyboard figure in
+  `swaras.html` / `mayamalavagowla.html` is an inline SVG with
+  `class="keyboard"`, `role="img"` and an `aria-label`, beside a table with
+  the same facts.
+- The build fails on any broken internal link or `#anchor` (`broken_links`
+  in `build.py`), so renaming a heading that something links to shows up at once.
 
 ## App screenshots
 

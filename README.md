@@ -4,7 +4,7 @@
 
 A free, fully offline companion app for practising Carnatic music, for Android and iOS.
 
-**Website and user guide:** https://baijum.github.io/purandara/
+**Website, user guide and Learn pages:** https://baijum.github.io/purandara/ (Learn explains shruti, the swaras, Adi tala, the speeds and the varisais for beginners)
 
 It's named after **Purandara Dasa** (1484–1564), who is revered as the *Pitamaha*
 (grandfather) of Carnatic music. He wrote the graded lessons that students
@@ -70,7 +70,7 @@ models/         SwiftF0 pitch model (ONNX), shared by both apps
 tools/samples/  Offline scripts that prepare audio/ from source recordings
 tools/brand/    Logo sources and the script that generates every icon (python3 tools/brand/build.py)
 docs/           Feature plans
-site/           The website and user guide (python3 site/build.py; published by .github/workflows/site.yml)
+site/           The website: Learn, the user guide and search (python3 site/build.py; published by .github/workflows/site.yml)
 ```
 
 ## Sound
@@ -103,6 +103,8 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [docs/plan-alankaram-gitam.md](docs/plan-alankaram-gitam.md) | Alankarams and the Malahari gitams (done) |
 | [docs/plan-gitam-swarajati-varnam.md](docs/plan-gitam-swarajati-varnam.md) | More gitams, swarajatis, varnams (in progress; open items in issues #1–#6) |
 | [docs/plan-speed-layout.md](docs/plan-speed-layout.md) | Notation laid out by tala cycle at every speed: strip and notation share columns (done) |
+| [docs/plan-site-search.md](docs/plan-site-search.md) | Website: full-text search (done) |
+| [docs/plan-learn.md](docs/plan-learn.md) | Website: the Learn section, beginner theory (done) |
 | [docs/tuning.md](docs/tuning.md) | Just (tanpura) vs Equal (keyboard): exact ratios, cents, frequencies and implementation (the musicians' version is the guide's Tuning page) |
 | [docs/branding.md](docs/branding.md) | The logo, icons, colours and type |
 | [docs/resources.md](docs/resources.md) | Websites, books and datasets to check notation, theory, tuning and audio against |
