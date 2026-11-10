@@ -1,39 +1,79 @@
 <!--
 title: Practice settings
-description: Every practice setting in Purandara: Sa, tuning, strictness, harmonium guide and note separation, drone, click, count-in, repeat and echo cancellation.
+description: Every practice setting in Purandara: Sa and fine tune, tempo and speed, tuning, harmonium guide and note separation, drone and volumes, click and count-in, practice mode and repeat, recovery, echo cancellation, strictness and notation.
 -->
 <h1>Practice settings</h1>
-<p class="intro">Open them with the sliders button in the player. They are remembered, and apply to every exercise. On iOS, use the named Sound, Rhythm, and Feedback and notation pages to reach the controls.</p>
+<p class="intro">Open the settings with the sliders button in the player. The same controls exist on Android, iPhone and iPad, though the app groups them differently. Every change is saved on the device and applies to every exercise. <em>Tempo</em> and <em>Speed</em> are on the player itself, beside the notation.</p>
 
+<h2 id="where">Where the controls are</h2>
+<table>
+  <thead><tr><th scope="col">Where</th><th scope="col">What</th></tr></thead>
+  <tbody>
+    <tr><td>On the player, above Play</td><td><em>Tempo</em> and <em>Speed</em>. They are saved with the other settings.</td></tr>
+    <tr><td>Sliders button on Android</td><td>One scrolling sheet. Sa and fine tune are at the top, followed by the sound, feedback and practice controls. Scroll to the bottom for practice mode and recovery.</td></tr>
+    <tr><td>Sliders button on iPhone and iPad</td><td>Sa on the first page, then <em>Sound</em> (tuning, harmonium guide and notes, volumes and drone), <em>Rhythm</em> (practice mode, click and count-in, repeat and recovery) and <em>Feedback and notation</em> (echo cancellation, strictness, gitam notation).</td></tr>
+  </tbody>
+</table>
+
+<h2 id="sa">Sa and fine tune</h2>
+<p><em>Sa</em> is the home note: the harmonium, the tanpura and the marking of your notes all use it. Purandara offers <strong>G2 to C4</strong>; the default is <strong>C3</strong> (1 kattai). The list is grouped by the voices that usually sing there, from lower voices to higher voices, and each choice shows its keyboard note and kattai, such as “D3 · 2 kattai”. You can also choose Sa from the home screen. More in <a href="choose-your-sa.html">Choose your Sa</a>.</p>
+<p><em>Fine tune</em> moves Sa by up to <strong>50 cents</strong> above or below the keyboard note, in one-cent steps; <strong>exact</strong> (0) is the default. A fine-tuned Sa is shown after the label, such as “C3 · 1 kattai +12¢”. It applies to the harmonium, the tanpura and the marking of your notes.</p>
+<p>If a piece needs notes above the harmonium samples at the chosen Sa, the player says so and offers the nearest Sa that fits. You cannot start the piece until you choose a playable Sa.</p>
+<p>On Android, Fine tune is directly below Sa; on iPhone and iPad it is at the top of the Sa list.</p>
+
+<h2 id="tempo-speed">Tempo and Speed</h2>
+<p><em>Tempo</em> is the speed of the tala beat: <strong>30 to 120 beats per minute</strong>, in steps of 5, default <strong>60</strong>. It is not the speed of the written notes.</p>
+<p><em>Speed</em> is the kala: <strong>1 to 4</strong>, default <strong>1</strong>. Each step doubles the number of written notation cells played in each tala beat. A varisai written one cell to a beat has one cell per beat at first kala, two at second, four at third and eight at fourth. A piece already written several cells to a beat starts higher: a swarajati writes four to a beat, so at second kala it has eight. The tala beat keeps the tempo above.</p>
+<p>At a faster speed a short piece may be played more than once to fill whole tala cycles; the line under the notation then says “Pass 2 of 4”. A varnam section already marked at double speed plays twice as fast again.</p>
+
+<h2 id="sound">Sound and accompaniment</h2>
 <dl>
-  <dt>Sa and fine tune</dt>
-  <dd>Your home note and a nudge of up to ±50 cents. See <a href="choose-your-sa.html">Choose your Sa</a>.</dd>
   <dt>Tuning</dt>
-  <dd><em>Just (tanpura)</em>, the default, tunes each swara to its natural ratio with Sa, as a tanpura does. <em>Equal (keyboard)</em> matches a keyboard; R₁, G₃, D₁ and N₃ differ by up to about 14 cents.</dd>
+  <dd><em>Just (tanpura)</em> is the default: each swara takes its natural ratio to Sa, the way a tanpura is tuned. <em>Equal (keyboard)</em> divides the octave into twelve equal semitones, matching a keyboard or tuner. In Mayamalavagowla the largest differences are about 14 cents, on R₁, G₃, D₁ and N₃. Tuning changes the harmonium and the target pitches used in sing-along and Shruti practice; the tanpura recording keeps its own natural intervals. Use <em>Equal</em> when practising with a keyboard.</dd>
   <dt>Harmonium guide</dt>
-  <dd><em>All notes</em> plays every swara. <em>Off (drone and click)</em> leaves only the tanpura and tala, so you sing alone.</dd>
+  <dd><em>All notes</em> (default) plays every swara on the harmonium. In normal playback, with <em>Sing along</em> on, <em>Off (drone and click)</em> silences the harmonium so only the tanpura and tala click accompany you, while the marks still appear; with Sing along off, the harmonium stays on. In <em>Listen, then sing</em> the model always uses the harmonium; <em>Harmonium during your turn</em> controls your turn.</dd>
   <dt>Harmonium notes</dt>
-  <dd><em>Connected</em>, the default, joins successive notes smoothly. <em>Lightly separated</em> adds a small gap to help distinguish notes; holds stay sustained. This changes the harmonium guide, not tala timing or where you breathe.</dd>
-  <dt>Tanpura drone, drone volume and harmonium volume</dt>
-  <dd>Turn the tanpura on or off, and balance it against the harmonium.</dd>
+  <dd><em>Connected</em> (default) joins successive notes smoothly, with a short crossfade. <em>Lightly separated</em> fades the previous unheld note a little early, so each new note is distinct. Karvai holds stay sustained and written rests stay silent. It changes only the harmonium sound: note starts, tala, cursor, tempo, notation and the length of the exercise are unchanged. It is not an instruction to breathe; take breaths where the music and words need them.</dd>
+  <dt>Tanpura drone</dt>
+  <dd>On by default. The tanpura sounds through the count-in, the exercise and any recovery break, and stops with <em>Stop</em>. Off leaves the harmonium and click without a drone.</dd>
+  <dt>Drone volume</dt>
+  <dd><strong>0–100%</strong>, default <strong>50%</strong>. It balances the tanpura against the harmonium and is disabled when the tanpura is off.</dd>
+  <dt>Harmonium volume</dt>
+  <dd><strong>0–100%</strong>, default <strong>75%</strong>. It sets the guide notes, the model in <em>Listen, then sing</em>, and any harmonium during your turn. It does not change the tanpura. It is applied when you release the slider.</dd>
+</dl>
+
+<h2 id="rhythm">Tala, count-in and practice</h2>
+<dl>
   <dt>Tala click</dt>
-  <dd>A click on every beat, accented on the claps.</dd>
+  <dd>Off by default. A click on every tala count: clap, finger count and wave each have their own sound, and in a two-kalai varnam the second count of each beat is softer. The count-in clicks even when this is off.</dd>
   <dt>Count in one avarta</dt>
-  <dd>One cycle of tala clicks before the exercise starts. Sing-along always counts in.</dd>
+  <dd>On by default. One full avarta of tala clicks before the exercise — sixteen counts for a two-kalai varnam. It is separate from <em>Tala click</em> and sounds even when clicks are off. <em>Sing along</em> switches it on automatically: the app uses the gaps between count-in clicks to measure the room and its own sound, so stay quiet until the harmonium starts. In <em>Listen, then sing</em> the model starts without a count-in; your turn follows the count-in setting, and always counts in when it is being scored.</dd>
   <dt>Practice mode</dt>
-  <dd><em>Normal playback</em> is the default. <em>Listen, then sing</em> plays a harmonium model, gives you a recovery interval, then a turn to sing the same exercise or selected unit. The Sing along switch controls pitch feedback; without it, no microphone access is needed.</dd>
+  <dd><em>Normal playback</em> (default) plays the exercise or the selected section or practice unit. <em>Listen, then sing</em> plays a harmonium model, applies the <em>Between repeats</em> choice, counts in if <em>Count in one avarta</em> is on (or if the turn is being scored), and gives you a turn at the same unit. With <em>Repeat</em> off there is one model and one turn; with it on the pair repeats. The model is always harmonium and is never scored. Your turn is scored only when <em>Sing along</em> is on and the microphone is available. Without Sing along, it is an unscored practice interval and the app does not ask for the microphone.</dd>
   <dt>Harmonium during your turn</dt>
-  <dd>In listen–repeat practice, the model always uses the harmonium at your configured volume. Your turn uses the tanpura and configured click by default; turn this option on for harmonium support.</dd>
+  <dd>Off by default. In <em>Listen, then sing</em>, the model always uses the harmonium, even when <em>Harmonium guide</em> is off. Your turn uses the tanpura and the click; switch this on to add harmonium support. It has no effect in normal playback. On iPhone and iPad the page is called <em>Response guide</em> and the switch <em>Harmonium on your turn</em>.</dd>
   <dt>Repeat</dt>
-  <dd>Off plays one normal attempt, or one listen–sing pair. On repeats the selected unit until you tap Stop; choosing a break does not turn Repeat on.</dd>
+  <dd>Off by default. Off plays one normal attempt, or one listen–sing pair. On repeats the current unit — the whole piece, or the selected <em>Section</em> or reviewed practice phrase when one is available — until you tap <em>Stop</em>; it does not move on to the next exercise. Choose the unit above the notation; it resets when you leave the player. In <em>Listen, then sing</em> it repeats the model-and-turn pair. Choosing a break does not turn <em>Repeat</em> on.</dd>
   <dt>Between repeats</dt>
-  <dd><em>Continuous</em> preserves the existing seamless normal repeat. <em>Timed break</em> offers 1–30 seconds, initially 5; <em>When ready</em> waits for Continue. In listen–repeat, this choice also separates the model and your turn. Break seconds are a convenience setting, not a breathing target.</dd>
+  <dd>Only relevant with <em>Repeat</em> on, except in <em>Listen, then sing</em>, where it also separates the model from your turn. <em>Continuous</em> (default) has no extra wait: normal playback loops seamlessly, and <em>Listen, then sing</em> follows the release with the next part. <em>Timed break</em> rests for <strong>1–30 seconds</strong>, initially <strong>5</strong>. <em>When ready</em> waits for <em>Continue</em> with no deadline. A break starts after the harmonium release; the tanpura continues if on; the exercise clicks, cursor and tala highlight stop; nothing sung during it is marked. The next count-in is additional to the break. <em>Continue</em> starts at once, <em>Wait for me</em> cancels a timed restart, and <em>Stop</em> ends practice and the drone. The seconds are a convenience, not a breathing target. On iPhone and iPad the choice is disabled when Repeat is off in normal playback.</dd>
+</dl>
+
+<h2 id="sing-along">Sing along and feedback</h2>
+<p>The microphone button in the player toolbar turns <em>Sing along</em> on and off. It is not in the settings sheet, but it changes how several settings behave. The first time, allow microphone access. Turn it on to have each note marked and to get a summary after each pass; see <a href="sing-along.html">Sing along</a>.</p>
+<ul>
+  <li><em>Sing along</em> forces the count-in on when it is marking your notes, even when <em>Count in one avarta</em> is off. Stay quiet until the harmonium starts so the app can measure the room and its own sound.</li>
+  <li>In normal playback, with <em>Sing along</em> on and <em>Harmonium guide</em> off, the harmonium is silent and only the tanpura and click accompany you; the marks still appear. With Sing along off, normal playback keeps the harmonium.</li>
+  <li>In <em>Listen, then sing</em>, only your turn is scored. The model is never scored, even with Sing along on.</li>
+  <li>Without Sing along, no microphone is requested for normal playback, and the turn in <em>Listen, then sing</em> is unscored.</li>
+  <li>On iPhone and iPad with pitch feedback on, the microphone connection and its system indicator can stay on during breaks and model playback; those buffers are discarded before analysis and nothing is stored or sent. <em>Stop</em> ends the session. On Android capture stops for those intervals.</li>
+</ul>
+<dl>
   <dt>Echo cancellation</dt>
-  <dd>On the speaker, removes the app’s own sound from what the microphone hears, so it isn’t mistaken for your voice. On by default. Turn it off when using a microphone placed away from the speaker. See <a href="microphones.html">Microphones and headphones</a>.</dd>
+  <dd>On by default. When the app listens through the built-in speaker, it removes its own sound from the microphone signal so the harmonium is not mistaken for your voice. On iPhone and iPad the system may lower the playback volume while it is on; on any device it can slightly colour quiet singing. Turn it off when using a USB microphone away from the speaker, or headphones, and you want steady volume; with the built-in speaker, keep it on. The count-in still measures how much app sound reaches the microphone. It applies to sing-along and Shruti practice. See <a href="microphones.html">Microphones and headphones</a>.</dd>
 </dl>
 
 <h2 id="strictness">Strictness</h2>
-<p>How close a note must be to count, for sing-along and Shruti practice.</p>
+<p>How close a sung note must be to count, for sing-along and Shruti practice. <em>Precise</em> is the default. The target pitch does not change; Strictness sets the width of the <em>in tune</em> and <em>close</em> zones. Notes outside <em>close</em> are marked high or low (red); an octave error or a different swara is marked separately.</p>
 <table>
   <thead><tr><th scope="col">Level</th><th scope="col">In tune</th><th scope="col">Close</th></tr></thead>
   <tbody>
@@ -42,7 +82,42 @@ description: Every practice setting in Purandara: Sa, tuning, strictness, harmon
     <tr><td>Precise (default)</td><td>within ±10 cents</td><td>within ±25 cents</td></tr>
   </tbody>
 </table>
-<p>A cent is a hundredth of a semitone. Most listeners notice a difference of about 10 to 20 cents. For <a href="{{root}}guide/gitams.html">gitams</a>, which are sung with gamakas, Gentle is a good choice.</p>
+<p>A cent is a hundredth of a semitone. Most listeners notice a difference of about 10 to 20 cents. For pieces sung with gamakas, such as <a href="gitams.html">gitams</a> and <a href="varnams.html">varnams</a>, Gentle is a good choice.</p>
 
 <h2 id="gitam-notation">Gitam notation</h2>
-<p>What a gitam shows under each beat: <em>Swaras</em>, <em>Words</em>, or <em>Both</em> (the default). Exercises without words always show their swaras.</p>
+<p><em>Gitam notation</em> chooses what a piece with words shows under each beat: <em>Swaras</em>, <em>Words</em>, or <em>Both</em> (the default). It applies to every worded piece — gitams, swarajatis and varnams — not only gitams. Exercises without words always show their swaras. A dash still means the previous syllable is held. It changes the display only, not playback, scoring or timing; learn the swaras first, then sing the words.</p>
+
+<h2 id="defaults">Defaults at a glance</h2>
+<p>These are the values a new installation starts with. <em>Tempo</em> and <em>Speed</em> are on the player; the others are in the settings sheet.</p>
+<table>
+  <thead><tr><th scope="col">Setting</th><th scope="col">Default</th><th scope="col">Range or choices</th></tr></thead>
+  <tbody>
+    <tr><td>Sa</td><td>C3 (1 kattai)</td><td>G2–C4, grouped by voice</td></tr>
+    <tr><td>Fine tune</td><td>exact (0¢)</td><td>−50…+50¢, 1¢ steps</td></tr>
+    <tr><td>Tempo</td><td>60 bpm</td><td>30–120 bpm, 5 bpm steps</td></tr>
+    <tr><td>Speed</td><td>1 (first kala)</td><td>1–4</td></tr>
+    <tr><td>Tuning</td><td>Just (tanpura)</td><td>Just (tanpura), Equal (keyboard)</td></tr>
+    <tr><td>Harmonium guide</td><td>All notes</td><td>All notes, Off (drone and click)</td></tr>
+    <tr><td>Harmonium notes</td><td>Connected</td><td>Connected, Lightly separated</td></tr>
+    <tr><td>Tanpura drone</td><td>On</td><td>On, Off</td></tr>
+    <tr><td>Drone volume</td><td>50%</td><td>0–100%</td></tr>
+    <tr><td>Harmonium volume</td><td>75%</td><td>0–100%</td></tr>
+    <tr><td>Tala click</td><td>Off</td><td>On, Off</td></tr>
+    <tr><td>Count in one avarta</td><td>On</td><td>On, Off</td></tr>
+    <tr><td>Practice mode</td><td>Normal playback</td><td>Normal playback, Listen then sing</td></tr>
+    <tr><td>Harmonium during your turn</td><td>Off</td><td>On, Off</td></tr>
+    <tr><td>Repeat</td><td>Off</td><td>On, Off</td></tr>
+    <tr><td>Between repeats</td><td>Continuous</td><td>Continuous, Timed break, When ready</td></tr>
+    <tr><td>Break duration</td><td>5 seconds</td><td>1–30 seconds (Timed break)</td></tr>
+    <tr><td>Echo cancellation</td><td>On</td><td>On, Off</td></tr>
+    <tr><td>Strictness</td><td>Precise</td><td>Gentle, Steady, Precise</td></tr>
+    <tr><td>Gitam notation</td><td>Both</td><td>Swaras, Words, Both</td></tr>
+    <tr><td>Sing along</td><td>Off</td><td>Microphone button in the player</td></tr>
+  </tbody>
+</table>
+
+<h2 id="changing">Changing settings while you practise</h2>
+<p>Settings are saved as you change them and apply to every exercise. While an exercise is playing, a change restarts it from the beginning so the new setting applies from the first note. During a recovery break, volume, click and recovery changes can apply to the next attempt without starting it early; a change that needs a new schedule, microphone setup or drone may pause practice until you press <em>Continue</em>. Changing Sa during a break ends the session.</p>
+
+<h2>Stored on your device</h2>
+<p>Settings are stored only on this device. There is no account and no sync. They are kept between launches; uninstalling the app removes them and your practice history. See <a href="privacy.html">Privacy</a>.</p>
