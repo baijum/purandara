@@ -38,10 +38,11 @@ This plan was agreed and built on 2026-11-10 (stages L1–L5). Built as planned,
   unsourced claims ("traditionally three speeds", typical teacher tempos);
   the guide keeps a two-line pointer with the same anchor.
 - Kattai has one outside source (karnatik glossary: 5 = G); the full mapping
-  is the app's. The tanpura's string octaves differ between NIOS and
+  is the app's, confirmed by the owner (2026-11-11). The tanpura's string octaves differ between NIOS and
   karnatik, so the page leaves them out.
 - `build.py` now fails on any broken internal link or anchor.
-- Not yet checked with VoiceOver: how swara symbols (R₁, S′, Ṇ) are read.
+- VoiceOver on Safari reads the swara symbols (R₁, S′, Ṇ) acceptably
+  (checked by the owner, 2026-11-11), so no spoken forms were added.
 
 ## Pages
 
