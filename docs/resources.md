@@ -464,6 +464,56 @@ copyright. Check against a book; do not scan or copy it into the app.
   Varna](https://sreenivasaraos.com/tag/tana-varna/): the gana-krama, the
   historical speeds, and the shift from three speeds to the modern two.
 
+### 3.5 Speeds for the beginner exercises
+
+Checked 2026-11-11 for issue #34. Three speeds are an explicitly documented
+curriculum target for several sets, not merely a preliminary stage toward
+an obligatory fourth. This does not establish a rule for every teaching
+tradition or prohibit further speed practice.
+
+- NIOS *Carnatic Music* [Book 1, chapter 4](https://www.nios.ac.in/media/documents/Carnatic_Music_243/Carnatic%20Music%20Book1%20(Complete).pdf#page=48):
+  Sarali in three speeds, explicitly one, two and four swaras per beat
+  (printed pp. 41–42 / PDF pp. 48–49); Tara sthayi in three speeds
+  (printed p. 43 / PDF p. 50); Mandra sthayi and Dattu in three speeds
+  (printed p. 44 / PDF p. 51); alankarams in three speeds
+  (printed p. 45 / PDF p. 52). The “3–4” in the sthayi discussion counts
+  exercises, not speeds.
+- [Pondicherry University, BPA (Honors) Music syllabus, 2023–24](https://www.pondiuni.edu.in/wp-content/uploads/2024/05/Syllabus_Affiliated_ArtsScience_NEP_B.P.A.-Honors-Music-2023-24.pdf#page=10):
+  PDF p. 10 specifies Sarali and Janta in three speeds and Sapthatala
+  Alankaram in three speeds; PDF p. 20 specifies Dattu in three speeds.
+  This is independent curriculum support for those categories. Do not
+  extend the speed prescription to every adjoining item in the syllabus.
+- NIOS [Book 2, printed p. 24 / PDF p. 29](https://www.nios.ac.in/media/documents/Carnatic_Music_243/Carnatic%20Music%20Book2%20(Complete).pdf#page=29)
+  says Janta exercises are practised in **four speeds**, but the notation
+  presents headings I, II and III. Book 1 also mixes paired-note notation
+  with a one-kriya-per-swara description of first kala. The intended
+  counting and fourth stage remain unresolved; do not silently discard the
+  four-speed statement or treat it as a prescription for the app's fourth
+  setting.
+- [Karnatik: how to practise](https://karnatik.com/practice.shtml) goes from
+  one to two to four, then “finally (when you can) eight notes per beat”.
+  This is general practice advice, not a separate curriculum requirement
+  for each set. It supports a readiness-dependent further stage.
+
+**Application to the site.** The Learn page recommends clean, steady
+practice in the first three speeds, with fourth as an optional challenge
+when ready or when a teacher requests it. That is a recommendation drawn
+from the evidence, not unanimous pedagogical consensus. Upper/lower sthayi
+claims are attributed to NIOS; no separate prescription was directly
+verified for the exact bundled Madhya Sthayi or Vakra Janta sets. The
+syllabus's book list is not direct verification of the speed instructions
+in Sambamoorthy, *Ganamrutha Bodhini* or *Sangeeta Bala Padam*.
+
+**Compare densities, not labels.** One, two, four and eight individual
+swaras per fixed tala beat describe an exercise beginning at one swara per
+beat. Purandara's `PerformanceSettings.aksharasPerBeat` counts written
+cells, and `Schedule` divides each cell among its swaras. Janta 1–6 and
+both Vakra Janta exercises use two-swara cells, giving 2/4/8/16 individual
+note onsets per beat at settings 1–4. Janta 7 instead uses single-swara
+cells and holds. Holds and rests reduce onset counts; do not apply the
+paired-cell example to every passage. Issue #35 covers explaining these
+settings in the app; issue #34 changes guidance, not playback or notation.
+
 ---
 
 ## 4. Purandara Dasa and the Haridasa tradition

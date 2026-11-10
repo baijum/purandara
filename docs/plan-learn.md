@@ -67,6 +67,21 @@ requires, the alternative notes' octaves or exact interval ratios. The
 manuals describe the Carnatic style's pause after Pa and six-count cycle;
 jivari was not researched.
 
+## Speed-practice follow-up (2026-11-11, issue #34)
+
+The speeds page now distinguishes documented three-speed curriculum
+targets from optional fourth-speed practice. NIOS and Pondicherry
+University agree on three speeds for Sarali, Dattu and alankarams; the
+upper/lower sthayi guidance is attributed to NIOS. Janta's three-versus-four
+prescriptions and the unclear fourth stage in NIOS remain explicit rather
+than being resolved by assumption. Source locations and counting caveats
+are recorded in `resources.md` §3.5.
+
+The numerical examples start at one individual swara per beat, not at one
+written pair. The page links the Janta and settings explanations; issue
+#35 covers the app's presentation of paired-cell speeds. Fourth-speed
+playback stays available, and neither playback nor notation changes here.
+
 ## Pages
 
 In reading order (`site/pages/learn/`). Each page ends with **Practise this
@@ -80,7 +95,7 @@ sources it was checked against that a learner can open).
 | 3 | `swaras.html` | The seven swaras | Sa Ri Ga Ma Pa Dha Ni; Sa and Pa fixed, the others with variants; the twelve positions and their sixteen names (R₁ R₂/G₁ …), shown on a one-octave keyboard figure; the three octaves (mandra, madhya, tara) and how the app marks them (Ṣ, S, S′); arohanam and avarohanam |
 | 4 | `mayamalavagowla.html` | Mayamalavagowla, the first raga | Its scale and variants; melakarta 15; the step pattern 1-3-1-2-1-3-1 semitones (close Ri and Dha, two wide steps); hearing the wide steps; why the plain scale is only a skeleton (gamakas, phrases); just vs keyboard tuning (links to the Tuning page) |
 | 5 | `tala.html` | Adi tala | Akshara, avarta; angas (laghu, drutam); the hand: clap, finger counts, clap-wave, clap-wave (x 1 2 3 x v x v); counting before singing; 4 + 2 + 2, not 4/4; a note that other talas are built from the same angas |
-| 6 | `speeds.html` | The speeds (kalas) | Same beat, more swaras: 1, 2, 4 (and 8) to a beat; traditionally three speeds, the fourth for later; how to step up; what to listen for (even swaras, notes between hand movements, relaxed upper Sa); the swaras-per-second table and the gradual path now in the guide's "Building up speed" |
+| 6 | `speeds.html` | The speeds (kalas) | Same beat, more swaras: 1, 2, 4 (and 8) for an exercise starting at one swara per beat; sourced three-speed targets by set, mixed Janta evidence and optional fourth; how to step up; what to listen for (even swaras, notes between hand movements, relaxed upper Sa); the swaras-per-second table and a link from the guide's "Building up speed" |
 | 7 | `singing-in-tune.html` | Singing in tune | Listen, echo, check, retry; using a pitch display without chasing every wobble (wait for the note to settle, check the octave, gamakas move by design); when the voice slides (smaller steps, listen longer); voice care (stop for strain, rest when hoarse); a 15-minute and a 5-minute session shape; a short troubleshooting table |
 | 8 | `varisais.html` | The varisai sets | What each set trains and in what order: Sarali (how the figures vary against the plain scale), Janta (paired swaras; no pushing air), Vakra Janta (zig-zags), Dhattu (leaps without sliding), Madhya Sthayi (the middle register), then alankarams. Numbering follows the app's catalog. No notation (the app has it) |
 | 9 | `glossary.html` | Words used here | Akshara, anga, arohanam, avarohanam, avarta, drutam, gamaka, janya, kala, karvai, kattai, laghu, melakarta, raga, shruti, sthayi, swara, tala, varisai … each one line, linking to its page |
