@@ -35,6 +35,9 @@ OUT = HERE / "_build"
 # Learn: the music, for beginners. (file under pages/learn, sidebar label)
 LEARN = [
     ("index.html", "Start here"),
+    ("shruti.html", "Shruti and Sa"),
+    ("swaras.html", "The seven swaras"),
+    ("mayamalavagowla.html", "Mayamalavagowla"),
 ]
 
 # The guide to the app, in reading order: (file under pages/guide, sidebar label).
@@ -91,6 +94,8 @@ OLD_SEARCH = """<!doctype html>
 # Tags that run on in a line of text; any other tag separates words.
 INLINE = {"a", "abbr", "b", "code", "em", "i", "kbd", "mark", "small", "span", "strong", "sub", "sup"}
 SKIP = {"script", "style", "noscript"}
+# Learn pages end with lists of links; they would crowd out real sections.
+LINK_SECTIONS = {"practise-this", "further-reading"}
 
 
 def read_page(path: Path) -> tuple[dict, str]:
@@ -205,6 +210,8 @@ def index_entries(body: str, path: str, area: str, label: str) -> list[dict]:
     entries = []
     for section, anchor, parts in parser.sections:
         text = " ".join("".join(parts).split())
+        if anchor in LINK_SECTIONS:
+            continue
         if text or anchor:
             entries.append({"page": path, "area": area, "pageTitle": label,
                             "section": section, "anchor": anchor, "text": text})

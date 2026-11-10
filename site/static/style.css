@@ -259,3 +259,16 @@ section h2 {
   .tala li, .contour-voice { transition: none; }
 }
 .guide-nav + .guide-nav { margin-top: 1.75rem; }
+
+/* Learn: the one-octave keyboard figure (an inline SVG in the page). */
+.keyboard { display: block; width: 100%; max-width: 34rem; height: auto; margin: 0.5rem 0; }
+.keyboard .white { fill: #fff; stroke: var(--ink-soft); stroke-width: 1.5; }
+.keyboard .black { fill: var(--ink); }
+.keyboard .white.on { fill: var(--gold-soft); }
+.keyboard .black.on { fill: var(--maroon); }
+.keyboard text { font-family: var(--text); font-weight: 700; font-size: 15px; text-anchor: middle; }
+.keyboard .on-white { fill: var(--ink); }
+.keyboard .on-black { fill: #fff; font-size: 13px; }
+.keyboard .key-name { fill: var(--ink-soft); font-weight: 400; font-size: 13px; }
+.table-scroll { overflow-x: auto; margin: 0 0 1.1rem; }
+.table-scroll table { margin: 0; }
