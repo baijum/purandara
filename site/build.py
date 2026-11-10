@@ -40,6 +40,9 @@ LEARN = [
     ("mayamalavagowla.html", "Mayamalavagowla"),
     ("tala.html", "Adi tala"),
     ("speeds.html", "The speeds"),
+    ("singing-in-tune.html", "Singing in tune"),
+    ("varisais.html", "The varisai sets"),
+    ("glossary.html", "Words used here"),
 ]
 
 # The guide to the app, in reading order: (file under pages/guide, sidebar label).

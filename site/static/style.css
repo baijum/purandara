@@ -272,3 +272,5 @@ section h2 {
 .keyboard .key-name { fill: var(--ink-soft); font-weight: 400; font-size: 13px; }
 .table-scroll { overflow-x: auto; margin: 0 0 1.1rem; }
 .table-scroll table { margin: 0; }
+.glossary dt { margin-top: 1.1rem; }
+.glossary dd a { white-space: nowrap; }
