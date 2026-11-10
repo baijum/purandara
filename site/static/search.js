@@ -1,4 +1,4 @@
-/* Search for the guide: matches the words typed against search.json (written
+/* Search for the site: matches the words typed against search.json (written
    by build.py, one entry per section) and lists the sections that contain
    them all. Plan: docs/plan-site-search.md. No libraries. */
 (function () {
@@ -135,7 +135,7 @@
     list.hidden = true;
     var q = query.trim();
     if (!q) {
-      status.textContent = "Type a word or two to search every page of the guide.";
+      status.textContent = "Type a word or two to search the Learn pages and the guide.";
       return;
     }
     var result = search(q);
@@ -152,15 +152,12 @@
       var e = hit.entry;
       var li = document.createElement("li");
       var a = document.createElement("a");
-      a.href = "../" + e.page + (e.anchor ? "#" + e.anchor : "");
-      if (e.section && e.section !== e.pageTitle) {
-        var page = document.createElement("span");
-        page.className = "result-page";
-        page.textContent = e.pageTitle;
-        a.append(page, " › " + e.section);
-      } else {
-        a.textContent = e.pageTitle;
-      }
+      a.href = e.page + (e.anchor ? "#" + e.anchor : "");
+      var page = document.createElement("span");
+      page.className = "result-page";
+      page.textContent = e.area + " › " + e.pageTitle;
+      if (e.section && e.section !== e.pageTitle) a.append(page, " › " + e.section);
+      else a.append(page);
       li.append(a, snippet(e, result.patterns));
       list.append(li);
     });
@@ -185,7 +182,7 @@
         })
         .catch(function () {
           loading = null;
-          status.textContent = "The search index could not be loaded. Check your connection and try again, or use the guide menu.";
+          status.textContent = "The search index could not be loaded. Check your connection and try again, or use the menus.";
           throw new Error("search index");
         });
     }

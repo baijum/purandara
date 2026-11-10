@@ -17,7 +17,8 @@ Site commits go straight to `main` (no PR) when the user asks to commit.
 |---|---|
 | `site/pages/index.html` | Landing page (own full-width layout; not searched) |
 | `site/pages/guide/*.html` | Guide pages: HTML fragments with front matter |
-| `site/pages/guide/search.html` | The search page (not in the sidebar or the index) |
+| `site/pages/learn/*.html` | Learn: the music for beginners (plan `docs/plan-learn.md`) |
+| `site/pages/search.html` | The search page at the site root (`guide/search.html` redirects to it) |
 | `site/templates/base.html`, `guide.html` | Masthead, footer; guide sidebar (search box + page list) |
 | `site/static/` | `style.css`, `varisai.js` (landing hero), `search.js`, fonts, `images/` |
 | `site/build.py` | `GUIDE` list (sidebar order and labels), heading ids, `search.json` |
@@ -117,7 +118,7 @@ After editing guide text, check a few queries hit the right section first:
 ```bash
 for q in tempo "echo%20canc" S xyzzy; do
   "$C" --headless=new --disable-gpu --virtual-time-budget=4000 --dump-dom \
-    "http://localhost:8765/guide/search.html?q=$q" 2>/dev/null \
+    "http://localhost:8765/search.html?q=$q" 2>/dev/null \
   | grep -o 'role="status">[^<]*' ; done
 ```
 

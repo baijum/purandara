@@ -8,14 +8,16 @@ front matter in an HTML comment:
     description: One line for search results and link previews.
     -->
 
-index.html uses its own full-width layout; everything under pages/guide/
-gets the guide layout with the sidebar, in the order of GUIDE below.
+index.html uses its own full-width layout. The site has two sections with
+the sidebar layout, in the order of SECTIONS below: Learn (pages/learn/, the
+music) and the Guide (pages/guide/, the app). search.html at the root is the
+search page, with both sections in its sidebar.
 Links between pages are written relative to the site root with {{root}}.
 
-The build also writes search.json, the index for the guide's search page
-(pages/guide/search.html, static/search.js): one entry per <h2> section of
-each guide page, as plain text. An <h2> without an id gets one from its text,
-so every result can link to its heading.
+The build also writes search.json, the index for the search page
+(static/search.js): one entry per <h2> section of each section page, as
+plain text. An <h2> without an id gets one from its text, so every result
+can link to its heading.
 
 Usage:  python3 site/build.py          (then open site/_build/index.html)
 """
@@ -30,7 +32,12 @@ from pathlib import Path
 HERE = Path(__file__).parent
 OUT = HERE / "_build"
 
-# The guide, in reading order: (file under pages/guide, sidebar label).
+# Learn: the music, for beginners. (file under pages/learn, sidebar label)
+LEARN = [
+    ("index.html", "Start here"),
+]
+
+# The guide to the app, in reading order: (file under pages/guide, sidebar label).
 GUIDE = [
     ("index.html", "Getting started"),
     ("choose-your-sa.html", "Choose your Sa"),
@@ -50,18 +57,36 @@ GUIDE = [
     ("credits.html", "Credits"),
 ]
 
+# (directory under pages, sidebar title, page-title suffix, pages). Search
+# results keep this order on ties.
+SECTIONS = [
+    ("learn", "Learn", "Learn · Purandara", LEARN),
+    ("guide", "Guide", "Purandara guide", GUIDE),
+]
+
 FRONT = re.compile(r"\A\s*<!--(.*?)-->\s*", re.S)
 
-# The search page: a guide page that is not in the sidebar or the index.
-SEARCH_PAGE = "search.html"
-
-SEARCH_FORM = """<form class="guide-search" role="search" action="{{root}}guide/search.html">
-      <label for="guide-q">Search the guide</label>
+SEARCH_FORM = """<form class="guide-search" role="search" action="{{root}}search.html">
+      <label for="side-q">Search the site</label>
       <div class="search-row">
-        <input id="guide-q" name="q" type="search" autocomplete="off" spellcheck="false">
+        <input id="side-q" name="q" type="search" autocomplete="off" spellcheck="false">
         <button type="submit">Search</button>
       </div>
     </form>"""
+
+# The search page was first at guide/search.html; keep that address working.
+OLD_SEARCH = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Search · Purandara</title>
+<meta name="robots" content="noindex">
+<script>location.replace("../search.html" + location.search);</script>
+<meta http-equiv="refresh" content="0; url=../search.html">
+</head>
+<body><p>Search has moved: <a href="../search.html">search the site</a>.</p></body>
+</html>
+"""
 
 # Tags that run on in a line of text; any other tag separates words.
 INLINE = {"a", "abbr", "b", "code", "em", "i", "kbd", "mark", "small", "span", "strong", "sub", "sup"}
@@ -86,25 +111,27 @@ def fill(template: str, values: dict) -> str:
     return template
 
 
-def sidebar(current: str, root: str) -> str:
+def sidebar(folder: str, title: str, pages: list, current: str, root: str) -> str:
     items = []
-    for name, label in GUIDE:
-        href = f"{root}guide/{name}"
+    for name, label in pages:
+        href = f"{root}{folder}/{name}"
         here = ' aria-current="page"' if name == current else ""
-        items.append(f'<li><a href="{href}"{here}>{html.escape(label)}</a></li>')
-    return "\n".join(items)
+        items.append(f'        <li><a href="{href}"{here}>{html.escape(label)}</a></li>')
+    return (f'<nav class="guide-nav" aria-label="{title}">\n'
+            f'      <p class="guide-nav-title">{title}</p>\n      <ul>\n'
+            + "\n".join(items) + "\n      </ul>\n    </nav>")
 
 
-def neighbours(current: str, root: str) -> str:
-    names = [n for n, _ in GUIDE]
+def neighbours(folder: str, pages: list, current: str, root: str) -> str:
+    names = [n for n, _ in pages]
     i = names.index(current)
     parts = []
     if i > 0:
-        n, label = GUIDE[i - 1]
-        parts.append(f'<a class="prev" href="{root}guide/{n}"><span>Previous</span>{html.escape(label)}</a>')
-    if i < len(GUIDE) - 1:
-        n, label = GUIDE[i + 1]
-        parts.append(f'<a class="next" href="{root}guide/{n}"><span>Next</span>{html.escape(label)}</a>')
+        n, label = pages[i - 1]
+        parts.append(f'<a class="prev" href="{root}{folder}/{n}"><span>Previous</span>{html.escape(label)}</a>')
+    if i < len(pages) - 1:
+        n, label = pages[i + 1]
+        parts.append(f'<a class="next" href="{root}{folder}/{n}"><span>Next</span>{html.escape(label)}</a>')
     return "\n".join(parts)
 
 
@@ -172,14 +199,14 @@ class Sections(HTMLParser):
             self.sections[-1][2].append(data)
 
 
-def index_entries(body: str, name: str, label: str) -> list[dict]:
+def index_entries(body: str, path: str, area: str, label: str) -> list[dict]:
     parser = Sections(label)
     parser.feed(body)
     entries = []
     for section, anchor, parts in parser.sections:
         text = " ".join("".join(parts).split())
         if text or anchor:
-            entries.append({"page": f"guide/{name}", "pageTitle": label,
+            entries.append({"page": path, "area": area, "pageTitle": label,
                             "section": section, "anchor": anchor, "text": text})
     return entries
 
@@ -196,36 +223,46 @@ def main() -> None:
     page = fill(base, {"title": meta["title"], "description": meta["description"], "body": body, "bodyclass": "home"})
     (OUT / "index.html").write_text(fill(page, {"root": ""}), encoding="utf-8")
 
-    # Guide pages, and the search index from them.
-    (OUT / "guide").mkdir()
+    # Learn and the guide, and the search index from them.
     index: list[dict] = []
     root = "../"
-    for name, label in GUIDE:
-        meta, body = read_page(HERE / "pages" / "guide" / name)
-        body = add_heading_ids(body, name)
-        index += index_entries(body, name, label)
-        content = fill(guide_layout, {
-            "search": SEARCH_FORM,
-            "content": body,
-            "sidebar": sidebar(name, root),
-            "neighbours": neighbours(name, root),
-        })
-        title = f"{meta.get('title', label)} · Purandara guide"
-        page = fill(base, {"title": title, "description": meta["description"], "body": content, "bodyclass": "guide"})
-        (OUT / "guide" / name).write_text(fill(page, {"root": root}), encoding="utf-8")
+    count = 1
+    for folder, title, suffix, pages in SECTIONS:
+        (OUT / folder).mkdir()
+        for name, label in pages:
+            meta, body = read_page(HERE / "pages" / folder / name)
+            body = add_heading_ids(body, f"{folder}/{name}")
+            index += index_entries(body, f"{folder}/{name}", title, label)
+            content = fill(guide_layout, {
+                "search": SEARCH_FORM,
+                "navs": sidebar(folder, title, pages, name, root),
+                "content": body,
+                "neighbours": neighbours(folder, pages, name, root),
+            })
+            page = fill(base, {"title": f"{meta.get('title', label)} · {suffix}", "description": meta["description"],
+                               "body": content, "bodyclass": "guide"})
+            (OUT / folder / name).write_text(fill(page, {"root": root}), encoding="utf-8")
+            count += 1
 
-    # The search page has its own, larger search box instead of the sidebar's.
-    meta, body = read_page(HERE / "pages" / "guide" / SEARCH_PAGE)
-    content = fill(guide_layout, {"search": "", "content": body, "sidebar": sidebar(SEARCH_PAGE, root), "neighbours": ""})
-    page = fill(base, {"title": f"{meta['title']} · Purandara guide", "description": meta["description"],
+    # The search page: its own, larger box, and both sections in the sidebar.
+    meta, body = read_page(HERE / "pages" / "search.html")
+    content = fill(guide_layout, {
+        "search": "",
+        "navs": "\n    ".join(sidebar(f, t, p, "", "") for f, t, _, p in SECTIONS),
+        "content": body,
+        "neighbours": "",
+    })
+    page = fill(base, {"title": f"{meta['title']} · Purandara", "description": meta["description"],
                        "body": content, "bodyclass": "guide"})
-    (OUT / "guide" / SEARCH_PAGE).write_text(fill(page, {"root": root}), encoding="utf-8")
+    (OUT / "search.html").write_text(fill(page, {"root": ""}), encoding="utf-8")
+    (OUT / "guide" / "search.html").write_text(OLD_SEARCH, encoding="utf-8")
     (OUT / "search.json").write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    count += 1
 
     leftover = [p for p in OUT.rglob("*.html") if "{{" in p.read_text(encoding="utf-8")]
     if leftover:
         raise SystemExit(f"unfilled placeholders in {leftover}")
-    print(f"built {len(GUIDE) + 2} pages and {len(index)} search entries into {OUT}")
+    print(f"built {count} pages and {len(index)} search entries into {OUT}")
 
 
 if __name__ == "__main__":

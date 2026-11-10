@@ -151,6 +151,10 @@ section h2 {
 .promises dt { font-family: var(--display); font-size: 1.5rem; color: var(--teal); line-height: 1.2; }
 .promises dd { margin: 0.25rem 0 0; color: var(--ink-soft); }
 
+.learn-panel { padding-block: clamp(3rem, 7vw, 5rem); border-top: 1px solid var(--line); }
+.learn-panel p { max-width: var(--measure); margin: 0 0 1rem; }
+.button-maroon { background: var(--maroon); color: #fff; }
+.button-maroon:hover { background: var(--maroon-deep); }
 .get { padding-block: clamp(3rem, 7vw, 5rem); }
 .get p { max-width: var(--measure); margin: 0 0 1rem; }
 .requirements { color: var(--ink-soft); }
@@ -254,3 +258,4 @@ section h2 {
 @media (prefers-reduced-motion: reduce) {
   .tala li, .contour-voice { transition: none; }
 }
+.guide-nav + .guide-nav { margin-top: 1.75rem; }
