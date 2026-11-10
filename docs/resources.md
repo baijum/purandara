@@ -543,31 +543,44 @@ casually.
 
 ### 5.1 Tanpura string octaves and alternative tunings
 
-Checked 2026-11-11 for the Learn page's drone section (issue #33). Octave
-names need a reference: the layout used by the app is **Pa below the
-singer's Sa, Sa, Sa, Sa one octave below**, in plucking order. Lower Pa is
-Pa within the lower octave, not a perfect fifth below Sa.
+Checked 2026-11-11 for the Learn page's drone section (issue #33), including
+Radel and Sound Labs manufacturer documentation. The usual four-string
+layout is **Pa below the singer's Sa, Sa, Sa, Sa one octave below**, in
+plucking order. The app's recording uses it too. Lower Pa is Pa within the
+lower octave, not a perfect fifth below Sa.
 
 | Source and location | What it establishes | Scope / difference |
 |---|---|---|
+| Radel, FAQ, “What purpose does a tambura serve in Indian music?” — <https://www.radel.in/faqs/> | The two central strings supply the musician's chosen Sa; the other strings supply lower-octave Pa and lower-octave Sa (mandaram/kharaj). Plucking order: `pa-sa-sa-sa`. | The instrument manufacturer explains conventional tambura tuning using both Carnatic and Hindustani terminology. Relevant to both traditions, but not a measured specification of every electronic model. |
 | NIOS, *Carnatic Music* Book 1, §6.5 “Tambura”, printed pp. 73–74, tuning paragraph on p. 74 — [PDF](https://www.nios.ac.in/media/documents/Carnatic_Music_243/Carnatic%20Music%20Book1%20(Complete).pdf) | “Madhya Panchamam - Two Taara Shadjam - Saarani, Anusaarani and finally mandra Shadjam.” | A Carnatic teaching source, but its middle Pa / upper Sa pair / lower Sa wording does not establish the app's octave layout relative to the singer. Do not silently rebase its octaves or treat the wording as resolved. |
-| karnatik glossary, T, “tambura” — <https://www.karnatik.com/glosst.shtml> | “mandra staayi pa, middle sa, middle sa, and taara sa” | Puts the fourth string above the paired Sas, unlike the app and the independent instructions below. No evidence found that settles whether this is an error or another convention. |
+| karnatik glossary, T, “tambura” — <https://www.karnatik.com/glosst.shtml> | “mandra staayi pa, middle sa, middle sa, and taara sa” | Puts the fourth string above the paired Sas, unlike the corroborated practical descriptions. The cause is unresolved; no evidence found establishes this as an alternative tuning convention. |
 | Sangtar, “Tanpura”, May 2007, string-by-string tuning instructions — <https://www.sangtar.com/2007/05/tanpura/> | First string: “fifth (Pa) of the lower octave”; second and third: middle Sa; fourth: lower Sa. | Explicit lower/middle-octave instructions in a Hindustani instructional article. Supports the layout, not a universal Carnatic rule. |
 | Toss Levy, “Male tanpura strings”, pitch/frequency table — <https://www.tosslevy.nl/tanpura/tanpura-strings/tanpura-strings-2/> | Approximate example frequencies: first Pa 196 Hz; second/third Sa 262 Hz; fourth Sa 131 Hz. | Confirms the inter-string relationship numerically (roughly G3–C4–C4–C3). These are example pitches, not fixed values for every voice; this is not a Carnatic-specific prescription. |
 
-Sangtar's named instructional article and Levy's instrument-practitioner
-table are separate sources with no shared tuning-text attribution found.
-They agree on the layout; neither resolves the Carnatic sources' wording.
+Radel's manufacturer explanation, Sangtar's named instructional article
+and Levy's instrument-practitioner table independently agree on the
+layout; no shared tuning-text attribution was found. Radel's explanation
+covers both traditions, so the corroboration is not Hindustani-only.
 Wikipedia remains an orientation source only. Sambamoorthy and Pesch
 (§3.2) remain leads, not sources verified for this question.
+
+**Weighing the discrepancy.** NIOS is a formal school teaching text;
+karnatik is a community reference. Neither conflicting passage outweighs
+explicit, independently corroborated practical tuning descriptions. A
+uniform change of octave reference does not reconcile NIOS's wording with
+the usual layout: rebasing the upper Sa pair would also move the final
+lower Sa. The precise cause of either source's wording remains unresolved,
+but that does not block teaching the usual arrangement. After discussion
+with the owner, the detailed discrepancy is retained here rather than in
+a prominent warning on the beginner page. Do not present an upper-Sa
+fourth string as an established alternative convention.
 
 The app's own recording is Sankalp Gulati's Dhrupad Sansar recording,
 labelled `pa SA SA sa` in `tools/samples/prepare_tanpura.py` and credited in
 `ATTRIBUTION.md` (§6.1 below). That provenance is an app fact, not another
-independent theory witness. The Learn page therefore explains this
-recording's layout, cites the corroborating Hindustani references and
-states the NIOS/karnatik differences; it does not declare either source
-wrong or claim that all Carnatic tanpuras use this tuning.
+independent theory witness. The Learn page teaches the usual layout,
+cites Radel and the independent references, and notes that the recording
+uses it too; it does not claim that every tanpura uses the same tuning.
 
 **Alternative first-string tunings (research, not beginner Carnatic
 instruction).** Two further references agree on lower-octave Ma and Ni
@@ -583,10 +596,35 @@ alternatives to Pa:
   and `(1)` middle. The author explicitly limits the discussion to
   Hindustani practice, not Carnatic.
 
-These support Hindustani alternatives, not a blanket Carnatic “use Ma or
-Ni whenever Pa is absent” rule. Carnatic-specific corroboration and the
-reason for the NIOS/karnatik octave disagreement remain open. Jivari and
-plucking rhythm were not researched for this change.
+These establish lower-register alternatives in Hindustani practice. The
+manufacturer manuals below additionally document Pa/Ma/Ni controls on
+instruments supporting both traditions. They do not establish a blanket
+Carnatic “use Ma or Ni whenever Pa is absent” rule or explicitly specify
+the alternative notes' octaves.
+
+**Electronic tanpuras: manufacturer documentation.** Checked the official
+Radel PDFs directly and the Sound Labs Digital manual by text recognition
+(the PDF is scanned), alongside the product pages:
+
+| Source and location | Documented tuning and controls | Limits |
+|---|---|---|
+| Radel, *Saarang Mini Miraj Operating Manual*, PDF p. 1 — [PDF](https://www.radel.in/wp-content/uploads/2015/12/Mini-Miraj-2024.pdf) | Main pitch in semitone steps plus fine tuning; Pa can be replaced by Ma, Ni or Off. Off leaves Shadj and Kharaj sounding. Ni can be fine-tuned. | No explicit four-string octave map, alternative-note octave specification or numerical interval ratios. |
+| Radel, *Miraj Plus User Manual*, PDF pp. 1–2 — [PDF](https://www.radel.in/wp-content/uploads/2015/12/MirajPlus-Manual2024.pdf) | Pa/Ma/Ni/Off; fine-tunable Ni retained across main-pitch changes; optional fifth and sixth notes can be selected and fine-tuned separately. | Extra-note controls do not establish independent tuning of the original four strings. No explicit fundamental-octave map or temperament specification. |
+| Sound Labs, *Raagini Digital Instruction Manual*, PDF p. 4 (printed p. 3), “Fine Pitch”, “Select”, “Ni Manual”; PDF p. 5 (printed p. 4), “Style” — [official manual](https://cdn.shopify.com/s/files/1/0950/0740/8440/files/Sound_Labs_User_Instruction_Manual_of_Raagini_Digital.pdf?v=1778849175), [product](https://soundlabs.in/products/raagini-digital-electronic-tanpura) | Main Sa and fine-pitch controls; Pa/Ma/Ni/Sa-only; manual Ni adjustment; `Pa, Sa, Sa, Sa (Kharaj)` in both six-matra Carnatic and five-matra Hindustani styles. | Names the last note Kharaj but does not explicitly enumerate every string's octave. No numerical interval ratios. |
+| Sound Labs, Raagini Plus, product instructions — <https://soundlabs.in/products/raagini-plus-electronic-tanpura> | Pa/Ma/Ni/Sa-only, main/fine Sa and manual Ni; separate volume controls for Pa, the two Jodi Sa strings and Kharaj. | Separate volume controls are not individual pitch controls. No explicit complete octave map or temperament specification. |
+
+Both Radel manuals describe the Carnatic plucking style as having a pause
+after Pa and a six-count cycle; the Hindustani style omits that pause.
+Sound Labs likewise documents six- and five-matra styles with the same
+named string sequence. This establishes a rhythmic distinction, not an
+alternative four-string octave layout.
+
+Do not infer just or equal-tempered intervals from semitone-based tonic
+selection, “accurate”/“natural” marketing language, tone controls or the
+presence of fine tuning. The checked documents do not specify default
+Pa/Ma/Ni ratios; model-specific octave maps and Ma/Ni register assignments
+also remain unverified. Radel's FAQ establishes the conventional layout,
+not a measurement of every electronic model. Jivari was not researched.
 
 ---
 

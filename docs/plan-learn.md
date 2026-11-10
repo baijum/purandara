@@ -45,18 +45,27 @@ This plan was agreed and built on 2026-11-10 (stages L1–L5). Built as planned,
 
 ## Tanpura follow-up (2026-11-11, issue #33)
 
-The drone section now spells out the app recording's string octaves:
-lower Pa, Sa, Sa, lower Sa. Sangtar's tuning instructions and Toss Levy's
-frequency table independently support that layout in Hindustani practice;
-the page explicitly notes the conflicting NIOS and karnatik descriptions.
-Neither is declared an error, and the layout is not presented as a
-universal Carnatic rule. Exact sources and their limits are recorded in
-`resources.md` §5.1.
+The drone section teaches the usual four-string tuning: lower Pa, Sa, Sa,
+lower Sa, relative to the singer's chosen Sa. Radel's official FAQ explains
+this layout using both Carnatic and Hindustani terminology; Sangtar's
+instructions and Toss Levy's frequency table independently agree. This is
+not merely a Hindustani-only or app-specific arrangement. The app's
+recording uses it too.
 
-Ma/Ni first-string alternatives are corroborated for Hindustani practice,
-not yet for a Carnatic teaching claim, so they stay in the research notes.
-The Carnatic-specific octave disagreement remains unresolved; jivari and
-plucking rhythm were not part of this change.
+After the manufacturer's evidence was checked and discussed with the
+owner, the detailed NIOS/karnatik octave discrepancy moved from the
+beginner page to `resources.md` §5.1. Their conflicting wording does not
+outweigh the explicit, corroborated practical tuning descriptions, and no
+evidence establishes an upper-Sa fourth string as an alternative
+convention. Its cause remains unresolved, but does not block teaching the
+usual tuning.
+
+Radel and Sound Labs manuals document Pa/Ma/Ni choices and Carnatic and
+Hindustani plucking styles. These findings stay in the research notes:
+they do not establish a blanket rule for which setting each Carnatic raga
+requires, the alternative notes' octaves or exact interval ratios. The
+manuals describe the Carnatic style's pause after Pa and six-count cycle;
+jivari was not researched.
 
 ## Pages
 
