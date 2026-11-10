@@ -102,6 +102,7 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [docs/plan-articulation-breathing.md](docs/plan-articulation-breathing.md) | Optional note separation, recovery, reviewed phrases and listen–repeat (staged) |
 | [docs/plan-alankaram-gitam.md](docs/plan-alankaram-gitam.md) | Alankarams and the Malahari gitams (done) |
 | [docs/plan-gitam-swarajati-varnam.md](docs/plan-gitam-swarajati-varnam.md) | More gitams, swarajatis, varnams (in progress; open items in issues #1–#6) |
+| [docs/tuning.md](docs/tuning.md) | Just (tanpura) vs Equal (keyboard): exact ratios, cents, frequencies and implementation |
 | [docs/branding.md](docs/branding.md) | The logo, icons, colours and type |
 | [docs/resources.md](docs/resources.md) | Websites, books and datasets to check notation, theory, tuning and audio against |
 
