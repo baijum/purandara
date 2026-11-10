@@ -25,6 +25,7 @@
 		AB6CC5F96BEB624359C2D520 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 51ADA9130DD6170AD77733F3 /* Assets.xcassets */; };
 		B8EB36EB6F794A62C7CDFF7E /* PracticeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A18B2D52EAB6EBCA1269A1B /* PracticeTests.swift */; };
 		BF08A74FECBA0408C6B1285C /* Colors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 483E84CDF43D5F521EB0595D /* Colors.swift */; };
+		CBA1F579C19F0B452AD8EDAB /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 69A778C41E7E36D5E7B9836C /* PrivacyInfo.xcprivacy */; };
 		D9FA91204D0D5862998418F9 /* PurandaraUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5FBDB9CFC6E06CA052AF937 /* PurandaraUITests.swift */; };
 		DE2B259645CB04BB365A98C8 /* ShrutiView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9197E6D30958F4BB3EF8BC1 /* ShrutiView.swift */; };
 		FC3F796F00AA989D622B24F0 /* NotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E08763E5702FC198877A4751 /* NotationView.swift */; };
@@ -54,6 +55,7 @@
 		49C9FF674A7F91662569737F /* PracticeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeSettings.swift; sourceTree = "<group>"; };
 		51ADA9130DD6170AD77733F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VarisaiAudioPlayer.swift; sourceTree = "<group>"; };
+		69A778C41E7E36D5E7B9836C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		74015C2759451D3EC808AFD0 /* PurandaraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurandaraApp.swift; sourceTree = "<group>"; };
 		88C8E5DD4E7C3B504D0222BD /* audio */ = {isa = PBXFileReference; lastKnownFileType = folder; name = audio; path = ../audio; sourceTree = SOURCE_ROOT; };
 		8A18B2D52EAB6EBCA1269A1B /* PracticeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeTests.swift; sourceTree = "<group>"; };
@@ -90,6 +92,7 @@
 			isa = PBXGroup;
 			children = (
 				51ADA9130DD6170AD77733F3 /* Assets.xcassets */,
+				69A778C41E7E36D5E7B9836C /* PrivacyInfo.xcprivacy */,
 				74015C2759451D3EC808AFD0 /* PurandaraApp.swift */,
 				249C466CD43E43530CD6112C /* Audio */,
 				6E0A2BAEE3829E604C2F7270 /* Models */,
@@ -301,6 +304,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB6CC5F96BEB624359C2D520 /* Assets.xcassets in Resources */,
+				CBA1F579C19F0B452AD8EDAB /* PrivacyInfo.xcprivacy in Resources */,
 				80064C7F88A31F3EA3D5E83D /* audio in Resources */,
 				517D5DDFB720C0F8694AA932 /* models in Resources */,
 			);
@@ -493,6 +497,8 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Purandara;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Sing along listens to your voice to show how close each swara is. Audio stays on this device and is never recorded.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -633,6 +639,8 @@
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Purandara;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Sing along listens to your voice to show how close each swara is. Audio stays on this device and is never recorded.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
