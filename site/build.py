@@ -38,6 +38,8 @@ LEARN = [
     ("shruti.html", "Shruti and Sa"),
     ("swaras.html", "The seven swaras"),
     ("mayamalavagowla.html", "Mayamalavagowla"),
+    ("tala.html", "Adi tala"),
+    ("speeds.html", "The speeds"),
 ]
 
 # The guide to the app, in reading order: (file under pages/guide, sidebar label).
