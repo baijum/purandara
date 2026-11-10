@@ -1,8 +1,10 @@
 # Tuning: Just (tanpura) vs Equal (keyboard)
 
-Status: reference for the **Tuning** setting. The numbers below are generated
-from the app's own ratio table, `Swara.ratio`; the implementation section maps
-each step to code. If the ratios change, regenerate the tables.
+Status: developer reference for the **Tuning** setting. The numbers below are
+generated from the app's own ratio table, `Swara.ratio`; the implementation
+section maps each step to code. If the ratios change, regenerate the tables
+here and update the musicians' version in the guide,
+[Tuning: Just and Equal](../site/pages/guide/tuning.html).
 
 The short version:
 

@@ -36,6 +36,7 @@ GUIDE = [
     ("shruti-practice.html", "Shruti practice"),
     ("find-my-sa.html", "Find my Sa"),
     ("settings.html", "Practice settings"),
+    ("tuning.html", "Tuning: Just and Equal"),
     ("microphones.html", "Microphones and headphones"),
     ("accessibility.html", "Accessibility"),
     ("privacy.html", "Privacy"),

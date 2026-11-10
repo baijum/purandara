@@ -32,7 +32,9 @@ features speculatively.
   [`docs/plan-alankaram-gitam.md`](docs/plan-alankaram-gitam.md) and
   [`docs/plan-gitam-swarajati-varnam.md`](docs/plan-gitam-swarajati-varnam.md).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
-  exact ratios, cents, frequencies and the implementation.
+  exact ratios, cents, frequencies and the implementation. The musicians'
+  version is `site/pages/guide/tuning.html`; update both if `Swara.ratio`
+  changes.
 - [`models/README.md`](models/README.md) — the SwiftF0 model and its checksum.
 - [`docs/branding.md`](docs/branding.md) — the logo, icons, palette and type;
   regenerate icons with `python3 tools/brand/build.py`, never hand-edit them.

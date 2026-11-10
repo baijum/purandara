@@ -531,7 +531,9 @@ references explain the ratios and the trade-offs.
 
 The app's own model is in `shared/.../domain/Swara.kt` (ratios) and
 `HarmoniumBank`/`TanpuraBank` (playback); [`tuning.md`](tuning.md) compares the
-Just and Equal choices with exact ratios, cents, frequencies and code paths.
+Just and Equal choices with exact ratios, cents, frequencies and code paths
+(the guide's [Tuning page](../site/pages/guide/tuning.html) is the musicians'
+version).
 These references are for checking and explaining it, not for changing it
 casually.
 
