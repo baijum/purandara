@@ -17,6 +17,21 @@ What the user decided (2026-11-10):
 Outcome: from any guide page you can type a word and get a list of the
 sections that mention it, each linking straight to its heading.
 
+This plan was agreed and built on 2026-11-10. Built as planned, except:
+
+- The sidebar box is in its own block above the page list (not inside the
+  *Guide* navigation), and the search page leaves it out, so a page never
+  has two search landmarks.
+- Front-matter descriptions are not indexed: they repeat each page's
+  introduction.
+- `page` in `search.json` is the path from the site root
+  (`guide/varisai-player.html`).
+- An apostrophe does not start a word ("S" does not find "Dasa’s"); no
+  lookbehind in the patterns, for older Safari.
+- The site has no dark theme, so `<mark>` is gold-soft on ink in light only.
+- Not yet checked with VoiceOver; checked in Chrome at desktop and narrow
+  widths.
+
 ## Design
 
 ### The index (`site/build.py`)
@@ -127,9 +142,8 @@ can be bookmarked or shared.
 | S2 | `search.js`, `search.html`, sidebar form, CSS | manual: queries "tempo", "kāla", "S", "xyz"; keyboard only; VoiceOver on Safari (status announced, landmarks) |
 | S3 | Guide: mention search in Getting started; AGENTS.md code map (`site/` row) | build, links |
 
-## Open questions
+## Decided
 
-1. Should the sidebar box also show live results under it as you type
-   (a dropdown), or is going to the results page on Enter enough? The plan
-   says Enter is enough: the sidebar is narrow, and one results page is
-   simpler and easier to make accessible.
+1. The sidebar box goes to the results page on Enter; no live dropdown under
+   it (the sidebar is narrow, and one results page is simpler and easier to
+   make accessible).

@@ -1,0 +1,16 @@
+<!--
+title: Search the guide
+description: Search every page of the Purandara guide.
+-->
+<h1>Search the guide</h1>
+<form class="search-page" role="search" action="search.html">
+  <label for="q">Words to find</label>
+  <div class="search-row">
+    <input id="q" name="q" type="search" autocomplete="off" spellcheck="false">
+    <button type="submit">Search</button>
+  </div>
+</form>
+<p id="search-status" class="search-status" role="status"></p>
+<noscript><p>Search needs JavaScript. Every page of the guide is listed in the menu.</p></noscript>
+<ol id="search-results" class="search-results" role="list" hidden></ol>
+<script src="{{root}}search.js" data-index="{{root}}search.json" defer></script>

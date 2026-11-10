@@ -1,10 +1,13 @@
 <div class="wrap guide-layout">
-  <nav class="guide-nav" aria-label="Guide">
-    <p class="guide-nav-title">Guide</p>
-    <ul>
+  <div class="guide-side">
+    {{search}}
+    <nav class="guide-nav" aria-label="Guide">
+      <p class="guide-nav-title">Guide</p>
+      <ul>
 {{sidebar}}
-    </ul>
-  </nav>
+      </ul>
+    </nav>
+  </div>
   <main id="main" class="prose">
 {{content}}
     <nav class="neighbours" aria-label="More of the guide">

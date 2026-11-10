@@ -33,7 +33,8 @@ features speculatively.
   [`docs/plan-shruti.md`](docs/plan-shruti.md),
   [`docs/plan-alankaram-gitam.md`](docs/plan-alankaram-gitam.md),
   [`docs/plan-gitam-swarajati-varnam.md`](docs/plan-gitam-swarajati-varnam.md) and
-  [`docs/plan-speed-layout.md`](docs/plan-speed-layout.md).
+  [`docs/plan-speed-layout.md`](docs/plan-speed-layout.md) (and, for the website,
+  [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
   version is `site/pages/guide/tuning.html`; update both if `Swara.ratio`
@@ -121,7 +122,7 @@ features speculatively.
 | `tools/release/`, `store-listing/` | iOS App Store release: `ios_upload.sh` (archive, check, upload), `ios_screenshots.sh` (store screenshots from the simulators), the listing text and screenshots. Steps in the `ios-release` skill (`.claude/skills/ios-release/`) |
 | `shared/src/iosMain/.../audio/FloatBridge.kt` | Bulk float copies between Swift buffers and Kotlin arrays |
 | `tools/brand/` | Logo sources (wordmark and tagline outlines) and `build.py`, which generates the Android adaptive icon, the iOS app icons (light, dark, tinted), the favicon, `mark.svg`, the share image and the lockups from one geometry |
-| `site/` | The end-user website and guide (https://baijum.github.io/purandara/): `pages/` HTML fragments with front matter, `templates/`, `static/` (CSS, the hero script, self-hosted fonts, app screenshots), `build.py` (standard library only) → `site/_build`. Published to GitHub Pages by `.github/workflows/site.yml`. Keep the guide in step with the app when features change. |
+| `site/` | The end-user website and guide (https://baijum.github.io/purandara/): `pages/` HTML fragments with front matter, `templates/`, `static/` (CSS, the hero script, self-hosted fonts, app screenshots), `build.py` (standard library only) → `site/_build`, including `search.json` for the guide's search page (`pages/guide/search.html`, `static/search.js`, plan `docs/plan-site-search.md`). Published to GitHub Pages by `.github/workflows/site.yml`. Keep the guide in step with the app when features change. |
 
 Swift interop notes: a Kotlin `Char` arrives in Swift as a number (use an enum's
 `name` instead of `symbol`); a combining dot below (Ḍ) is clipped by `Text` and
