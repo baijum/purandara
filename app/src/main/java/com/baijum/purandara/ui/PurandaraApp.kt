@@ -121,7 +121,7 @@ private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState) {
             loadError = state.loadError,
         ),
         actions = LibraryActions(
-            onSelect = viewModel::select,
+            onSelect = { varisai -> viewModel.select(varisai) },
             onToggleTanpura = viewModel::toggleTanpura,
             onSaChange = { midi -> viewModel.updateSettings { it.copy(saMidi = midi) } },
             onOpenShruti = viewModel::openShruti,
@@ -143,7 +143,10 @@ private fun PlayerRoute(viewModel: PracticeViewModel, state: PracticeUiState, mi
             onBack = { viewModel.select(null) },
             onTogglePlay = viewModel::togglePlay,
             onSettingsChange = viewModel::updateSettings,
+            onContinue = { viewModel.continuePractice() },
+            onWaitForMe = { viewModel.continuePractice(waitForMe = true) },
             onSelectSection = { section -> viewModel.select(selected, section) },
+            onSelectPhrase = { phrase -> viewModel.select(selected, phrase = phrase) },
             onToggleSingAlong = {
                 when {
                     state.settings.singAlong -> viewModel.updateSettings { it.copy(singAlong = false) }

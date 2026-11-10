@@ -8,6 +8,8 @@ import com.baijum.purandara.domain.Tala
 import com.baijum.purandara.domain.TalaBeat
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.varisai.Akshara
+import com.baijum.purandara.domain.varisai.PhraseReview
+import com.baijum.purandara.domain.varisai.PracticePhrase
 import com.baijum.purandara.domain.varisai.SectionSpan
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.WrittenSwara
@@ -86,6 +88,13 @@ data class BeatEvent(
 /** A highlight change: every swara slot and every karvai. */
 data class CursorEvent(val startSeconds: Double, val position: NotationPosition)
 
+/** Which unit was requested, independent of coincidentally equal avarta ranges. */
+enum class PracticeSelection {
+    WHOLE_PIECE,
+    SECTION,
+    PHRASE,
+}
+
 /**
  * Timed events for one performance of a [varisai].
  *
@@ -96,8 +105,11 @@ data class CursorEvent(val startSeconds: Double, val position: NotationPosition)
 class Schedule private constructor(
     val varisai: Varisai,
     val settings: PerformanceSettings,
-    /** The avartas played: the whole piece, or one section ([section]). */
+    /** The avartas played: the whole piece, a section, or a reviewed phrase. */
     val avartaRange: IntRange,
+    val selection: PracticeSelection,
+    val section: SectionSpan?,
+    val phrase: PracticePhrase?,
     val repetitions: Int,
     val notes: List<NoteEvent>,
     val beats: List<BeatEvent>,
@@ -118,8 +130,8 @@ class Schedule private constructor(
     /** Seconds per written avarta (one row block of notation) at the piece's own gati and speed. */
     val avartaSeconds: Double get() = aksharaSeconds * varisai.tala.aksharas * varisai.beat
 
-    /** The section played, or null for the whole piece. */
-    val section: SectionSpan? get() = varisai.sections.firstOrNull { it.firstAvarta..it.lastAvarta == avartaRange }
+    /** Only a whole-piece request is eligible for whole-piece practice history. */
+    val isWholePiece: Boolean get() = selection == PracticeSelection.WHOLE_PIECE
 
     /** When avarta [avarta] (a piece-wide index) starts within one pass. */
     fun avartaStartSeconds(avarta: Int): Double = avartaStarts[avarta]
@@ -172,13 +184,28 @@ class Schedule private constructor(
          * @throws IllegalArgumentException if a note falls outside the
          *   harmonium bank for this Sa.
          */
-        fun of(varisai: Varisai, settings: PerformanceSettings): Schedule = of(varisai, settings, varisai.avartas.indices)
+        fun of(varisai: Varisai, settings: PerformanceSettings): Schedule =
+            of(varisai, settings, varisai.avartas.indices, PracticeSelection.WHOLE_PIECE, null, null)
 
         /** Just one section of the piece; notation positions keep the piece's avarta numbers. */
         fun ofSection(varisai: Varisai, settings: PerformanceSettings, section: SectionSpan): Schedule =
-            of(varisai, settings, section.firstAvarta..section.lastAvarta)
+            of(varisai, settings, section.firstAvarta..section.lastAvarta, PracticeSelection.SECTION, section, null)
 
-        private fun of(varisai: Varisai, settings: PerformanceSettings, range: IntRange): Schedule {
+        /** A reviewed rehearsal unit, not an automatically inferred place to breathe. */
+        fun ofPhrase(varisai: Varisai, settings: PerformanceSettings, phrase: PracticePhrase): Schedule {
+            require(phrase.review == PhraseReview.APPROVED) { "phrase ${phrase.id} has not been approved" }
+            phrase.validateFor(varisai)
+            return of(varisai, settings, phrase.firstAvarta..phrase.lastAvarta, PracticeSelection.PHRASE, null, phrase)
+        }
+
+        private fun of(
+            varisai: Varisai,
+            settings: PerformanceSettings,
+            range: IntRange,
+            selection: PracticeSelection,
+            section: SectionSpan?,
+            phrase: PracticePhrase?,
+        ): Schedule {
             require(!range.isEmpty() && range.first >= 0 && range.last < varisai.avartas.size) { "avartas $range outside the piece" }
             // A tala cycle is filled by a written avarta at @1, by two at @2, and so on —
             // whatever the gati, which packs more cells into the same tala beat.
@@ -245,6 +272,9 @@ class Schedule private constructor(
                 varisai = varisai,
                 settings = settings,
                 avartaRange = range,
+                selection = selection,
+                section = section,
+                phrase = phrase,
                 repetitions = reps,
                 notes = notes,
                 beats = beats,

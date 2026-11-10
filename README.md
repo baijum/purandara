@@ -29,7 +29,13 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
   beat, each charanam sung as swaras and then with its words.
 - **Practise one section** of a gitam or swarajati alone, once or on repeat.
   Choose your Sa (kattai, fine-tune ±50 cents), tempo, speed (kala), tuning
-  (just or equal), count-in, tala click and looping.
+  (just or equal), connected or lightly separated harmonium notes, count-in,
+  tala click and looping.
+- **Recovery and listen–repeat:** keep the tanpura sounding between attempts,
+  with a timed break or Continue when ready. Listen to a harmonium model,
+  then sing the same unit, with optional pitch feedback and response guide.
+  Whole-avarta phrase support is gated on recorded musical review; no phrase
+  boundaries are released yet.
 - **Sing-along:** sing with an exercise and see your pitch as you go. Each
   note is marked in tune, close, high, low, an octave off or a different
   swara, with a summary after every pass. Echo cancellation lets you use the
@@ -93,6 +99,7 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [docs/plan-pitch-monitor.md](docs/plan-pitch-monitor.md) | Sing-along with pitch feedback |
 | [docs/plan-landing.md](docs/plan-landing.md) | Landing page |
 | [docs/plan-shruti.md](docs/plan-shruti.md) | Shruti practice, strictness, choosing Sa |
+| [docs/plan-articulation-breathing.md](docs/plan-articulation-breathing.md) | Optional note separation, recovery, reviewed phrases and listen–repeat (staged) |
 | [docs/plan-alankaram-gitam.md](docs/plan-alankaram-gitam.md) | Alankarams and the Malahari gitams (done) |
 | [docs/plan-gitam-swarajati-varnam.md](docs/plan-gitam-swarajati-varnam.md) | More gitams, swarajatis, varnams (in progress; open items in issues #1–#6) |
 | [docs/branding.md](docs/branding.md) | The logo, icons, colours and type |

@@ -15,6 +15,8 @@ import com.baijum.purandara.audio.AvailableOutputChanges
 import com.baijum.purandara.audio.HarmoniumSamples
 import com.baijum.purandara.audio.MicSource
 import com.baijum.purandara.audio.PitchListener
+import com.baijum.purandara.audio.PracticePhase
+import com.baijum.purandara.audio.PracticePlayback
 import com.baijum.purandara.audio.RenderOptions
 import com.baijum.purandara.audio.NeuralPitchSupervisor
 import com.baijum.purandara.audio.SampleBank
@@ -28,6 +30,8 @@ import com.baijum.purandara.domain.Pitch
 import com.baijum.purandara.domain.schedule.NotationPosition
 import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.domain.varisai.SectionSpan
+import com.baijum.purandara.domain.varisai.PracticePhrase
+import com.baijum.purandara.domain.varisai.PracticePhrases
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.practice.PracticeHistory
@@ -62,13 +66,20 @@ data class PlaybackState(
     val repetitions: Int = 1,
     /** True during the count-in avarta before the exercise. */
     val countingIn: Boolean = false,
-)
+    val phase: PracticePhase? = null,
+    val attempt: Int = 1,
+    val recoverySeconds: Int = 0,
+    val pausedForContinue: Boolean = false,
+) {
+    val recovering: Boolean get() = phase == PracticePhase.RECOVERY || phase == PracticePhase.WAITING || pausedForContinue
+}
 
 data class PracticeUiState(
     val settings: PracticeSettings = PracticeSettings(),
     val selected: Varisai? = null,
     /** One section of [selected] being practised alone, or null for the whole piece. */
     val section: SectionSpan? = null,
+    val phrase: PracticePhrase? = null,
     val samplesLoaded: Boolean = false,
     val loadError: Boolean = false,
     val playback: PlaybackState = PlaybackState(),
@@ -104,6 +115,30 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     private var schedule: Schedule? = null
     private var ticker: Job? = null
     private var engine: SingAlongEngine? = null
+    private val practicePlayback = PracticePlayback(
+        player, { supervisor },
+        { target -> micSource(!headphonesConnected() && _state.value.settings.echoCancellation, target) },
+        PracticePlayback.Callbacks(
+            onProgress = { snapshot, heard, remaining ->
+                val activeSchedule = schedule
+                if (activeSchedule != null) {
+                    if (!practisedThisPlay && snapshot.segments.any { !it.listening && heard >= it.performanceEndFrame }) {
+                        practisedThisPlay = true
+                        if (activeSchedule.isWholePiece) updateHistory { it.practised(activeSchedule.varisai.id, System.currentTimeMillis()) }
+                    }
+                    _state.update { it.copy(playback = it.playback.fromPractice(snapshot, heard, remaining, activeSchedule)) }
+                }
+            },
+            onOutcome = { attempt, outcome ->
+                renderer?.let { onOutcome(it, outcome.copy(live = outcome.live.copy(pass = attempt - 1))) }
+            },
+            onResult = { attempt, result -> onFinalPass(result.copy(pass = attempt - 1)) },
+            onCompleted = { stop() },
+            onAttemptStarted = { attempt ->
+                _state.update { it.copy(singAlong = it.singAlong.copy(live = null, pass = attempt - 1, trace = emptyList(), marks = emptyMap(), lastSummary = null)) }
+            },
+        ),
+    )
 
     /** Read on the mic thread by active listeners ([PitchListener] providers); Main writes it. */
     @Volatile
@@ -139,7 +174,8 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
 
     private fun onOutputChanged(availabilityChanged: Boolean? = null) {
         // An active track's own route decides; the device inventory only stands in without one.
-        if (availabilityChanged != null && !shouldStopForOutputAvailability(availabilityChanged, player.isPlaying, listener != null || engine != null, resumeAfterBackground)) return
+        val ownsCaptureOrContinuation = listener != null || engine != null || _state.value.playback.pausedForContinue
+        if (availabilityChanged != null && !shouldStopForOutputAvailability(availabilityChanged, player.isPlaying, ownsCaptureOrContinuation, resumeAfterBackground)) return
         resumeAfterBackground = null
         stop(immediate = true)
         _state.update { it.afterOutputChange() }
@@ -153,8 +189,10 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
      */
     fun onBackgrounded() {
         backgrounded = true
+        val waiting = _state.value.playback.recovering
         resumeAfterBackground = _state.value.backgroundAudio()
         stop()
+        if (waiting) _state.update { it.copy(playback = it.playback.copy(pausedForContinue = true, phase = PracticePhase.WAITING)) }
     }
 
     /** The app is back (MainActivity.onStart): start again what was sounding. */
@@ -214,21 +252,30 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     }
 
     /** Opens [varisai] (null: back to the landing page), optionally to practise one [section] alone. */
-    fun select(varisai: Varisai?, section: SectionSpan? = null) {
+    fun select(varisai: Varisai?, section: SectionSpan? = null, phrase: PracticePhrase? = null) {
+        require(phrase == null || varisai != null && phrase in PracticePhrases.forVarisai(varisai))
         stop()
         _state.update {
-            it.copy(selected = varisai, section = section, playback = PlaybackState(), singAlong = it.singAlong.copy(marks = emptyMap(), trace = emptyList(), lastSummary = null, live = null))
+            it.copy(selected = varisai, section = section, phrase = phrase, playback = PlaybackState(), singAlong = it.singAlong.copy(marks = emptyMap(), trace = emptyList(), lastSummary = null, live = null))
         }
     }
 
     fun updateSettings(transform: (PracticeSettings) -> PracticeSettings) {
-        val wasPlaying = _state.value.playback.playing
-        val wasTanpura = _state.value.tanpuraPlaying
-        val next = transform(_state.value.settings)
-        if (next == _state.value.settings) return
+        val current = _state.value
+        val wasPlaying = current.playback.playing
+        val wasTanpura = current.tanpuraPlaying
+        val next = transform(current.settings)
+        if (next == current.settings) return
         preferences.save(next)
         _state.update { it.copy(settings = next) }
         if (next.singAlong) loadSupervisor()
+        if (current.playback.recovering) {
+            applyWaitingSettings(current, next, practicePlayback, next.singAlong && (current.singAlong.micPermitted || debugSyntheticSingerCents != null)) { paused ->
+                stop()
+                if (paused) _state.update { it.copy(playback = it.playback.copy(pausedForContinue = true, phase = PracticePhase.WAITING)) }
+            }
+            return
+        }
         if (!_state.value.canAutoStartAudio(backgrounded)) return
         if (wasPlaying) play(automaticRestart = true)
         if (wasTanpura) playTanpura(automaticRestart = true)
@@ -256,7 +303,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         val settings = _state.value.settings
         val r = SampleRenderer(bank, Schedule.of(catalog.first(), settings.performance()), RenderOptions.droneOnly(settings.droneLevel))
         renderer = r
-        player.play(r, automaticRestart = automaticRestart) { mainHandler.post { onPlaybackFinished(r) } }
+        player.play(r, automaticRestart = automaticRestart) { mainHandler.post { if (renderer === r) stop() } }
         _state.update { it.copy(tanpuraPlaying = true) }
     }
 
@@ -294,7 +341,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             player.onRendered = { start, rms -> session.outputLevels.record(start, rms) }
             loadSupervisor()
         }
-        player.play(r, automaticRestart = automaticRestart) { mainHandler.post { onPlaybackFinished(r) } }
+        player.play(r, automaticRestart = automaticRestart) { mainHandler.post { if (renderer === r) stop() } }
         if (listening) {
             val onSpeaker = !headphonesConnected()
             listener = PitchListener(
@@ -376,7 +423,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun togglePlay() {
-        if (_state.value.playback.playing) stop() else play()
+        if (_state.value.playback.playing || _state.value.playback.pausedForContinue) stop() else play()
     }
 
     fun play(automaticRestart: Boolean = false) {
@@ -392,20 +439,23 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         val settings = _state.value.settings
         // The player offers a playable Sa instead; never build a schedule the samples can't play.
         if (settings.saMidi !in varisai.playableSaMidis) return
-        val section = _state.value.section
-        val schedule = section?.let { Schedule.ofSection(varisai, settings.performance(), it) } ?: Schedule.of(varisai, settings.performance())
+        val schedule = _state.value.practiceSchedule()
         val r = SampleRenderer(bank, schedule, settings.renderOptions())
         renderer = r
         this.schedule = schedule
-        practisedThisPlay = false
+        if (!automaticRestart) practisedThisPlay = false
         val onSpeaker = !headphonesConnected()
         _state.update {
             it.copy(
                 playback = PlaybackState(playing = true, repetitions = schedule.repetitions),
-                singAlong = it.singAlong.copy(onSpeaker = onSpeaker, live = null, pass = null, trace = emptyList(), marks = emptyMap(), lastSummary = null),
+                singAlong = it.singAlong.copy(onSpeaker = onSpeaker, live = null, pass = null, trace = emptyList(), marks = emptyMap(), lastSummary = it.singAlong.lastSummary.takeIf { automaticRestart }),
             )
         }
         val singAlong = settings.singAlong && (_state.value.singAlong.micPermitted || debugSyntheticSingerCents != null)
+        if (PracticePlayback.policy(settings, singAlong).needsTransport) {
+            practicePlayback.start(bank, schedule, settings, singAlong, automaticRestart)
+            return
+        }
         val newEngine = if (singAlong) {
             SingAlongEngine(micSource(onSpeaker && settings.echoCancellation, exerciseTarget(r, schedule)), player, r, SingAlongEngine.sessionFor(r, schedule, settings.strictness), { supervisor }) { outcome ->
                 mainHandler.post { onOutcome(r, outcome) }
@@ -414,7 +464,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             null
         }
         engine = newEngine
-        player.play(r, automaticRestart = automaticRestart) { mainHandler.post { onPlaybackFinished(r) } }
+        player.play(r, automaticRestart = automaticRestart) { mainHandler.post { if (renderer === r) stop() } }
         newEngine?.start()
         ticker = viewModelScope.launch {
             while (isActive) {
@@ -424,6 +474,12 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun continuePractice(waitForMe: Boolean = false) {
+        if (waitForMe) practicePlayback.waitForMe()
+        else if (_state.value.playback.pausedForContinue) play(automaticRestart = true)
+        else practicePlayback.continuePractice()
+    }
+
     /** Follows the heard position: highlight, count-in, and marking the exercise practised. */
     private fun onTick(r: SampleRenderer, schedule: Schedule, varisai: Varisai) {
         val frames = player.outputFrameAt(System.nanoTime())
@@ -431,7 +487,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         if (!practisedThisPlay && frames >= r.countInFrames + r.performanceFrames) {
             practisedThisPlay = true
             // A section alone doesn't count as practising the whole piece.
-            if (schedule.section == null) updateHistory { it.practised(varisai.id, System.currentTimeMillis()) }
+            if (schedule.isWholePiece) updateHistory { it.practised(varisai.id, System.currentTimeMillis()) }
         }
         val countInBeat = r.countInBeat(frames)
         val seconds = r.passSeconds(frames)
@@ -439,6 +495,8 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             it.copy(
                 playback = it.playback.copy(
                     countingIn = countInBeat != null,
+                    phase = if (countInBeat != null) PracticePhase.COUNT_IN else PracticePhase.PLAYING,
+                    attempt = ((frames - r.countInFrames).coerceAtLeast(0) / r.performanceFrames).toInt() + 1,
                     position = if (countInBeat != null) null else schedule.cursorAt(seconds),
                     beatInAvarta = countInBeat ?: schedule.beatAt(seconds)?.beatInAvarta,
                 ),
@@ -466,7 +524,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             // of listening to a silent mic. A failure from a replaced mic is ignored.
             AudioRecordMicSource(echoCancellation = echoCancellation) {
                 mainHandler.post {
-                    if (generation == micGeneration && (listener != null || engine != null)) onOutputChanged()
+                    if (acceptsMicFailure(generation, micGeneration, listener != null || engine != null || practicePlayback.hasCapture)) onOutputChanged()
                 }
             }
         }
@@ -498,7 +556,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun recordScore(result: PassResult) {
-        if (_state.value.section != null) return // only whole-piece passes are a best result
+        if (schedule?.isWholePiece != true) return // only explicit whole-piece passes are a best result
         val id = _state.value.selected?.id ?: return
         updateHistory { it.scored(id, result, System.currentTimeMillis()) }
     }
@@ -522,6 +580,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         ticker = null
         findSaGeneration++
         renderer = null // invalidate queued playback and Shruti outcomes before stopping threads
+        practicePlayback.stop()
         if (immediate) player.stop(immediate = true) // unblock output before waiting for the mic
         listener?.stop()
         listener = null
@@ -532,15 +591,11 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         if (!immediate) player.stop()
         _state.update {
             it.copy(
-                playback = it.playback.copy(playing = false, position = null, beatInAvarta = null, countingIn = false),
+                playback = it.playback.copy(playing = false, position = null, beatInAvarta = null, countingIn = false, phase = null, pausedForContinue = false),
                 tanpuraPlaying = false,
             )
         }
         onFinalPass(finalPass)
-    }
-
-    private fun onPlaybackFinished(finished: SampleRenderer) {
-        if (renderer === finished) stop()
     }
 
     private fun headphonesConnected(): Boolean =

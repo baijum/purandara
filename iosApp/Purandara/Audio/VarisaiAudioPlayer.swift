@@ -18,7 +18,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     private let queue = DispatchQueue(label: "purandara.varisai-render", qos: .userInteractive)
 
     // Queue-confined.
-    private var renderer: SampleRenderer?
+    private var renderer: (any PcmSource)?
     private var scratch: KotlinFloatArray
     private var pending = 0
     private var doneRendering = false
@@ -77,7 +77,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     /// Starts `renderer` from the beginning. `onFinished` runs on the main
     /// thread when a non-looping performance has been heard, after a requested
     /// stop has faded out, or when audio is interrupted.
-    func play(_ renderer: SampleRenderer, mic: MicRequest? = nil, onFinished: @escaping @MainActor () -> Void) throws {
+    func play(_ renderer: any PcmSource, mic: MicRequest? = nil, onFinished: @escaping @MainActor () -> Void) throws {
         stopImmediately()
         try configure(mic: mic)
         queue.sync {
@@ -111,6 +111,20 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
 
     /// Called on the render queue after each rendered block: its first frame and RMS level.
     var onRendered: ((Int64, Float) -> Void)?
+    /// Render-worker hook: service capture readiness before committing future PCM.
+    var onWillRenderTransport: ((PracticeTransport) -> Void)?
+
+    func practiceSnapshot() -> PracticeSnapshot? {
+        queue.sync { (renderer as? PracticeTransport)?.snapshot() }
+    }
+
+    func command(_ transport: PracticeTransport, _ action: @escaping @Sendable (PracticeTransport) -> Void) {
+        let id = ObjectIdentifier(transport)
+        queue.async { [self] in
+            guard let current = renderer as? PracticeTransport, ObjectIdentifier(current) == id, !stopRequested else { return }
+            action(current)
+        }
+    }
 
     private var micTapInstalled = false
     private var reconfiguring = false
@@ -229,6 +243,12 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         recovery.stop()
         guard isPlaying else { return }
         stopping = true
+        // Cancel pending segments synchronously on their owner queue before any
+        // delayed refill can commit them. Already queued PCM still fades normally.
+        queue.sync {
+            stopRequested = true
+            (renderer as? PracticeTransport)?.fadeOut(seconds: 0.08)
+        }
         guard engine.isRunning else { finishImmediately(); return }
         queue.async { self.stopRequested = true }
     }
@@ -272,6 +292,7 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
     private func scheduleNext(_ gen: Int) {
         guard gen == generation, let renderer else { return }
         if stopRequested { renderer.fadeOut(seconds: 0.08) }
+        if let transport = renderer as? PracticeTransport { onWillRenderTransport?(transport) }
         let startFrame = renderer.position
         let frames = renderer.render(out: scratch, offset: 0, length: Int32(Self.chunkFrames))
         guard frames > 0 else {

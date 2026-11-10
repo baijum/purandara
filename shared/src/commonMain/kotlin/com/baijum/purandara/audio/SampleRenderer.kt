@@ -7,7 +7,9 @@ import com.baijum.purandara.domain.Octave
 import com.baijum.purandara.domain.Swara
 import com.baijum.purandara.domain.TanpuraBank
 import com.baijum.purandara.domain.schedule.Schedule
+import com.baijum.purandara.domain.varisai.Akshara
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
@@ -22,6 +24,15 @@ enum class DroneStyle {
     TANPURA,
 }
 
+/** How successive harmonium notes join; notation and scoring keep their written timing. */
+enum class HarmoniumArticulation {
+    /** The existing centred legato crossfade. */
+    CONNECTED,
+
+    /** A small gap before the next note, except after a karvai-held note. */
+    LIGHTLY_SEPARATED,
+}
+
 /** Mix levels and articulation for [SampleRenderer]. */
 data class RenderOptions(
     val harmoniumGain: Float = 0.6f,
@@ -31,8 +42,8 @@ data class RenderOptions(
     val click: Boolean = false,
     val clickGain: Float = 0.35f,
     /**
-     * Repeat the exercise without a break: the last note crossfades into the
-     * first on the beat and the drone continues. [SampleRenderer.render]
+     * Repeat the exercise on the beat, with the chosen articulation across
+     * the seam and the drone continuing. [SampleRenderer.render]
      * then never ends on its own; call [SampleRenderer.fadeOut] to stop.
      */
     val loop: Boolean = false,
@@ -48,6 +59,7 @@ data class RenderOptions(
     val releaseSeconds: Double = 0.25,
     /** Drone fade-in at the start and fade-out at the end. */
     val droneFadeSeconds: Double = 0.3,
+    val articulation: HarmoniumArticulation = HarmoniumArticulation.CONNECTED,
 ) {
     companion object {
         private const val MAX_HARMONIUM_GAIN = 0.8f
@@ -70,6 +82,7 @@ data class RenderOptions(
             countIn: Boolean,
             harmoniumLevel: Float,
             droneLevel: Float,
+            articulation: HarmoniumArticulation = HarmoniumArticulation.CONNECTED,
         ): RenderOptions = RenderOptions(
             harmoniumGain = MAX_HARMONIUM_GAIN * harmoniumLevel.coerceIn(0f, 1f),
             drone = drone,
@@ -77,6 +90,7 @@ data class RenderOptions(
             click = click,
             loop = loop,
             countIn = countIn,
+            articulation = articulation,
         )
 
         /**
@@ -105,8 +119,8 @@ class SampleRenderer(
     private val bank: SampleBank,
     val schedule: Schedule,
     private val options: RenderOptions = RenderOptions(),
-) {
-    val sampleRate: Int = bank.sampleRate
+) : PcmSource {
+    override val sampleRate: Int = bank.sampleRate
 
     private val releaseFrames = framesOf(options.releaseSeconds, sampleRate)
 
@@ -127,7 +141,7 @@ class SampleRenderer(
         if (options.loop) Long.MAX_VALUE else (countInFrames + performanceFrames + releaseFrames).toLong()
 
     /** Frames rendered so far. */
-    var position: Long = 0
+    override var position: Long = 0
         private set
 
     private val voices: List<Voice> = buildVoices()
@@ -161,8 +175,13 @@ class SampleRenderer(
      * Renders up to [length] frames into [out] starting at [offset].
      * @return frames written; 0 once the performance (or a [fadeOut]) has finished.
      */
-    fun render(out: FloatArray, offset: Int = 0, length: Int = out.size - offset): Int {
-        require(offset >= 0 && length >= 0 && offset + length <= out.size) { "bad range" }
+    override fun render(out: FloatArray, offset: Int, length: Int): Int = renderSamples(out, offset, length, clip = true)
+
+    /** Transport mixes the drone and exercise before a single final clip. */
+    internal fun renderUnclipped(out: FloatArray, offset: Int, length: Int): Int = renderSamples(out, offset, length, clip = false)
+
+    private fun renderSamples(out: FloatArray, offset: Int, length: Int, clip: Boolean): Int {
+        require(offset >= 0 && length >= 0 && offset <= out.size - length) { "bad range" }
         val end = min(totalFrames, fadeOutStart + fadeOutFrames)
         val n = min(length.toLong(), end - position).toInt()
         if (n <= 0) return 0
@@ -200,21 +219,21 @@ class SampleRenderer(
             val t = position + i
             var sample = out[offset + i]
             if (t >= fadeOutStart) sample *= (fadeOutStart + fadeOutFrames - t).toFloat() / fadeOutFrames
-            out[offset + i] = sample.coerceIn(-1f, 1f)
+            out[offset + i] = if (clip) sample.coerceIn(-1f, 1f) else sample
         }
         position += n
         return n
     }
 
     /** Fades everything out over [seconds] from the current position; [render] then finishes. */
-    fun fadeOut(seconds: Double = DEFAULT_STOP_FADE_SECONDS) {
+    override fun fadeOut(seconds: Double) {
         if (fadeOutStart != Long.MAX_VALUE) return
         fadeOutFrames = max(1, framesOf(seconds, sampleRate))
         fadeOutStart = position
     }
 
     /** Starts again from the beginning. */
-    fun reset() {
+    override fun reset() {
         position = 0
         firstActiveVoice = 0
         fadeOutStart = Long.MAX_VALUE
@@ -247,29 +266,104 @@ class SampleRenderer(
     private fun buildVoices(): List<Voice> {
         // A silent harmonium (guide off, drone only) needs no voices at all.
         if (options.harmoniumGain == 0f) return emptyList()
-        val legato = framesOf(options.legatoSeconds, sampleRate)
         val notes = schedule.notes
+        val held = heldNotes()
+        val windows = notes.mapIndexed { i, note ->
+            NoteWindow(
+                framesOf(note.startSeconds, sampleRate),
+                framesOf(note.startSeconds + note.durationSeconds, sampleRate),
+                held[i],
+                framesOf(min(note.durationSeconds * LIGHT_GAP_FRACTION, LIGHT_MAX_GAP_SECONDS), sampleRate),
+            )
+        }
+        // Adjacency is musical time, not consecutive indices in the note list:
+        // rests have cursor events but no notes. Include the seam only when both
+        // ends of the pass sound, so neither leading nor trailing rests are filled.
+        val joins = BooleanArray(notes.size) { i ->
+            val next = notes.getOrNull(i + 1)
+            val end = notes[i].startSeconds + notes[i].durationSeconds
+            if (next != null) abs(end - next.startSeconds) < TIME_EPSILON
+            else options.loop && abs(end - schedule.durationSeconds) < TIME_EPSILON && notes.first().startSeconds == 0.0
+        }
+        val legato = framesOf(options.legatoSeconds, sampleRate)
         return notes.mapIndexed { i, note ->
-            val start = framesOf(note.startSeconds, sampleRate)
-            val end = framesOf(note.startSeconds + note.durationSeconds, sampleRate)
-            val fade = min(legato, (end - start) / 2)
-            val first = i == 0
-            val last = i == notes.lastIndex
-            // Centre each crossfade on the boundary. Without looping, the first
-            // note starts at 0 and the last one ends with a release.
-            val voiceStart = if (first && !options.loop) 0 else start - fade / 2
+            val before = if (i == 0) joins.last() else joins[i - 1]
+            val after = if (joins[i]) windows[(i + 1) % windows.size] else null
+            val finalRelease = !options.loop && i == notes.lastIndex &&
+                abs(note.startSeconds + note.durationSeconds - schedule.durationSeconds) < TIME_EPSILON
+            val envelope = when (options.articulation) {
+                HarmoniumArticulation.CONNECTED -> connectedEnvelope(windows[i], before, after != null, finalRelease, legato)
+                HarmoniumArticulation.LIGHTLY_SEPARATED -> lightEnvelope(windows[i], after, finalRelease)
+            }
             Voice(
-                clip = bank.clip(note.playback.midi),
-                rate = note.playback.rate,
-                gain = options.harmoniumGain,
-                start = voiceStart.toLong(),
-                fadeIn = if (first && !options.loop) fade / 2 else fade,
-                end = (if (last && !options.loop) end + releaseFrames else end + fade / 2).toLong(),
-                fadeOut = if (last && !options.loop) releaseFrames else fade,
-                sourceOffset = 0.0,
+                clip = bank.clip(note.playback.midi), rate = note.playback.rate, gain = options.harmoniumGain,
+                start = envelope.start.toLong(), fadeIn = envelope.fadeIn,
+                end = envelope.end.toLong(), fadeOut = envelope.fadeOut, sourceOffset = 0.0,
             )
         }
     }
+
+    /** Read written karvais from the cursor, not a duration threshold (gati/speed vary). */
+    private fun heldNotes(): BooleanArray {
+        val held = BooleanArray(schedule.notes.size)
+        var note = -1
+        for (cursor in schedule.cursor) {
+            val p = cursor.position
+            when (schedule.varisai.avartas[p.avarta].aksharas[p.akshara]) {
+                is Akshara.Swaras -> note++
+                Akshara.Karvai -> if (note >= 0) held[note] = true
+                Akshara.Rest -> Unit
+            }
+        }
+        return held
+    }
+
+    private fun connectedEnvelope(note: NoteWindow, before: Boolean, after: Boolean, finalRelease: Boolean, legato: Int): Envelope {
+        val fade = min(legato, note.duration / 2)
+        return Envelope(
+            start = if (before) note.start - fade / 2 else note.start,
+            fadeIn = if (before) fade else fade / 2,
+            end = when {
+                finalRelease -> note.end + releaseFrames
+                after -> note.end + fade / 2
+                else -> note.end
+            },
+            fadeOut = when {
+                finalRelease -> releaseFrames
+                after -> fade
+                else -> fade / 2
+            },
+        )
+    }
+
+    private fun lightFade(note: NoteWindow): Int = min(framesOf(LIGHT_FADE_SECONDS, sampleRate), note.duration / 4)
+
+    private fun lightEnvelope(note: NoteWindow, after: NoteWindow?, finalRelease: Boolean): Envelope {
+        val fade = lightFade(note)
+        // A held note keeps its whole written sustain, then overlaps the next
+        // on-time attack. An explicit rest never receives that release tail.
+        val holdRelease = if (note.held && after != null) lightFade(after) else 0
+        val end = when {
+            finalRelease -> note.end + releaseFrames
+            holdRelease > 0 -> note.end + holdRelease
+            after != null && !note.held -> note.end - note.gap
+            else -> note.end
+        }
+        return Envelope(
+            start = note.start, fadeIn = fade, end = end,
+            fadeOut = when {
+                finalRelease -> releaseFrames
+                holdRelease > 0 -> holdRelease
+                else -> fade
+            },
+        )
+    }
+
+    private data class NoteWindow(val start: Int, val end: Int, val held: Boolean, val gap: Int) {
+        val duration: Int get() = end - start
+    }
+
+    private data class Envelope(val start: Int, val fadeIn: Int, val end: Int, val fadeOut: Int)
 
     private fun buildDrones(): List<Voice> {
         val fade = framesOf(options.droneFadeSeconds, sampleRate)
@@ -398,8 +492,11 @@ class SampleRenderer(
         const val LCG_INCREMENT = 1442695040888963407L
         const val NOISE_SHIFT = 11
         const val NOISE_SCALE = 9007199254740992.0 // 2^53
-        const val DEFAULT_STOP_FADE_SECONDS = 0.08
         const val COUNT_IN_CLICK_GAIN = 0.4f
+        const val LIGHT_GAP_FRACTION = 0.05
+        const val LIGHT_MAX_GAP_SECONDS = 0.025
+        const val LIGHT_FADE_SECONDS = 0.005
+        const val TIME_EPSILON = 1e-9
 
         /** A two-kalai second count clicks softer than the kriya it follows. */
         const val SECOND_COUNT_GAIN = 0.5f

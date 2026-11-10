@@ -238,16 +238,101 @@ final class PurandaraUITests: XCTestCase {
     // are: mark each test (not the class, which would break the nonisolated
     // setUp override) and every helper they call.
     @MainActor func testSettingsSheetPassesAccessibilityAudit() throws {
-        let app = launch(["-open", "sarali-4"])
+        let app = launch(["-open", "sarali-4", "-repeatPractice", "YES"])
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
         app.buttons["Practice settings"].tap()
         XCTAssertTrue(app.navigationBars["Practice settings"].waitForExistence(timeout: 5))
         try audit(app)
-        // Below fine-tune and strictness: scroll to it, and audit that part too.
-        let drone = app.switches["Tanpura drone"]
-        for _ in 0..<4 where !drone.exists { app.swipeUp() }
-        XCTAssertTrue(drone.exists)
+        // Each setting remains explicitly audited, on short pages that do not
+        // lose unrelated lower controls as preceding explanations grow.
+        app.buttons["Sound"].tap()
         try audit(app)
+        for page in ["Tuning", "Harmonium guide", "Volumes and drone"] {
+            app.buttons[page].tap()
+            XCTAssertTrue(app.navigationBars[page].waitForExistence(timeout: 3))
+            try audit(app)
+            app.navigationBars.buttons.firstMatch.tap()
+        }
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["Rhythm"].tap()
+        try audit(app)
+        app.buttons["Practice mode"].tap()
+        try audit(app)
+        app.buttons["Response guide"].tap()
+        try audit(app)
+        app.navigationBars.buttons.firstMatch.tap()
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["Click and count-in"].tap()
+        try audit(app)
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["Repeat and recovery"].tap()
+        try audit(app)
+        XCTAssertEqual(app.switches["Repeat"].value as? String, "1")
+        app.buttons.containing(NSPredicate(format: "label BEGINSWITH %@", "Between repeats")).firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Between repeats"].waitForExistence(timeout: 3))
+        app.buttons["Timed break"].tap()
+        try audit(app)
+        let duration = app.buttons["Timed break duration"]
+        for _ in 0..<4 where !(duration.exists && duration.isHittable) { app.swipeUp() }
+        XCTAssertTrue(duration.isHittable)
+        duration.tap()
+        try audit(app)
+        app.navigationBars.buttons.firstMatch.tap()
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["About recovery"].tap()
+        try audit(app)
+        for page in ["During a break", "Microphone privacy"] {
+            app.buttons[page].tap()
+            try audit(app)
+            app.navigationBars.buttons.firstMatch.tap()
+        }
+        app.navigationBars.buttons.firstMatch.tap()
+        app.navigationBars.buttons.firstMatch.tap()
+        app.navigationBars.buttons.firstMatch.tap()
+        app.buttons["Feedback and notation"].tap()
+        try audit(app)
+        for page in ["Echo cancellation", "Strictness", "Gitam notation"] {
+            app.buttons[page].tap()
+            XCTAssertTrue(app.navigationBars[page].waitForExistence(timeout: 3))
+            try audit(app)
+            app.navigationBars.buttons.firstMatch.tap()
+        }
+    }
+
+    @MainActor func testHarmoniumNotesChoicePersistsAndPassesAccessibilityAudit() throws {
+        let app = launch(["-open", "sarali-4"])
+        XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
+        app.buttons["Practice settings"].tap()
+        openHarmoniumNotes(app)
+        XCTAssertTrue(app.buttons["Connected"].isSelected)
+        XCTAssertFalse(app.buttons["Lightly separated"].isSelected)
+        XCTAssertTrue(app.staticTexts["Changes the harmonium guide, not tala timing or where you breathe."].exists)
+        try audit(app)
+        app.buttons["Lightly separated"].tap()
+        XCTAssertTrue(app.navigationBars["Sound"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.descendants(matching: .any)["harmonium-notes"].firstMatch.label.contains("Lightly separated"))
+
+        app.terminate()
+        // Relaunch without resetting to prove the selected choice is persisted.
+        app.launchArguments = ["-open", "sarali-4"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
+        app.buttons["Practice settings"].tap()
+        openHarmoniumNotes(app)
+        XCTAssertFalse(app.buttons["Connected"].isSelected)
+        XCTAssertTrue(app.buttons["Lightly separated"].isSelected)
+        try audit(app)
+    }
+
+    @MainActor private func openHarmoniumNotes(_ app: XCUIApplication) {
+        XCTAssertTrue(app.navigationBars["Practice settings"].waitForExistence(timeout: 5))
+        app.buttons["Sound"].tap()
+        XCTAssertTrue(app.navigationBars["Sound"].waitForExistence(timeout: 3))
+        let link = app.descendants(matching: .any)["harmonium-notes"].firstMatch
+        for _ in 0..<6 where !(link.exists && link.isHittable) { app.swipeUp() }
+        XCTAssertTrue(link.isHittable)
+        link.tap()
+        XCTAssertTrue(app.navigationBars["Harmonium notes"].waitForExistence(timeout: 3))
     }
 
     // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
@@ -294,6 +379,40 @@ final class PurandaraUITests: XCTestCase {
             XCTAssertTrue(restart.waitForNonExistence(timeout: 5))
             app.terminate()
         }
+    }
+
+    @MainActor func testListenRepeatScoredPairAndRecoveryControls() throws {
+        let app = launch(["-open", "sarali-1", "-autoplay", "YES", "-practiceMode", "listenRepeat",
+                          "-recoveryMode", "whenReady", "-tempo", "120", "-kala", "2", "-singAlong", "YES", "-singer", "0"])
+        XCTAssertTrue(app.staticTexts["Listen · attempt 1"].waitForExistence(timeout: 10))
+        let next = app.buttons["Continue"]
+        XCTAssertTrue(next.waitForExistence(timeout: 20))
+        try audit(app)
+        next.tap()
+        XCTAssertTrue(app.staticTexts["Count-in…"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Your turn · attempt 1"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 20), "repeat off ends after one response")
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH %@", "Pass 1:")).firstMatch.exists)
+    }
+
+    @MainActor func testTimedRecoveryWaitContinueStopAndBackground() throws {
+        let app = launch(["-open", "sarali-1", "-autoplay", "YES", "-recoveryMode", "timed",
+                          "-repeatPractice", "YES", "-recoverySeconds", "30", "-tempo", "120", "-kala", "2", "-countIn", "NO"])
+        let wait = app.buttons["Wait for me"]
+        XCTAssertTrue(wait.waitForExistence(timeout: 20))
+        wait.tap()
+        XCTAssertTrue(wait.waitForNonExistence(timeout: 3))
+        let next = app.buttons["Continue"]
+        XCTAssertTrue(next.exists)
+        try audit(app)
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(app.staticTexts["Practice paused. Continue when ready."].waitForExistence(timeout: 5))
+        next.tap()
+        XCTAssertTrue(app.buttons["Stop"].waitForExistence(timeout: 5))
+        app.buttons["Stop"].tap()
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Continue"].exists)
     }
 
     @MainActor func testOutputChangeStopsExerciseUntilPlay() {

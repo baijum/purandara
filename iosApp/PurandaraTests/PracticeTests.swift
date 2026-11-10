@@ -314,6 +314,7 @@ final class PracticeSettingsStoreTests: XCTestCase {
         XCTAssertEqual(s.kala, 1)
         XCTAssertTrue(s.drone)
         XCTAssertEqual(s.tuning, .just)
+        XCTAssertEqual(s.articulation, .connected)
         XCTAssertTrue(s.countIn)
         XCTAssertEqual(s.harmoniumLevel, 0.75)
         XCTAssertEqual(s.droneLevel, 0.5)
@@ -328,6 +329,7 @@ final class PracticeSettingsStoreTests: XCTestCase {
         s.click = true
         s.loop = true
         s.tuning = .equal
+        s.articulation = .lightlySeparated
         s.countIn = false
         s.harmoniumLevel = 0.3
         s.droneLevel = 0.9
@@ -346,6 +348,77 @@ final class PracticeSettingsStoreTests: XCTestCase {
         defaults.set(9, forKey: "practice.kala")
         defaults.set("bogus", forKey: "practice.tuning")
         XCTAssertEqual(PracticeSettingsStore(defaults: defaults).load(), PracticeSettings())
+    }
+
+    func testRecoveryAndModeDefaultsRoundTripAndFallback() {
+        let store = PracticeSettingsStore(defaults: defaults)
+        XCTAssertEqual(store.load().practiceMode, .normal)
+        XCTAssertEqual(store.load().recoveryMode, .continuous)
+        XCTAssertEqual(store.load().recoverySeconds, 5)
+        XCTAssertFalse(store.load().responseGuide)
+        for mode in PracticeSettings.ModeChoice.allCases {
+            for recovery in PracticeSettings.RecoveryChoice.allCases {
+                var s = PracticeSettings()
+                s.practiceMode = mode
+                s.recoveryMode = recovery
+                s.recoverySeconds = 30
+                s.responseGuide = true
+                store.save(s)
+                XCTAssertEqual(store.load(), s)
+            }
+        }
+        defaults.set("unknown", forKey: "practice.mode")
+        defaults.set("unknown", forKey: "practice.recoveryMode")
+        defaults.set(31, forKey: "practice.recoverySeconds")
+        XCTAssertEqual(store.load().practiceMode, .normal)
+        XCTAssertEqual(store.load().recoveryMode, .continuous)
+        XCTAssertEqual(store.load().recoverySeconds, 5)
+    }
+
+    func testTransportSelectionAndModelGuideAreIndependentOfFeedback() {
+        var s = PracticeSettings()
+        XCTAssertFalse(s.usesTransport)
+        s.recoveryMode = .whenReady
+        XCTAssertFalse(s.usesTransport, "recovery has no effect with repeat off")
+        s.loop = true
+        XCTAssertTrue(s.usesTransport)
+        s.loop = false
+        s.practiceMode = .listenRepeat
+        s.singAlong = true
+        s.harmoniumGuide = false
+        XCTAssertTrue(s.usesTransport)
+        XCTAssertEqual(s.transportOptions().harmoniumGain,
+                       RenderOptions.companion.practice(drone: s.drone, click: s.click, loop: false,
+                           countIn: s.countIn, harmoniumLevel: s.harmoniumLevel, droneLevel: s.droneLevel,
+                           articulation: s.articulation.kotlin).harmoniumGain)
+        XCTAssertFalse(s.policy(feedback: true).responseGuide)
+        XCTAssertFalse(s.policy(feedback: true).repeat)
+        s.responseGuide = true
+        XCTAssertTrue(s.policy(feedback: false).responseGuide)
+        XCTAssertFalse(s.policy(feedback: false).feedback)
+    }
+
+    func testArticulationRoundTrip() {
+        let store = PracticeSettingsStore(defaults: defaults)
+        for choice in PracticeSettings.ArticulationChoice.allCases {
+            var s = PracticeSettings()
+            s.articulation = choice
+            store.save(s)
+            XCTAssertEqual(defaults.string(forKey: "practice.articulation"), choice.rawValue)
+            XCTAssertEqual(store.load().articulation, choice)
+        }
+    }
+
+    func testInvalidArticulationFallsBackToConnected() {
+        defaults.set("unknown", forKey: "practice.articulation")
+        XCTAssertEqual(PracticeSettingsStore(defaults: defaults).load().articulation, .connected)
+    }
+
+    func testRenderOptionsUseArticulation() {
+        var s = PracticeSettings()
+        XCTAssertEqual(s.renderOptions().articulation, .connected)
+        s.articulation = .lightlySeparated
+        XCTAssertEqual(s.renderOptions().articulation, .lightlySeparated)
     }
 
     func testTanpuraLoopsAreDecodedAndUsed() throws {
@@ -481,6 +554,157 @@ final class PracticeViewModelTests: XCTestCase {
         }
     }
 
+    private func waitForRecovery(_ vm: PracticeViewModel) async throws {
+        let deadline = Date().addingTimeInterval(15)
+        while !vm.playback.recovering && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertTrue(vm.playback.recovering)
+    }
+
+    private func recoveryModel(_ route: TestOutputRoute) throws -> (PracticeViewModel, VarisaiAudioPlayer, Varisai) {
+        let player = VarisaiAudioPlayer(routeOutputs: { route.outputs })
+        let vm = model(player, bank: try HarmoniumSamples.load())
+        vm.settings.tempo = PracticeSettings.tempoRange.upperBound
+        vm.settings.kala = 4
+        vm.settings.countIn = false
+        vm.settings.loop = true
+        vm.settings.recoveryMode = .whenReady
+        return (vm, player, try XCTUnwrap(vm.catalog.first { $0.id == "sarali-1" }))
+    }
+
+    func testRecoveryBackgroundRequiresContinueAndStopCancelsIt() async throws {
+        let (vm, player, piece) = try recoveryModel(TestOutputRoute())
+        vm.play(piece)
+        defer { vm.stopImmediately() }
+        try await waitForRecovery(vm)
+        vm.onBackgrounded()
+        XCTAssertFalse(player.isPlaying)
+        vm.onForegrounded()
+        XCTAssertTrue(vm.practicePaused)
+        XCTAssertFalse(player.isPlaying)
+        vm.onBackgrounded()
+        vm.onForegrounded()
+        XCTAssertTrue(vm.practicePaused, "another background trip preserves explicit Continue")
+        XCTAssertFalse(player.isPlaying)
+        vm.continuePractice()
+        XCTAssertTrue(player.isPlaying)
+        XCTAssertFalse(vm.practicePaused)
+        try await waitForRecovery(vm)
+        vm.onBackgrounded()
+        vm.stopImmediately()
+        vm.onForegrounded()
+        vm.continuePractice()
+        XCTAssertFalse(player.isPlaying)
+    }
+
+    func testRecoveryOutputChangeAndSaChangeCancelContinuation() async throws {
+        let route = TestOutputRoute()
+        let (vm, player, piece) = try recoveryModel(route)
+        vm.play(piece)
+        defer { vm.stopImmediately() }
+        try await waitForRecovery(vm)
+        try await changeOutput(route)
+        vm.continuePractice()
+        XCTAssertFalse(player.isPlaying)
+        XCTAssertTrue(vm.outputChanged)
+        vm.play(piece)
+        try await waitForRecovery(vm)
+        vm.settings.saCents = 1
+        vm.continuePractice()
+        XCTAssertFalse(player.isPlaying)
+        XCTAssertFalse(vm.practicePaused)
+    }
+
+    func testSyntheticRecoveryScoresTwoAttemptsWithFreshCountInAndOneHistoryCount() async throws {
+        UserDefaults.standard.set("0", forKey: "singer")
+        defer { UserDefaults.standard.removeObject(forKey: "singer") }
+        let (vm, player, piece) = try recoveryModel(TestOutputRoute())
+        vm.settings.singAlong = true
+        vm.play(piece)
+        defer { vm.stopImmediately() }
+        try await waitForRecovery(vm)
+        XCTAssertEqual(vm.singAlong.lastSummary?.pass, 1)
+        let first = try XCTUnwrap(player.practiceSnapshot()?.segments.first)
+        XCTAssertTrue(first.scored)
+        XCTAssertGreaterThan(first.countInFrames, 0, "scoring forces calibration even when count-in setting is off")
+        vm.continuePractice()
+        let deadline = Date().addingTimeInterval(20)
+        while (vm.singAlong.lastSummary?.pass ?? 0) < 2 && Date() < deadline {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertEqual(vm.singAlong.lastSummary?.pass, 2)
+        let segments = try XCTUnwrap(player.practiceSnapshot()).segments
+        XCTAssertEqual(segments.count, 2)
+        XCTAssertGreaterThan(segments[1].countInFrames, 0)
+        XCTAssertGreaterThan(segments[1].startFrame, first.endFrame)
+        XCTAssertEqual(vm.history.get(varisaiId: piece.id)?.timesPracticed, 1)
+        XCTAssertTrue(player.isPlaying, "tanpura transport stays alive during recovery")
+    }
+
+    func testListenRepeatWithoutFeedbackRunsOnePairAndNeverRequestsCapture() async throws {
+        let route = TestOutputRoute()
+        let (vm, player, piece) = try recoveryModel(route)
+        vm.settings.loop = false
+        vm.settings.practiceMode = .listenRepeat
+        vm.settings.recoveryMode = .continuous
+        vm.play(piece)
+        defer { vm.stopImmediately() }
+        let deadline = Date().addingTimeInterval(20)
+        var lastSegments: [PracticeSegment] = []
+        while player.isPlaying && Date() < deadline {
+            if let snapshot = player.practiceSnapshot() { lastSegments = snapshot.segments }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertFalse(player.isPlaying)
+        XCTAssertEqual(lastSegments.count, 2)
+        XCTAssertTrue(lastSegments[0].listening)
+        XCTAssertTrue(lastSegments[1].response)
+        XCTAssertFalse(lastSegments.contains { $0.scored })
+        XCTAssertEqual(lastSegments[1].countInFrames, 0, "unscored response honors count-in off")
+        XCTAssertNil(vm.singAlong.lastSummary)
+        XCTAssertEqual(vm.history.get(varisaiId: piece.id)?.timesPracticed, 1)
+    }
+
+    func testRepeatOffDuringNormalRecoveryCancelsFutureAttempts() async throws {
+        let (vm, player, piece) = try recoveryModel(TestOutputRoute())
+        vm.play(piece)
+        defer { vm.stopImmediately() }
+        try await waitForRecovery(vm)
+        vm.settings.loop = false
+        vm.continuePractice()
+        XCTAssertFalse(player.isPlaying)
+        XCTAssertFalse(vm.practicePaused)
+        vm.onBackgrounded()
+        vm.onForegrounded()
+        XCTAssertFalse(player.isPlaying)
+    }
+
+    func testRecoverySwitchToContinuousWaitsThenUsesSeamlessRenderer() async throws {
+        let (vm, player, piece) = try recoveryModel(TestOutputRoute())
+        vm.play(piece)
+        defer { vm.stopImmediately() }
+        try await waitForRecovery(vm)
+        vm.settings.recoveryMode = .continuous
+        XCTAssertTrue(vm.practicePaused)
+        XCTAssertFalse(player.isPlaying)
+        vm.continuePractice()
+        XCTAssertTrue(player.isPlaying)
+        XCTAssertNil(player.practiceSnapshot(), "continuous repeat uses the existing seamless renderer")
+    }
+
+    func testRecoveryScheduleChangeWaitsForExplicitFreshContinue() async throws {
+        let (vm, player, piece) = try recoveryModel(TestOutputRoute())
+        vm.play(piece)
+        defer { vm.stopImmediately() }
+        try await waitForRecovery(vm)
+        vm.settings.tempo -= 5
+        XCTAssertTrue(vm.practicePaused)
+        XCTAssertFalse(player.isPlaying)
+        vm.continuePractice()
+        XCTAssertTrue(player.isPlaying)
+    }
+
     func testTanpuraReturnsToPlayAndDoesNotResumeAfterOutputChange() async throws {
         let route = TestOutputRoute()
         let player = VarisaiAudioPlayer(routeOutputs: { route.outputs })
@@ -494,6 +718,39 @@ final class PracticeViewModelTests: XCTestCase {
         XCTAssertFalse(player.isPlaying)
         vm.toggleTanpura()
         XCTAssertTrue(vm.tanpuraPlaying)
+    }
+}
+
+final class PitchListenerDrainTests: XCTestCase {
+    private final class Clock: @unchecked Sendable {
+        let lock = NSLock()
+        var active = true
+        var frames = 0
+
+        func time() -> Double? { lock.lock(); defer { lock.unlock() }; return active ? 1 : nil }
+        func stopped() { lock.lock(); active = false; lock.unlock() }
+        func record() { lock.lock(); frames += 1; lock.unlock() }
+    }
+
+    func testAdmittedMicWindowsDrainAfterOutputClockStops() throws {
+        let clock = Clock()
+        let listener = PitchListener(timeOf: { _ in clock.time() }, synthetic: nil,
+                                     supervisorFactory: { _ in nil }) { _ in clock.record() }
+        let request = try XCTUnwrap(listener.micRequest(echoCancellation: false))
+        let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1))
+        let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 8192))
+        buffer.frameLength = 8192
+        buffer.floatChannelData![0].initialize(repeating: 0, count: 8192)
+        listener.queue.suspend()
+        request.onBuffer(buffer, AVAudioTime(hostTime: mach_absolute_time()))
+        clock.stopped()
+        listener.queue.resume()
+        listener.stop {}
+        XCTAssertGreaterThan(clock.frames, 0, "admitted windows keep their mapped time after audio teardown")
+        let count = clock.frames
+        request.onBuffer(buffer, AVAudioTime(hostTime: mach_absolute_time()))
+        listener.stop {}
+        XCTAssertEqual(clock.frames, count, "stale/new buffers after output stop are not analyzed")
     }
 }
 

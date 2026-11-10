@@ -17,12 +17,15 @@ internal fun PracticeUiState.backgroundAudio(): BackgroundAudio? = when {
     outputChanged -> null
     shruti.open -> BackgroundAudio.SHRUTI
     findSa.open && findSa.progress.suggestion == null -> BackgroundAudio.FIND_SA
-    playback.playing -> BackgroundAudio.PLAYBACK
+    playback.playing && !playback.recovering -> BackgroundAudio.PLAYBACK
     tanpuraPlaying -> BackgroundAudio.TANPURA
     else -> null
 }
 
 internal fun PracticeUiState.canAutoStartAudio(backgrounded: Boolean): Boolean = !outputChanged && !backgrounded
+
+internal fun acceptsMicFailure(generation: Long, currentGeneration: Long, hasCapture: Boolean): Boolean =
+    generation == currentGeneration && hasCapture
 
 /** Queued frames from a stopped/replaced guide must not overwrite the current guide. */
 internal fun PracticeUiState.acceptsFindSaOutcome(generation: Long, currentGeneration: Long): Boolean =

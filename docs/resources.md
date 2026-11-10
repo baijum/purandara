@@ -13,6 +13,48 @@ Two rules from [`AGENTS.md`](../AGENTS.md) shape the list:
 - **Credit every source** used for a bundled asset in
   [`ATTRIBUTION.md`](../ATTRIBUTION.md), in the same change.
 
+### Articulation and breathing
+
+Research checked 9–10 November 2026 for
+[articulation and recovery practice](plan-articulation-breathing.md). These
+are design references, not imported recordings or notation:
+
+- [Karnatik: introductory singing](https://www.karnatik.com/beginner1.shtml)
+  describes continuous phrases and sustained karvai;
+  [practice guidance](https://www.karnatik.com/practice.shtml) emphasizes
+  breath economy and avoiding a breath in the middle of a sahitya word.
+- [Shivkumar: sarali](https://www.shivkumar.org/music/basics/sarali-varisai.htm)
+  keeps the tala while increasing note density;
+  [janta](https://www.shivkumar.org/music/basics/janta-varisai.htm) describes
+  spuritham, not a prescribed silent gap. These lessons credit overlapping
+  Karnatik/Ravikiran material; do not count them as independent corroboration.
+- [Acharyanet: practical exercises](https://www.acharyanet.com/practical-exercises-in-carnatic-music/)
+  distinguishes sustained-note preparation from timed exercises. Its long
+  duration targets are teaching suggestions, not universal requirements.
+- [Saamaveda Music Academy: beginner modules](https://www.saamavedamusicacademy.in/Free-Basic-Carnatic-Music.php)
+  explicitly uses a repeat-after-me format, including varisais, alankaras
+  and geethams. This establishes a teaching format, not comparative efficacy
+  or appropriate boundaries for every composition.
+- [NIDCD: taking care of your voice](https://www.nidcd.nih.gov/health/taking-care-your-voice)
+  advises against singing when hoarse or tired. General voice-health guidance
+  is not a Carnatic breath map.
+- [Ableton: arpeggiator gate](https://www.ableton.com/en/live-manual/12/live-midi-effect-reference/#arpeggiator)
+  distinguishes sounding duration from note-onset spacing. It is an audio
+  implementation reference, not a Carnatic articulation rule.
+- Repp (1995), [*Acoustics, perception, and production of legato articulation
+  on a digital piano*](https://doi.org/10.1121/1.413065): perceived legato
+  depends on duration, register, interval and listener. This is not a threshold
+  study of repeated harmonium notes.
+- Bresin & Battel (2000), [*Articulation Strategies in Expressive Piano
+  Performance*](https://doi.org/10.1076/jnmr.29.3.211.3092): observed piano
+  articulation relative to inter-onset intervals; do not import its measured
+  percentages as Carnatic defaults.
+
+None establishes a universal harmonium gap, recovery duration or automatic
+breath point at every printed line or tala boundary. The Light preset and
+recovery settings are product choices requiring listening/device checks;
+phrase annotations require explicit musical review.
+
 Last checked: **7 November 2026**, including the closed issues #1–#7 and their
 comments. Links rot; re-check them before a release.
 

@@ -8,6 +8,7 @@ struct PlayerView: View {
     @EnvironmentObject private var viewModel: PracticeViewModel
     @State private var showingSettings = false
     @State private var showingSections = false
+    @State private var showingPhrases = false
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Whether every note of this piece is inside the harmonium samples at the chosen Sa.
@@ -16,6 +17,11 @@ struct PlayerView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if viewModel.playback.recovering || viewModel.practicePaused {
+                ScrollView {
+                    RecoveryControls().padding(.top, 16)
+                }.frame(maxHeight: .infinity)
+            } else {
             TalaStripView(beatInAvarta: viewModel.playback.beatInAvarta, tala: varisai.tala, kalai: Int(varisai.kalai))
                 .padding(.horizontal, 12)
                 // Extra top space: the toolbar's glass shadow otherwise lowers the
@@ -51,12 +57,19 @@ struct PlayerView: View {
                         Button {
                             showingSections = true
                         } label: {
-                            Text("Section: \(viewModel.practiceSection?.label ?? String(localized: "Whole piece"))")
+                            Text("Section: \(viewModel.practicePhrase?.label ?? viewModel.practiceSection?.label ?? String(localized: "Whole piece"))")
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityHint(Text("Practise one section alone"))
+                    }
+                    let phrases = PracticePhrases.shared.forVarisai(varisai: varisai)
+                    if !phrases.isEmpty {
+                        Button("Practice unit: \(viewModel.practicePhrase?.label ?? viewModel.practiceSection?.label ?? String(localized: "Whole piece"))") {
+                            showingPhrases = true
+                        }.buttonStyle(.bordered)
+                            .accessibilityHint(Text("Choose a teacher-reviewed practice phrase"))
                     }
                     if showPanel && typeSize.isAccessibilitySize { SingAlongPanel(varisai: varisai, saPlayable: saPlayable) }
                 }))
@@ -66,13 +79,15 @@ struct PlayerView: View {
             }
             Divider()
             QuickControls(settings: $viewModel.settings)
+            }
         }
         .safeAreaInset(edge: .bottom) {
             Button {
-                viewModel.togglePlay(varisai)
+                if viewModel.practicePaused { viewModel.stopImmediately() }
+                else { viewModel.togglePlay(varisai) }
             } label: {
-                Label(viewModel.playback.playing ? "Stop" : "Play",
-                      systemImage: viewModel.playback.playing ? "stop.fill" : "play.fill")
+                Label(viewModel.playback.playing || viewModel.practicePaused ? "Stop" : "Play",
+                      systemImage: viewModel.playback.playing || viewModel.practicePaused ? "stop.fill" : "play.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
@@ -113,9 +128,16 @@ struct PlayerView: View {
         .onDisappear {
             viewModel.stopImmediately()
             viewModel.practiceSection = nil
+            viewModel.practicePhrase = nil
         }
         .sheet(isPresented: $showingSections) {
-            SectionChoices(sections: varisai.sections, selected: $viewModel.practiceSection)
+            SectionChoices(sections: varisai.sections, selected: Binding(
+                get: { viewModel.practiceSection },
+                set: { viewModel.practicePhrase = nil; viewModel.practiceSection = $0 }))
+        }
+        .sheet(isPresented: $showingPhrases) {
+            PhraseChoices(phrases: PracticePhrases.shared.forVarisai(varisai: varisai),
+                          selected: $viewModel.practicePhrase, section: $viewModel.practiceSection)
         }
     }
 }
@@ -144,11 +166,46 @@ private struct PlaybackStatus: View {
     }
 
     @ViewBuilder private var status: some View {
-        if playback.countingIn {
+        if playback.practicePhase == .listen {
+            Text("Listen · attempt \(playback.attempt)")
+        } else if playback.practicePhase == .yourTurn {
+            Text("Your turn · attempt \(playback.attempt)")
+        } else if playback.practicePhase == .release_ {
+            Text("Release")
+        } else if playback.recovering {
+            Text("Rest")
+        } else if playback.countingIn {
             Text("Count-in…").foregroundStyle(Color.accentColor)
         } else if playback.repetitions > 1 {
             Text("Pass \((playback.repetition ?? 0) + 1) of \(playback.repetitions)").foregroundStyle(Color.subdued)
         }
+    }
+}
+
+private struct RecoveryControls: View {
+    @EnvironmentObject private var viewModel: PracticeViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(viewModel.practicePaused ? "Practice paused. Continue when ready." : "Rest between attempts")
+                .font(.headline).accessibilityAddTraits(.isHeader)
+                .fixedSize(horizontal: false, vertical: true)
+            if let summary = viewModel.singAlong.lastSummary {
+                Text(SingAlongText.summaryHeadline(summary.pass, summary.summary))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let seconds = viewModel.playback.recoverySeconds {
+                Text("Next attempt in \(seconds) seconds")
+                    .monospacedDigit().accessibilityHidden(true)
+                // Avoid a changing VoiceOver announcement every second.
+            }
+            Button("Continue") { viewModel.continuePractice() }.buttonStyle(.borderedProminent)
+            if viewModel.playback.recoverySeconds != nil {
+                Button("Wait for me") { viewModel.waitForMe() }.buttonStyle(.bordered)
+            }
+        }
+        .padding(.horizontal).padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -200,74 +257,9 @@ struct PracticeSettingsView: View {
                     }
                 }
                 Section {
-                    Picker("Tuning", selection: $settings.tuning) {
-                        Text("Just (tanpura)").tag(PracticeSettings.TuningChoice.just)
-                        Text("Equal (keyboard)").tag(PracticeSettings.TuningChoice.equal)
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                } header: {
-                    Text("Tuning").foregroundStyle(Color.subdued)
-                }
-                Section {
-                    Picker("Harmonium guide", selection: $settings.harmoniumGuide) {
-                        Text("All notes").tag(true)
-                        Text("Off (drone and click)").tag(false)
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                } header: {
-                    Text("Harmonium guide").foregroundStyle(Color.subdued)
-                }
-                Section {
-                    Toggle("Echo cancellation", isOn: $settings.echoCancellation)
-                    // In the section rather than its footer: footers cap Dynamic Type.
-                    Text("On the speaker, removes the app's own sound from what the microphone hears; the volume may drop while it works. Turn it off when using a microphone placed away from the speaker.")
-                        .font(.footnote)
-                        .foregroundStyle(Color.subdued)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Section {
-                    Toggle("Tanpura drone", isOn: $settings.drone)
-
-                    LevelSlider(title: "Drone volume", level: $settings.droneLevel)
-                        .disabled(!settings.drone)
-                    LevelSlider(title: "Harmonium volume", level: $settings.harmoniumLevel)
-                }
-                Section {
-                    Toggle("Tala click", isOn: $settings.click)
-                    Toggle("Count in one avarta", isOn: $settings.countIn)
-                    Toggle("Repeat continuously", isOn: $settings.loop)
-                }
-                Section {
-                    Picker("Strictness", selection: $settings.strictness) {
-                        Text("Gentle").tag(PracticeSettings.StrictnessChoice.gentle)
-                        Text("Steady").tag(PracticeSettings.StrictnessChoice.steady)
-                        Text("Precise").tag(PracticeSettings.StrictnessChoice.precise)
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                    Text("In tune within ±\(Int(settings.strictness.kotlin.inTuneCents)) cents, close within ±\(Int(settings.strictness.kotlin.closeCents)).")
-                        .font(.footnote)
-                        .foregroundStyle(Color.subdued)
-                        .fixedSize(horizontal: false, vertical: true)
-                } header: {
-                    Text("Strictness").foregroundStyle(Color.subdued)
-                }
-                Section {
-                    Picker("Gitam notation", selection: $settings.words) {
-                        Text("Swaras").tag(PracticeSettings.WordsChoice.swaras)
-                        Text("Words").tag(PracticeSettings.WordsChoice.words)
-                        Text("Both").tag(PracticeSettings.WordsChoice.both)
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                    Text("What a gitam shows under each beat: its swaras, its words, or both.")
-                        .font(.footnote)
-                        .foregroundStyle(Color.subdued)
-                        .fixedSize(horizontal: false, vertical: true)
-                } header: {
-                    Text("Gitam notation").foregroundStyle(Color.subdued)
+                    NavigationLink("Sound") { soundSettings }
+                    NavigationLink("Rhythm") { rhythmSettings }
+                    NavigationLink("Feedback and notation") { feedbackSettings }
                 }
             }
             .navigationTitle("Practice settings")
@@ -282,11 +274,200 @@ struct PracticeSettingsView: View {
         }
     }
 
+    // Short, named pages prevent a growing explanation from displacing unrelated
+    // controls during Dynamic Type changes. Explanations follow their own controls.
+    private var soundSettings: some View {
+        Form {
+            NavigationLink("Tuning") {
+                Form {
+                    Picker("Tuning", selection: $settings.tuning) {
+                        Text("Just (tanpura)").tag(PracticeSettings.TuningChoice.just)
+                        Text("Equal (keyboard)").tag(PracticeSettings.TuningChoice.equal)
+                    }.pickerStyle(.inline).labelsHidden()
+                }.navigationTitle("Tuning").navigationBarTitleDisplayMode(.inline)
+            }
+            NavigationLink("Harmonium guide") {
+                Form {
+                    Picker("Harmonium guide", selection: $settings.harmoniumGuide) {
+                        Text("All notes").tag(true)
+                        Text("Off (drone and click)").tag(false)
+                    }.pickerStyle(.inline).labelsHidden()
+                }.navigationTitle("Harmonium guide").navigationBarTitleDisplayMode(.inline)
+            }
+            NavigationLink {
+                ArticulationChoiceList(articulation: $settings.articulation)
+            } label: {
+                VStack(alignment: .leading) {
+                    Text("Harmonium notes")
+                    Text(settings.articulation == .connected ? "Connected" : "Lightly separated")
+                        .foregroundStyle(Color.subdued)
+                }.fixedSize(horizontal: false, vertical: true)
+            }.accessibilityIdentifier("harmonium-notes")
+            NavigationLink("Volumes and drone") {
+                Form {
+                    Toggle("Tanpura drone", isOn: $settings.drone)
+                    LevelSlider(title: "Drone volume", level: $settings.droneLevel).disabled(!settings.drone)
+                    LevelSlider(title: "Harmonium volume", level: $settings.harmoniumLevel)
+                }.navigationTitle("Volumes and drone").navigationBarTitleDisplayMode(.inline)
+            }
+        }.navigationTitle("Sound").navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var rhythmSettings: some View {
+        Form {
+            NavigationLink("Practice mode") { modeSettings }
+            NavigationLink("Click and count-in") {
+                Form {
+                    Toggle("Tala click", isOn: $settings.click)
+                    Toggle("Count in one avarta", isOn: $settings.countIn)
+                }.navigationTitle("Click and count-in").navigationBarTitleDisplayMode(.inline)
+            }
+            NavigationLink("Repeat and recovery") { repeatSettings }
+        }.navigationTitle("Rhythm").navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var modeSettings: some View {
+        Form {
+            Picker("Practice mode", selection: $settings.practiceMode) {
+                ForEach(PracticeSettings.ModeChoice.allCases, id: \.self) { choice in
+                    Text(choice.title).tag(choice)
+                }
+            }.pickerStyle(.inline).labelsHidden()
+            NavigationLink("Response guide") {
+                Form {
+                    Toggle("Harmonium on your turn", isOn: $settings.responseGuide)
+                    Text("The model always plays harmonium. Your turn uses tanpura and your click settings. Sing along controls pitch feedback; without it, no microphone access is requested.")
+                        .font(.footnote).foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                }.navigationTitle("Response guide").navigationBarTitleDisplayMode(.inline)
+            }
+        }.navigationTitle("Practice mode").navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var repeatSettings: some View {
+        Form {
+            Toggle("Repeat", isOn: $settings.loop)
+            NavigationLink {
+                Form {
+                    Picker("Between repeats", selection: $settings.recoveryMode) {
+                        ForEach(PracticeSettings.RecoveryChoice.allCases, id: \.self) { choice in
+                            Text(choice.title).tag(choice)
+                        }
+                    }.pickerStyle(.inline).labelsHidden()
+                    NavigationLink("Timed break duration") {
+                        Form {
+                            Stepper(value: $settings.recoverySeconds, in: 1...30) {
+                                Text("Break: \(settings.recoverySeconds) seconds")
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }.accessibilityValue(Text("\(settings.recoverySeconds) seconds"))
+                        }.navigationTitle("Break duration").navigationBarTitleDisplayMode(.inline)
+                    }
+                }.navigationTitle("Between repeats").navigationBarTitleDisplayMode(.inline)
+            } label: {
+                VStack(alignment: .leading) {
+                    Text("Between repeats")
+                    Text(settings.recoveryMode.title).foregroundStyle(Color.subdued)
+                }.fixedSize(horizontal: false, vertical: true)
+            }.disabled(!settings.loop && settings.practiceMode != .listenRepeat)
+            NavigationLink("About recovery") {
+                Form {
+                    NavigationLink("During a break") {
+                        Form {
+                            Text("Repeat off plays once, or one listen–sing pair. In listen, then sing, recovery also separates the model and your turn. Your tanpura continues without exercise clicks or pitch processing. Continue starts the next count-in; Wait for me cancels a timed restart.")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }.navigationTitle("During a break").navigationBarTitleDisplayMode(.inline)
+                    }
+                    NavigationLink("Microphone privacy") {
+                        Form {
+                            Text("With pitch feedback enabled, the microphone connection and privacy indicator may stay on during breaks and listening. No break or model audio is analyzed, stored or sent. Stop disconnects the microphone.")
+                                .fixedSize(horizontal: false, vertical: true)
+                        }.navigationTitle("Microphone privacy").navigationBarTitleDisplayMode(.inline)
+                    }
+                }.navigationTitle("About recovery").navigationBarTitleDisplayMode(.inline)
+            }
+        }.navigationTitle("Repeat and recovery").navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var feedbackSettings: some View {
+        Form {
+            NavigationLink("Echo cancellation") {
+                Form {
+                    Toggle("Echo cancellation", isOn: $settings.echoCancellation)
+                    Text("On the speaker, removes the app's own sound from what the microphone hears; the volume may drop while it works. Turn it off when using a microphone placed away from the speaker.")
+                        .font(.footnote).foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                }.navigationTitle("Echo cancellation").navigationBarTitleDisplayMode(.inline)
+            }
+            NavigationLink("Strictness") {
+                Form {
+                    Picker("Strictness", selection: $settings.strictness) {
+                        Text("Gentle").tag(PracticeSettings.StrictnessChoice.gentle)
+                        Text("Steady").tag(PracticeSettings.StrictnessChoice.steady)
+                        Text("Precise").tag(PracticeSettings.StrictnessChoice.precise)
+                    }.pickerStyle(.inline).labelsHidden()
+                    Text("In tune within ±\(Int(settings.strictness.kotlin.inTuneCents)) cents, close within ±\(Int(settings.strictness.kotlin.closeCents)).")
+                        .font(.footnote).foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                }.navigationTitle("Strictness").navigationBarTitleDisplayMode(.inline)
+            }
+            NavigationLink("Gitam notation") {
+                Form {
+                    Picker("Gitam notation", selection: $settings.words) {
+                        Text("Swaras").tag(PracticeSettings.WordsChoice.swaras)
+                        Text("Words").tag(PracticeSettings.WordsChoice.words)
+                        Text("Both").tag(PracticeSettings.WordsChoice.both)
+                    }.pickerStyle(.inline).labelsHidden()
+                    Text("What a gitam shows under each beat: its swaras, its words, or both.")
+                        .font(.footnote).foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                }.navigationTitle("Gitam notation").navigationBarTitleDisplayMode(.inline)
+            }
+        }.navigationTitle("Feedback and notation").navigationBarTitleDisplayMode(.inline)
+    }
+
     /// "C3 · 1 kattai", with " +12¢" when fine-tuned.
     /// Pure formatting, also called from nonisolated text helpers (ShrutiText).
     nonisolated static func saLabel(_ midi: Int, cents: Int = 0) -> String {
         "\(Shruti.shared.noteName(midi: Int32(midi))) · \(Shruti.shared.kattai(midi: Int32(midi))) kattai"
             + Shruti.shared.fineTuneSuffix(cents: Int32(cents))
+    }
+}
+
+/// How the harmonium joins notes; the tala and notation keep their timing.
+private struct ArticulationChoiceList: View {
+    @Binding var articulation: PracticeSettings.ArticulationChoice
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            Section {
+                row(.connected, "Connected")
+                row(.lightlySeparated, "Lightly separated")
+                // Keep the explanation in the section: footers cap Dynamic Type.
+                Text("Changes the harmonium guide, not tala timing or where you breathe.")
+                    .font(.footnote)
+                    .foregroundStyle(Color.subdued)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .navigationTitle("Harmonium notes")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func row(_ choice: PracticeSettings.ArticulationChoice, _ label: LocalizedStringKey) -> some View {
+        Button {
+            articulation = choice
+            dismiss()
+        } label: {
+            HStack {
+                Text(label).foregroundStyle(Color.primary).fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                if articulation == choice {
+                    Image(systemName: "checkmark").accessibilityHidden(true)
+                }
+            }
+        }
+        .accessibilityAddTraits(articulation == choice ? .isSelected : [])
     }
 }
 
@@ -399,6 +580,34 @@ private struct SaOutOfRange: View {
         .fixedSize(horizontal: false, vertical: true) // never squeezed by the notation below
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
+    }
+}
+
+private struct PhraseChoices: View {
+    let phrases: [PracticePhrase]
+    @Binding var selected: PracticePhrase?
+    @Binding var section: SectionSpan?
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button("Whole piece") { selected = nil; section = nil; dismiss() }
+                ForEach(phrases, id: \.id) { phrase in
+                    Button {
+                        section = nil
+                        selected = phrase
+                        dismiss()
+                    } label: {
+                        VStack(alignment: .leading) {
+                            Text(phrase.label).foregroundStyle(Color.primary)
+                            Text("Avartas \(phrase.firstAvarta + 1)–\(phrase.lastAvarta + 1)")
+                                .foregroundStyle(Color.subdued)
+                        }.fixedSize(horizontal: false, vertical: true)
+                    }.accessibilityAddTraits(selected?.id == phrase.id ? .isSelected : [])
+                }
+            }.navigationTitle("Practice unit").navigationBarTitleDisplayMode(.inline)
+        }
     }
 }
 

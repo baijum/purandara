@@ -10,10 +10,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -30,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -60,6 +64,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.baijum.purandara.R
+import com.baijum.purandara.audio.HarmoniumArticulation
+import com.baijum.purandara.audio.PracticePhase
 import com.baijum.purandara.ui.FineTuneControl
 import com.baijum.purandara.ui.SaPicker
 import com.baijum.purandara.ui.StrictnessPicker
@@ -100,10 +106,14 @@ fun PlayerScreen(
                 onSettings = { showSettings = true },
             )
         },
-        bottomBar = { PlayButtonBar(playback.playing, canPlay || playback.playing, actions.onTogglePlay) },
+        bottomBar = {
+            if (playback.recovering) RecoveryBar(playback, actions)
+            else PlayButtonBar(playback.playing, canPlay || playback.playing, actions.onTogglePlay)
+        },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             RagaTalaLine(varisai, state.section, actions.onSelectSection)
+            ReviewedPhrasePicker(varisai, state.phrase, actions.onSelectPhrase)
             TalaStrip(
                 beatInAvarta = playback.beatInAvarta,
                 tala = varisai.tala,
@@ -271,8 +281,11 @@ private fun PlaybackStatus(playback: PlaybackState, sa: String) {
             text = stringResource(R.string.sa_playing, sa),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (playback.phase != null) StatusText(stringResource(R.string.practice_attempt, playback.attempt), MaterialTheme.colorScheme.onSurfaceVariant)
         when {
             playback.countingIn -> StatusText(stringResource(R.string.counting_in), MaterialTheme.colorScheme.primary)
+            playback.phase == PracticePhase.LISTEN -> StatusText(stringResource(R.string.practice_listen), MaterialTheme.colorScheme.primary)
+            playback.phase == PracticePhase.YOUR_TURN -> StatusText(stringResource(R.string.practice_your_turn), MaterialTheme.colorScheme.primary)
             playback.repetitions > 1 -> StatusText(
                 stringResource(R.string.pass_of, (pass ?: 0) + 1, playback.repetitions),
                 MaterialTheme.colorScheme.onSurfaceVariant,
@@ -351,6 +364,7 @@ private fun PracticeSettingsSheet(
         }
         StrictnessPicker(settings.strictness) { strictness -> onSettingsChange { it.copy(strictness = strictness) } }
         WordsPicker(settings.words) { words -> onSettingsChange { it.copy(words = words) } }
+        HarmoniumArticulationPicker(settings.articulation) { articulation -> onSettingsChange { it.copy(articulation = articulation) } }
         Text(stringResource(R.string.harmonium_guide), style = MaterialTheme.typography.titleSmall)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             listOf(true to R.string.guide_all, false to R.string.guide_off).forEachIndexed { i, (guide, label) ->
@@ -372,6 +386,41 @@ private fun PracticeSettingsSheet(
         ToggleRow(stringResource(R.string.click), settings.click) { on -> onSettingsChange { it.copy(click = on) } }
         ToggleRow(stringResource(R.string.count_in), settings.countIn) { on -> onSettingsChange { it.copy(countIn = on) } }
         ToggleRow(stringResource(R.string.loop), settings.loop) { on -> onSettingsChange { it.copy(loop = on) } }
+        PracticeModeControls(settings, onSettingsChange)
+    }
+}
+
+/** Full-width choices leave room for wrapping at large text sizes. */
+@Composable
+private fun HarmoniumArticulationPicker(articulation: HarmoniumArticulation, onChange: (HarmoniumArticulation) -> Unit) {
+    Column {
+        Text(
+            stringResource(R.string.harmonium_notes),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.semantics { heading() },
+        )
+        Column(Modifier.fillMaxWidth().selectableGroup().padding(vertical = 4.dp)) {
+            listOf(
+                HarmoniumArticulation.CONNECTED to R.string.articulation_connected,
+                HarmoniumArticulation.LIGHTLY_SEPARATED to R.string.articulation_lightly_separated,
+            ).forEach { (choice, label) ->
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .selectable(selected = articulation == choice, role = Role.RadioButton, onClick = { onChange(choice) })
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = articulation == choice, onClick = null)
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(label), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+        Text(
+            stringResource(R.string.harmonium_notes_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

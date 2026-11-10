@@ -1,6 +1,8 @@
 package com.baijum.purandara.ui
 
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -10,8 +12,11 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
@@ -25,6 +30,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.baijum.purandara.audio.HarmoniumArticulation
+import com.baijum.purandara.audio.PracticePhase
+import com.baijum.purandara.practice.PracticeMode
+import com.baijum.purandara.practice.RecoveryMode
 import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.domain.varisai.WordsDisplay
@@ -72,7 +81,7 @@ class AccessibilityTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private var settings = PracticeSettings()
+    private var settings by mutableStateOf(PracticeSettings())
     private var singAlongToggled = 0
     private var sectionPicked: String? = null
 
@@ -159,6 +168,59 @@ class AccessibilityTest {
     }
 
     @Test
+    fun harmoniumNotesHaveAHeadingAndSelectableChoices() {
+        showPlayer()
+        openSettings()
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        val radio = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)
+        compose.onNode(hasText("Harmonium notes") and heading).performScrollTo().assertIsDisplayed()
+        val connected = compose.onNode(hasText("Connected") and radio)
+        val separated = compose.onNode(hasText("Lightly separated") and radio)
+        assertTouchTarget(connected.performScrollTo().assertHasClickAction().assertIsSelected())
+        assertTouchTarget(separated.performScrollTo().assertHasClickAction().assertIsNotSelected())
+        compose.onNodeWithText("Changes the harmonium guide, not tala timing or where you breathe.")
+            .performScrollTo().assertIsDisplayed()
+        separated.performScrollTo().performClick().assertIsSelected()
+        connected.assertIsNotSelected()
+        assertEquals(HarmoniumArticulation.LIGHTLY_SEPARATED, settings.articulation)
+        connected.performScrollTo().performClick().assertIsSelected()
+        separated.assertIsNotSelected()
+        assertEquals(HarmoniumArticulation.CONNECTED, settings.articulation)
+    }
+
+    @Test
+    fun practiceModesAndRecoveryAreSelectedLabelledChoices() {
+        showPlayer()
+        openSettings()
+        val radio = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        compose.onNode(hasText("Practice mode") and heading).performScrollTo().assertIsDisplayed()
+        assertTouchTarget(compose.onNode(hasText("Normal playback") and radio).performScrollTo().assertIsSelected())
+        compose.onNode(hasText("Listen, then sing") and radio).performScrollTo().performClick().assertIsSelected()
+        assertEquals(PracticeMode.LISTEN_REPEAT, settings.practiceMode)
+        compose.onNodeWithText("Harmonium during your turn").performScrollTo().assertHasClickAction()
+        compose.onNode(hasText("Between repeats") and heading).performScrollTo().assertIsDisplayed()
+        assertTouchTarget(compose.onNode(hasText("When ready") and radio).performScrollTo().performClick().assertIsSelected())
+        assertEquals(RecoveryMode.WHEN_READY, settings.recoveryMode)
+        compose.onNode(hasText("Timed break") and radio).performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Break duration").performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "5 seconds"))
+        assertEquals(false, settings.loop)
+    }
+
+    @Test
+    fun recoveryActionsHaveLargeTargetsAndCountdownIsNotALiveRegion() {
+        showPlayer(PlaybackState(playing = true, phase = PracticePhase.RECOVERY, recoverySeconds = 5))
+        for (text in listOf("Continue", "Wait for me", "Stop")) {
+            assertTouchTarget(compose.onNodeWithText(text).assertHasClickAction())
+        }
+        compose.onNodeWithText("Rest: 5 seconds remaining").assertIsDisplayed()
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.LiveRegion))
+        compose.onNode(hasText("Rest") and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)).assertIsDisplayed()
+        compose.onAllNodesWithText("Reviewed practice phrase").assertCountEquals(0)
+    }
+
+    @Test
     fun tempoAndLevelsAnnounceTheirValues() {
         showPlayer()
         compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "60 beats per minute"))
@@ -217,8 +279,11 @@ class AccessibilityTest {
         compose.onNodeWithText("Sing along needs a Sa this piece can play", substring = true).assertIsDisplayed()
         compose.onNodeWithText("Use Sa", substring = true).assertHasClickAction().performClick()
         assertTrue(settings.saMidi in VarisaiCatalog.byId("gitam-5")!!.playableSaMidis)
-        // The composition is still alive; the panel just repeats its explanation until a Sa is picked for real.
-        compose.onNodeWithText("Sing along needs a Sa this piece can play", substring = true).assertIsDisplayed()
+        // The reactive fixture now uses the playable Sa: warnings disappear and the pitch lane can build its schedule.
+        compose.onNodeWithText("Sing along needs a Sa this piece can play", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("this piece goes higher than the harmonium can play", substring = true).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Your pitch").assertIsDisplayed()
+        compose.onNodeWithText("Play").assertIsEnabled()
     }
 
     @Test

@@ -16,6 +16,11 @@ struct PlaybackState: Equatable {
     var repetitions = 1
     /// True during the count-in avarta before the exercise.
     var countingIn = false
+    var practicePhase: PracticePhase?
+    var attempt = 1
+    var recoverySeconds: Int?
+
+    var recovering: Bool { practicePhase == .recovery || practicePhase == .waiting }
 }
 
 /// Where a mark goes in the notation.
@@ -83,7 +88,32 @@ final class PracticeViewModel: ObservableObject {
             guard settings != oldValue else { return }
             store.save(settings)
             guard !outputChanged else { return }
-            if playback.playing, let current { playExercise(current) }
+            if practicePaused, settings.saMidi != oldValue.saMidi || settings.saCents != oldValue.saCents {
+                stopImmediately()
+            }
+            if playback.playing, let current {
+                if let transport, playback.recovering {
+                    if settings.saMidi != oldValue.saMidi || settings.saCents != oldValue.saCents
+                        || (settings.practiceMode == .normal && oldValue.loop && !settings.loop) { stopImmediately() }
+                    else if settings.tempo != oldValue.tempo || settings.kala != oldValue.kala
+                        || settings.tuning != oldValue.tuning || settings.practiceMode != oldValue.practiceMode
+                        || settings.singAlong != oldValue.singAlong || settings.echoCancellation != oldValue.echoCancellation
+                        || settings.strictness != oldValue.strictness || settings.drone != oldValue.drone
+                        || settings.droneLevel != oldValue.droneLevel || !settings.usesTransport {
+                        // These change the schedule/capture graph or drone. Do not
+                        // unexpectedly sound a new attempt while the learner rests.
+                        stopImmediately()
+                        pausedPractice = current
+                        practicePaused = true
+                    } else {
+                        let values = Handoff((settings.policy(feedback: settings.singAlong && listeningAllowed), settings.transportOptions()))
+                        player.command(transport) {
+                            _ = $0.updatePolicy(runId: $0.runId, policy: values.value.0)
+                            _ = $0.updateOptions(runId: $0.runId, options: values.value.1)
+                        }
+                    }
+                } else { playExercise(current, newLogicalPlay: false) }
+            }
             if tanpuraPlaying { playTanpura() }
             if shruti.open { startShruti() }
         }
@@ -93,8 +123,13 @@ final class PracticeViewModel: ObservableObject {
     @Published private(set) var playback = PlaybackState()
     /// One section of the open piece practised alone, or nil for the whole piece (`PlayerView` resets it).
     @Published var practiceSection: SectionSpan? {
-        didSet { if playback.playing { stop() } }
+        didSet { if playback.playing { stop() }; pausedPractice = nil; practicePaused = false }
     }
+    @Published var practicePhrase: PracticePhrase? {
+        didSet { if playback.playing { stop() }; pausedPractice = nil; practicePaused = false }
+    }
+    @Published private(set) var practicePaused = false
+    private var pausedPractice: Varisai?
     @Published private(set) var singAlong = SingAlongUI()
     /// What has been practised (landing page).
     @Published private(set) var history: PracticeHistory
@@ -114,6 +149,13 @@ final class PracticeViewModel: ObservableObject {
     private var current: Varisai?
     private var recentRestarts: [Date] = []
     private var renderer: SampleRenderer?
+    private var transport: PracticeTransport?
+    private var transportEngine: TransportSingAlongEngine?
+    private var runId: Int64 = 0
+    private var finalizedSegments: Set<Int64> = []
+    private var displayedSegment: Int64?
+    private var acceptingTransportOutcomes = false
+    private var transportStopRequested = false
     private var schedule: Schedule?
     private var timer: Timer?
     private var engine: SingAlongEngine?
@@ -182,7 +224,7 @@ final class PracticeViewModel: ObservableObject {
         playExercise(varisai)
     }
 
-    private func playExercise(_ varisai: Varisai) {
+    private func playExercise(_ varisai: Varisai, newLogicalPlay: Bool = true) {
         outputChanged = false
         resumeAfterBackground = nil
         guard let bank else { return }
@@ -191,15 +233,29 @@ final class PracticeViewModel: ObservableObject {
         // leaving it playing with Stop disabled (issue #13).
         guard saPlayable(varisai) else { stop(); return }
         stopTimer()
-        let schedule = practiceSection.map { Schedule.companion.ofSection(varisai: varisai, settings: settings.performance(), section: $0) }
+        player.stopImmediately()
+        _ = engine?.stop()
+        engine = nil
+        finishTransportCapture()
+        transportEngine = nil
+        transport = nil
+        player.onWillRenderTransport = nil
+        practicePaused = false
+        pausedPractice = nil
+        let schedule = practicePhrase.map { Schedule.companion.ofPhrase(varisai: varisai, settings: settings.performance(), phrase: $0) }
+            ?? practiceSection.map { Schedule.companion.ofSection(varisai: varisai, settings: settings.performance(), section: $0) }
             ?? Schedule.companion.of(varisai: varisai, settings: settings.performance())
+        if newLogicalPlay { practisedThisPlay = false }
+        if settings.usesTransport {
+            playTransport(varisai, bank: bank, schedule: schedule)
+            return
+        }
         let renderer = SampleRenderer(
             bank: bank,
             schedule: schedule,
             options: settings.renderOptions())
         current = varisai
         tanpuraPlaying = false
-        practisedThisPlay = false
         self.schedule = schedule
         self.renderer = renderer
         singAlong.live = nil
@@ -235,6 +291,173 @@ final class PracticeViewModel: ObservableObject {
         }
         RunLoop.main.add(timer, forMode: .common)
         self.timer = timer
+    }
+
+    private func playTransport(_ varisai: Varisai, bank: SampleBank, schedule: Schedule) {
+        runId += 1
+        let id = runId
+        let transport = PracticeTransport.companion.create(
+            bank: bank, schedule: schedule, options: settings.transportOptions(),
+            policy: settings.policy(feedback: settings.singAlong && listeningAllowed), runId: id)
+        self.transport = transport
+        self.renderer = nil
+        self.schedule = schedule
+        current = varisai
+        tanpuraPlaying = false
+        finalizedSegments.removeAll()
+        displayedSegment = nil
+        acceptingTransportOutcomes = true
+        transportStopRequested = false
+        singAlong.live = nil
+        singAlong.pass = nil
+        singAlong.trace = []
+        singAlong.marks = [:]
+        singAlong.lastSummary = nil
+        let capture = settings.singAlong && listeningAllowed
+        // Built outside @MainActor: AVFoundation/render/pitch queues invoke its closures.
+        let scoring = capture ? Self.transportScoring(
+            player: player, schedule: schedule, strictness: settings.strictness.kotlin,
+            syntheticCents: syntheticSingerCents, sampleRate: transport.sampleRate,
+            deliver: { [weak self] segment, outcome in
+                let box = Handoff((segment, outcome))
+                Task { @MainActor in self?.applyTransport(box.value.1, segment: box.value.0, run: id) }
+            }) : nil
+        transportEngine = scoring
+        Self.configureTransport(player: player, transport: transport, scoring: scoring)
+        do {
+            let mic = scoring?.micRequest(echoCancellation: settings.echoCancellation)
+            try player.play(transport, mic: mic) { [weak self] in self?.finishedTransport(id) }
+            singAlong.onSpeaker = mic != nil ? player.micOnSpeaker : VarisaiAudioPlayer.outputIsBuiltInSpeaker()
+        } catch {
+            print("[practice] could not start transport: \(error)")
+            finishedTransport(id)
+            return
+        }
+        playback = PlaybackState(playing: true, repetitions: Int(schedule.repetitions))
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    nonisolated private static func transportScoring(
+        player: VarisaiAudioPlayer, schedule: Schedule, strictness: Strictness,
+        syntheticCents: Double?, sampleRate: Int32,
+        deliver: @escaping @Sendable (PracticeSegment, FrameOutcome) -> Void
+    ) -> TransportSingAlongEngine {
+        TransportSingAlongEngine(player: player, schedule: schedule, strictness: strictness,
+                                 syntheticCents: syntheticCents, sampleRate: sampleRate,
+                                 onOutcome: deliver)
+    }
+
+    nonisolated private static func configureTransport(
+        player: VarisaiAudioPlayer, transport: PracticeTransport, scoring: TransportSingAlongEngine?
+    ) {
+        transport.onSegmentStarted = { segment in scoring?.begin(segment) }
+        player.onRendered = scoring.map { scoring in
+            { start, rms in scoring.outputLevels.record(startFrame: start, rms: rms) }
+        }
+        player.onWillRenderTransport = { current in
+            guard let pending = current.pendingPreparation, pending.scored else { return }
+            // Capture graph is stable for the entire run. Per-attempt listeners
+            // are created at commit; admission still follows the heard clock.
+            _ = current.setReady(runId: pending.runId, segmentId: pending.segmentId, ready: scoring?.ready == true)
+        }
+    }
+
+    func continuePractice() {
+        guard !outputChanged, !(transportStopRequested && transport != nil) else { return }
+        if let paused = pausedPractice {
+            pausedPractice = nil
+            practicePaused = false
+            playExercise(paused, newLogicalPlay: false)
+        } else if let transport {
+            player.command(transport) { _ = $0.continuePractice(runId: $0.runId) }
+        }
+    }
+
+    func waitForMe() {
+        guard let transport else { return }
+        player.command(transport) { _ = $0.waitForMe(runId: $0.runId) }
+    }
+
+    private func applyTransport(_ outcome: FrameOutcome, segment: PracticeSegment, run: Int64) {
+        guard acceptingTransportOutcomes, run == runId, transport != nil, !finalizedSegments.contains(segment.segmentId) else { return }
+        // A queued old outcome must never overwrite a newer heard attempt.
+        guard displayedSegment == nil || displayedSegment == segment.segmentId else { return }
+        applyOutcome(outcome, saHz: settings.saHz, attempt: Int(segment.attempt))
+    }
+
+    private func finishSegment(_ segment: PracticeSegment, result: PassResult, run: Int64) {
+        guard run == runId, finalizedSegments.insert(segment.segmentId).inserted else { return }
+        singAlong.live = nil
+        for mark in result.marks { record(mark) }
+        announce(result, attempt: Int(segment.attempt))
+    }
+
+    private func finishTransportCapture() {
+        for (segment, result) in transportEngine?.stop() ?? [] {
+            finishSegment(segment, result: result, run: runId)
+        }
+    }
+
+    private func finishedTransport(_ id: Int64) {
+        guard id == runId, transport != nil else { return }
+        finishTransportCapture()
+        transportEngine = nil
+        transport = nil
+        player.onWillRenderTransport = nil
+        player.onRendered = nil
+        stopTimer()
+        schedule = nil
+        playback = PlaybackState(repetitions: playback.repetitions)
+    }
+
+    private func tickTransport(_ transport: PracticeTransport, frames: Int64, schedule: Schedule) {
+        guard let snapshot = player.practiceSnapshot() else { return }
+        for (segment, result) in transportEngine?.finalize(heardFrame: frames) ?? [] {
+            finishSegment(segment, result: result, run: runId)
+        }
+        let phase = snapshot.phaseAt(heardFrame: frames)
+        let segment = snapshot.segmentAt(heardFrame: frames)
+        if let segment, displayedSegment != segment.segmentId {
+            displayedSegment = segment.segmentId
+            if segment.scored || segment.response {
+                singAlong.trace = []
+                singAlong.marks = [:]
+                singAlong.lastSummary = nil
+            }
+        }
+        if !practisedThisPlay, let current,
+           snapshot.segments.contains(where: { !$0.listening && frames >= $0.performanceEndFrame }) {
+            practisedThisPlay = true
+            if schedule.isWholePiece { updateHistory { $0.practised(varisaiId: current.id, nowMillis: Self.nowMillis) } }
+        }
+        var next = PlaybackState(playing: true, repetitions: Int(schedule.repetitions))
+        next.practicePhase = phase
+        next.attempt = segment.map { Int($0.attempt) } ?? playback.attempt
+        next.countingIn = phase == .countIn
+        next.recoverySeconds = snapshot.remainingFramesAt(heardFrame: frames).map {
+            Int(ceil(Double(truncating: $0) / Double(transport.sampleRate)))
+        }
+        if let segment {
+            let seconds = Double(frames - segment.performanceStartFrame) / Double(transport.sampleRate)
+            if phase == .countIn {
+                next.beatInAvarta = Int(Double(frames - segment.startFrame) / Double(transport.sampleRate)
+                    / (schedule.settings.talaAksharaSeconds / Double(schedule.varisai.kalai)))
+                    % (Int(schedule.tala.aksharas) * Int(schedule.varisai.kalai))
+            } else if frames < segment.performanceEndFrame {
+                let position = schedule.cursorAt(seconds: seconds)
+                next.repetition = position.map { Int($0.repetition) }
+                next.avarta = position.map { Int($0.avarta) }
+                next.akshara = position.map { Int($0.akshara) }
+                next.slot = position.map { Int($0.slot) }
+                next.beatInAvarta = schedule.beatAt(seconds: seconds).map { Int($0.beatInAvarta) }
+            }
+        }
+        if next.recovering { singAlong.live = nil }
+        if next != playback { playback = next }
     }
 
     // MARK: - Tanpura and history (landing page)
@@ -495,6 +718,10 @@ final class PracticeViewModel: ObservableObject {
     /// Stops any exercise, drone or listening at once.
     private func stopEverything() {
         stopTimer()
+        if transport != nil {
+            player.stopImmediately()
+            finishedTransport(runId)
+        }
         _ = engine?.stop()
         engine = nil
         stopListening()
@@ -530,6 +757,11 @@ final class PracticeViewModel: ObservableObject {
 
     /// Fades out; the state returns to stopped once the fade has played.
     func stop() {
+        transportStopRequested = true
+        acceptingTransportOutcomes = false
+        pausedPractice = nil
+        practicePaused = false
+        resumeAfterBackground = nil
         if player.isPlaying {
             player.stop()
         } else {
@@ -547,16 +779,22 @@ final class PracticeViewModel: ObservableObject {
         // without a restart the tanpura would go silent.
         if tanpuraPlaying { playTanpura(); return }
         guard let current, playback.playing else { return }
+        if playback.recovering {
+            stopImmediately()
+            pausedPractice = current
+            practicePaused = true
+            return
+        }
         let now = Date()
         recentRestarts = recentRestarts.filter { now.timeIntervalSince($0) < 10 } + [now]
         guard recentRestarts.count <= 3 else { stop(); return }
         _ = engine?.stop()
         engine = nil
-        playExercise(current)
+        playExercise(current, newLogicalPlay: false)
     }
 
     private func onOutputChanged() {
-        guard !outputChanged, renderer != nil || resumeAfterBackground != nil || shruti.open || findSaOpen else { return }
+        guard !outputChanged, renderer != nil || transport != nil || pausedPractice != nil || resumeAfterBackground != nil || shruti.open || findSaOpen else { return }
         outputChanged = true
         resumeAfterBackground = nil
         stopImmediately()
@@ -579,8 +817,13 @@ final class PracticeViewModel: ObservableObject {
 
     /// Stops at once (leaving the screen, going to the background).
     func stopImmediately() {
+        acceptingTransportOutcomes = false
+        pausedPractice = nil
+        practicePaused = false
+        resumeAfterBackground = nil
         player.stopImmediately()
-        finished(renderer)
+        if transport != nil { finishedTransport(runId) }
+        else { finished(renderer) }
     }
 
     /// The app left the screen (scene phase .background): remember what was sounding,
@@ -589,8 +832,16 @@ final class PracticeViewModel: ObservableObject {
     /// (hold progress and a half-caught guide start over), unlike the plain
     /// `stopImmediately` the screens call when leaving (issue #11).
     func onBackgrounded() {
+        if transportStopRequested, transport != nil { stopImmediately(); return }
         guard !outputChanged else { resumeAfterBackground = nil; stopImmediately(); return }
         backgroundOutput = player.outputSnapshot()
+        if pausedPractice != nil { return }
+        if playback.recovering, let exercise = current {
+            stopImmediately()
+            pausedPractice = exercise
+            practicePaused = true
+            return
+        }
         let shrutiWasOpen = shruti.open
         let findSaWasOpen = findSaOpen
         let tanpuraWasPlaying = tanpuraPlaying
@@ -603,14 +854,14 @@ final class PracticeViewModel: ObservableObject {
             stopImmediately()
             return
         }
+        stopImmediately()
         resumeAfterBackground = { [weak self] in
             guard let self else { return }
             if shrutiWasOpen { self.startShruti() }
             else if findSaWasOpen { self.startFindSa() }
             else if tanpuraWasPlaying { self.playTanpura() }
-            else if wasPlaying, let exercise { self.playExercise(exercise) }
+            else if wasPlaying, let exercise { self.playExercise(exercise, newLogicalPlay: false) }
         }
-        stopImmediately()
     }
 
     /// The app is back (scene phase .active): start again what was sounding.
@@ -637,11 +888,15 @@ final class PracticeViewModel: ObservableObject {
     }
 
     private func tick() {
+        if let transport, let schedule, let frames = player.positionFrames() {
+            tickTransport(transport, frames: frames, schedule: schedule)
+            return
+        }
         guard let renderer, let schedule, let frames = player.positionFrames() else { return }
         if !practisedThisPlay, let current, frames >= Int64(renderer.countInFrames) + Int64(renderer.performanceFrames) {
             practisedThisPlay = true
             // A section alone doesn't count as practising the whole piece.
-            if schedule.section == nil { updateHistory { $0.practised(varisaiId: current.id, nowMillis: Self.nowMillis) } }
+            if schedule.isWholePiece { updateHistory { $0.practised(varisaiId: current.id, nowMillis: Self.nowMillis) } }
         }
         let countInBeat = renderer.countInBeat(frame: frames).map { Int(truncating: $0) }
         let seconds = renderer.passSeconds(frame: frames)
@@ -678,14 +933,18 @@ final class PracticeViewModel: ObservableObject {
 
     private func apply(_ outcome: FrameOutcome, from which: SampleRenderer, saHz: Double) {
         guard which === renderer else { return }
+        applyOutcome(outcome, saHz: saHz)
+    }
+
+    private func applyOutcome(_ outcome: FrameOutcome, saHz: Double, attempt: Int? = nil) {
         let live = outcome.live
         singAlong.live = live.reading
         // Same counter the trace is tagged with: the whole-performance
         // loop, reported even while no voice is heard (issue #12).
-        singAlong.pass = live.pass.map { Int(truncating: $0) }
+        singAlong.pass = live.pass.map { attempt.map { $0 - 1 } ?? Int(truncating: $0) }
         if let reading = live.reading, let pass = live.pass, let t = live.secondsInPass {
             singAlong.trace.append(TraceSample(
-                pass: Int(truncating: pass), secondsInPass: Double(truncating: t),
+                pass: attempt.map { $0 - 1 } ?? Int(truncating: pass), secondsInPass: Double(truncating: t),
                 centsFromSa: 1200 * log2(reading.frequencyHz / saHz), zone: reading.zone()))
             if singAlong.trace.count > 1500 { singAlong.trace.removeFirst(singAlong.trace.count - 1500) }
         }
@@ -704,13 +963,14 @@ final class PracticeViewModel: ObservableObject {
         singAlong.marks[MarkKey(avarta: Int(p.avarta), akshara: Int(p.akshara), slot: Int(p.slot))] = mark.result
     }
 
-    private func announce(_ result: PassResult) {
-        if let current, schedule?.section == nil { // only whole-piece passes are a best result
+    private func announce(_ result: PassResult, attempt: Int? = nil) {
+        if let current, schedule?.isWholePiece == true { // only whole-piece passes are a best result
             updateHistory { $0.scored(varisaiId: current.id, result: result, nowMillis: Self.nowMillis) }
         }
-        singAlong.lastSummary = (Int(result.pass) + 1, result.summary)
+        let number = attempt ?? (Int(result.pass) + 1)
+        singAlong.lastSummary = (number, result.summary)
         // Once per pass, never during it (it would talk over the music).
-        UIAccessibility.post(notification: .announcement, argument: SingAlongText.summaryHeadline(Int(result.pass) + 1, result.summary))
+        UIAccessibility.post(notification: .announcement, argument: SingAlongText.summaryHeadline(number, result.summary))
     }
 
     private static func micAuthorized() -> Bool {

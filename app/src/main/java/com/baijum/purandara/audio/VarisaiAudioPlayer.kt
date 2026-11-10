@@ -13,6 +13,7 @@ import android.os.Looper
 import android.os.Process
 import android.os.SystemClock
 import android.util.Log
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Streams a [SampleRenderer] to an [AudioTrack] on a dedicated thread.
@@ -44,7 +45,7 @@ class VarisaiAudioPlayer(context: Context) {
      * thread when a non-looping performance has been fully heard, or when
      * audio focus is lost.
      */
-    fun play(renderer: SampleRenderer, automaticRestart: Boolean = false, onFinished: () -> Unit) {
+    fun play(renderer: PcmSource, automaticRestart: Boolean = false, onFinished: () -> Unit) {
         stop()
         if (!automaticRestart) expectedOutputId = null // only a user start acknowledges a new output
         var ownedSession: Session? = null
@@ -61,7 +62,6 @@ class VarisaiAudioPlayer(context: Context) {
             return
         }
         focusRequest = focus
-        renderer.reset()
         val next = Session(renderer, onFinished)
         ownedSession = next
         session = next
@@ -92,6 +92,14 @@ class VarisaiAudioPlayer(context: Context) {
      */
     @Volatile var onRendered: ((startFrame: Long, rms: Float) -> Unit)? = null
 
+    /** Runs on the output worker. Read transport state here, never from a UI timer. */
+    @Volatile var onProgress: ((heardFrame: Long) -> Unit)? = null
+
+    /** Mutations are ordered before the next unrendered block and discarded on replacement. */
+    fun enqueue(source: PcmSource, command: () -> Unit) {
+        session?.takeIf { it.source === source && !it.finished }?.commands?.add(command)
+    }
+
     /**
      * The rendered frame that was leaving the speaker at [nanoTime]
      * ([System.nanoTime] clock), or null when idle. Uses the hardware
@@ -100,7 +108,10 @@ class VarisaiAudioPlayer(context: Context) {
      */
     fun outputFrameAt(nanoTime: Long): Long? = session?.takeUnless { it.finished }?.frameAt(nanoTime)
 
-    private inner class Session(private val renderer: SampleRenderer, private val onFinished: () -> Unit) {
+    private inner class Session(val source: PcmSource, private val onFinished: () -> Unit) {
+        val commands = ConcurrentLinkedQueue<() -> Unit>()
+        private val renderer get() = source
+        private val progressCallback = onProgress
         @Volatile private var stopRequested = false
         @Volatile private var immediateStop = false
         private val trackLock = Any()
@@ -211,12 +222,26 @@ class VarisaiAudioPlayer(context: Context) {
             }
         }
 
+        private fun advanceCommands() {
+            while (true) (commands.poll() ?: break).invoke()
+            progressCallback?.invoke(frameAt(System.nanoTime()) ?: playedFrames())
+        }
+
+        private fun drain(written: Long, stopping: Boolean) {
+            while (!immediateStop && playedFrames() < written && track.playState == AudioTrack.PLAYSTATE_PLAYING) {
+                if (!stopping) progressCallback?.invoke(frameAt(System.nanoTime()) ?: playedFrames())
+                Thread.sleep(DRAIN_POLL_MS)
+            }
+            if (!immediateStop && !stopping) progressCallback?.invoke(written)
+        }
+
         private fun run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
             val buffer = FloatArray(CHUNK_FRAMES)
             var written = 0L
             var stopping = false
             try {
+                renderer.reset()
                 synchronized(trackLock) {
                     if (!immediateStop) track.play()
                 }
@@ -225,19 +250,18 @@ class VarisaiAudioPlayer(context: Context) {
                 }
                 while (!immediateStop) {
                     if (stopRequested && !stopping) {
-                        renderer.fadeOut()
+                        commands.clear()
+                        renderer.fadeOut(STOP_FADE_SECONDS)
                         stopping = true
                     }
-                    val n = renderer.render(buffer)
+                    if (!stopping) advanceCommands()
+                    val n = renderer.render(buffer, 0, buffer.size)
                     if (n == 0 || immediateStop) break
                     renderCallback?.invoke(written, rms(buffer, n))
                     writeBlock(buffer, n)
                     written += n
                 }
-                // Let the last buffered audio play out before reporting the end.
-                while (!immediateStop && playedFrames() < written && track.playState == AudioTrack.PLAYSTATE_PLAYING) {
-                    Thread.sleep(DRAIN_POLL_MS)
-                }
+                drain(written, stopping)
             } catch (e: IllegalStateException) {
                 Log.e(TAG, "playback failed", e)
             } finally {
@@ -269,6 +293,7 @@ class VarisaiAudioPlayer(context: Context) {
         const val CHUNK_FRAMES = 1024
         const val BUFFER_FRAMES = 4096
         const val STOP_FADE_TIMEOUT_MS = 500L
+        const val STOP_FADE_SECONDS = 0.03
         const val DRAIN_POLL_MS = 10L
         const val UINT32_MASK = 0xFFFF_FFFFL
     }

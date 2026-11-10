@@ -1,5 +1,6 @@
 package com.baijum.purandara.singalong
 
+import com.baijum.purandara.audio.PracticeSegment
 import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.platform.PlatformLock
 import com.baijum.purandara.platform.withLock
@@ -83,6 +84,8 @@ class SingAlongSession(
     private var nextNote = 0
     private var currentPass = -1
     private val results = mutableListOf<PassResult>()
+    private var finished = false
+    private var finishedResult: PassResult? = null
 
     /** Passes scored so far, oldest first. */
     val passResults: List<PassResult> get() = results
@@ -96,6 +99,7 @@ class SingAlongSession(
     private val silent = LiveReading(null, null, null)
 
     fun onFrame(frame: PitchFrame): FrameOutcome {
+        if (finished) return FrameOutcome(silent, emptyList(), null)
         val heardFrame = (clock.heardSeconds(frame.timeSeconds) * sampleRate).toLong()
         val outputRms = outputLevels.rmsAt(heardFrame)
 
@@ -123,8 +127,17 @@ class SingAlongSession(
         return FrameOutcome(LiveReading(reading, position.pass, position.secondsInPass), newMarks, completed)
     }
 
-    /** Score the pass in progress (call when playback stops). Null if no pass was reached. */
-    fun finish(): PassResult? = if (currentPass >= 0) completePass().second else null
+    /**
+     * Score the pass in progress after the platform drains relevant mic windows. Manual stops
+     * deliberately retain a partial result. Repeated finish/late mic callbacks never score twice.
+     */
+    fun finish(): PassResult? {
+        if (!finished) {
+            finished = true
+            finishedResult = if (currentPass >= 0) completePass().second else null
+        }
+        return finishedResult
+    }
 
     private fun judgeEndedNotes(now: Double): List<NoteMark> {
         val out = mutableListOf<NoteMark>()
@@ -148,7 +161,25 @@ class SingAlongSession(
         return rest to result
     }
 
-    private companion object {
+    companion object {
+        /** A fresh scored attempt, retaining the transport's global mixed-output history. */
+        fun forSegment(
+            schedule: Schedule,
+            segment: PracticeSegment,
+            sampleRate: Int,
+            outputLevels: OutputLevels,
+            strictness: Strictness,
+            outputLatencySeconds: Double,
+            inputLatencySeconds: Double,
+        ): SingAlongSession {
+            require(segment.scored && !segment.listening) { "listening/unscored segments cannot create a scoring session" }
+            return SingAlongSession(
+                schedule,
+                SingAlongClock.forSegment(segment, sampleRate, outputLatencySeconds, inputLatencySeconds),
+                sampleRate, outputLevels, strictness,
+            )
+        }
+
         /** Wait this long after a note ends before judging it (smoothing and timing slack). */
         const val JUDGE_DELAY_SECONDS = 0.06
     }

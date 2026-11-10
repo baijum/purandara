@@ -9,6 +9,17 @@ struct PracticeSettings: Equatable {
         var kotlin: Tuning { self == .just ? .just : .equal }
     }
 
+    enum ArticulationChoice: String, CaseIterable {
+        case connected, lightlySeparated
+
+        var kotlin: HarmoniumArticulation {
+            switch self {
+            case .connected: return .connected
+            case .lightlySeparated: return .lightlySeparated
+            }
+        }
+    }
+
     /// What counts as in tune and close (docs/plan-shruti.md).
     enum StrictnessChoice: String, CaseIterable {
         case gentle, steady, precise
@@ -35,6 +46,37 @@ struct PracticeSettings: Equatable {
         }
     }
 
+    enum ModeChoice: String, CaseIterable {
+        case normal, listenRepeat
+
+        var kotlin: PracticeMode { self == .normal ? .normal : .listenRepeat }
+        var title: String { self == .normal ? "Normal" : "Listen, then sing" }
+    }
+
+    enum RecoveryChoice: String, CaseIterable {
+        case continuous, timed, whenReady
+
+        var kotlin: RecoveryMode {
+            switch self {
+            case .continuous: return .continuous
+            case .timed: return .timed
+            case .whenReady: return .whenReady
+            }
+        }
+        var title: String {
+            switch self {
+            case .continuous: return "Continuous"
+            case .timed: return "Timed break"
+            case .whenReady: return "When ready"
+            }
+        }
+    }
+
+    var practiceMode: ModeChoice = .normal
+    var recoveryMode: RecoveryChoice = .continuous
+    var recoverySeconds = 5
+    var responseGuide = false
+
     var saMidi: Int = Int(Shruti.shared.DEFAULT_SA_MIDI)
     var tempo: Int = Int(PerformanceSettings.companion.DEFAULT_TEMPO)
     var kala: Int = 1
@@ -45,6 +87,7 @@ struct PracticeSettings: Equatable {
     var harmoniumLevel: Float = RenderOptions.companion.DEFAULT_HARMONIUM_LEVEL
     var droneLevel: Float = RenderOptions.companion.DEFAULT_DRONE_LEVEL
     var tuning: TuningChoice = .just
+    var articulation: ArticulationChoice = .connected
     /// Sing along with pitch feedback (needs the microphone).
     var singAlong = false
     /// Harmonium plays every note (true) or stays silent so only drone and click guide (false).
@@ -73,11 +116,31 @@ struct PracticeSettings: Equatable {
             tuning: tuning.kotlin)
     }
 
+    var usesTransport: Bool {
+        practiceMode == .listenRepeat || (loop && recoveryMode != .continuous)
+    }
+
+    func policy(feedback: Bool) -> PracticePolicy {
+        PracticePolicy.companion.create(
+            mode: practiceMode.kotlin, recoveryMode: recoveryMode.kotlin,
+            recoverySeconds: Int32(recoverySeconds), repeat: loop,
+            feedback: feedback, responseGuide: responseGuide)
+    }
+
+    /// The transport controls response/model guide and count-in independently.
+    func transportOptions() -> RenderOptions {
+        RenderOptions.companion.practice(
+            drone: drone, click: click, loop: false, countIn: countIn,
+            harmoniumLevel: practiceMode == .normal && singAlong && !harmoniumGuide ? 0 : harmoniumLevel,
+            droneLevel: droneLevel, articulation: articulation.kotlin)
+    }
+
     /// Sing-along forces the count-in (leakage is measured while the student is silent).
     func renderOptions() -> RenderOptions {
         RenderOptions.companion.practice(
             drone: drone, click: click, loop: loop, countIn: countIn || singAlong,
-            harmoniumLevel: singAlong && !harmoniumGuide ? 0 : harmoniumLevel, droneLevel: droneLevel)
+            harmoniumLevel: singAlong && !harmoniumGuide ? 0 : harmoniumLevel, droneLevel: droneLevel,
+            articulation: articulation.kotlin)
     }
 }
 
@@ -95,6 +158,7 @@ struct PracticeSettingsStore {
         static let click = "practice.click"
         static let loop = "practice.loop"
         static let tuning = "practice.tuning"
+        static let articulation = "practice.articulation"
         static let countIn = "practice.countIn"
         static let harmoniumLevel = "practice.harmoniumLevel"
         static let droneLevel = "practice.droneLevel"
@@ -105,6 +169,10 @@ struct PracticeSettingsStore {
         static let strictness = "practice.strictness"
         static let saCents = "practice.saCents"
         static let words = "practice.words"
+        static let practiceMode = "practice.mode"
+        static let recoveryMode = "practice.recoveryMode"
+        static let recoverySeconds = "practice.recoverySeconds"
+        static let responseGuide = "practice.responseGuide"
     }
 
     func load() -> PracticeSettings {
@@ -124,7 +192,12 @@ struct PracticeSettingsStore {
         if let raw = defaults.string(forKey: Key.strictness), let v = PracticeSettings.StrictnessChoice(rawValue: raw) { s.strictness = v }
         if let v = defaults.object(forKey: Key.saCents) as? Int, PracticeSettings.fineTuneRange.contains(v) { s.saCents = v }
         if let raw = defaults.string(forKey: Key.tuning), let v = PracticeSettings.TuningChoice(rawValue: raw) { s.tuning = v }
+        if let raw = defaults.string(forKey: Key.articulation), let v = PracticeSettings.ArticulationChoice(rawValue: raw) { s.articulation = v }
         if let raw = defaults.string(forKey: Key.words), let v = PracticeSettings.WordsChoice(rawValue: raw) { s.words = v }
+        if let raw = defaults.string(forKey: Key.practiceMode), let v = PracticeSettings.ModeChoice(rawValue: raw) { s.practiceMode = v }
+        if let raw = defaults.string(forKey: Key.recoveryMode), let v = PracticeSettings.RecoveryChoice(rawValue: raw) { s.recoveryMode = v }
+        if let v = defaults.object(forKey: Key.recoverySeconds) as? Int, (1...30).contains(v) { s.recoverySeconds = v }
+        if let v = defaults.object(forKey: Key.responseGuide) as? Bool { s.responseGuide = v }
         return s
     }
 
@@ -147,11 +220,16 @@ struct PracticeSettingsStore {
         defaults.set(s.harmoniumLevel, forKey: Key.harmoniumLevel)
         defaults.set(s.droneLevel, forKey: Key.droneLevel)
         defaults.set(s.tuning.rawValue, forKey: Key.tuning)
+        defaults.set(s.articulation.rawValue, forKey: Key.articulation)
         defaults.set(s.singAlong, forKey: Key.singAlong)
         defaults.set(s.harmoniumGuide, forKey: Key.harmoniumGuide)
         defaults.set(s.echoCancellation, forKey: Key.echoCancellation)
         defaults.set(s.strictness.rawValue, forKey: Key.strictness)
         defaults.set(s.saCents, forKey: Key.saCents)
         defaults.set(s.words.rawValue, forKey: Key.words)
+        defaults.set(s.practiceMode.rawValue, forKey: Key.practiceMode)
+        defaults.set(s.recoveryMode.rawValue, forKey: Key.recoveryMode)
+        defaults.set(s.recoverySeconds, forKey: Key.recoverySeconds)
+        defaults.set(s.responseGuide, forKey: Key.responseGuide)
     }
 }
