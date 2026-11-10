@@ -22,7 +22,9 @@ struct PlayerView: View {
                     RecoveryControls().padding(.top, 16)
                 }.frame(maxHeight: .infinity)
             } else {
-            TalaStripView(beatInAvarta: viewModel.playback.beatInAvarta, tala: varisai.tala, kalai: Int(varisai.kalai))
+            let layout = viewModel.notationLayout(varisai)
+            TalaStripView(beatInAvarta: viewModel.playback.beatInAvarta, tala: varisai.tala, kalai: Int(varisai.kalai),
+                          block: layout.blocks[NotationView.currentBlock(layout, viewModel.playback) ?? 0])
                 .padding(.horizontal, 12)
                 // Extra top space: the toolbar's glass shadow otherwise lowers the
                 // contrast of the right-most beat (flagged by the accessibility audit).
@@ -43,7 +45,7 @@ struct PlayerView: View {
                 SingAlongPanel(varisai: varisai, saPlayable: saPlayable)
             }
             NotationView(
-                varisai: varisai,
+                layout: layout,
                 playback: viewModel.playback,
                 marks: viewModel.settings.singAlong ? viewModel.singAlong.marks : [:],
                 words: viewModel.settings.words.kotlin,

@@ -124,6 +124,16 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
+    /// At the second speed two written avartas make one tala cycle: the strip
+    /// wraps over its pairs, and the cycle reads with commas at its angas.
+    @MainActor func testSecondSpeedLaysOutOneCyclePerBlock() throws {
+        let app = launch(["-open", "sarali-4", "-kala", "2"])
+        XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.otherElements["Adi tala: 2 swaras to a beat, clap 1 2 3, clap wave, clap wave"].exists)
+        XCTAssertTrue(app.otherElements["Avarta 1: S R G M P hold S R, S R G M, P D N S′"].exists)
+        try audit(app)
+    }
+
     /// Long talas wrap onto two rows; the strip and each avarta still read as one element.
     // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
     // are: mark each test (not the class, which would break the nonisolated

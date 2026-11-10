@@ -11,7 +11,9 @@ Shruti practice, strictness and choosing Sa (`docs/plan-shruti.md`), the
 alankarams and Malahari gitams (`docs/plan-alankaram-gitam.md`), and the
 gitams, swarajatis and varnams (`docs/plan-gitam-swarajati-varnam.md`: the
 varnam stage is built — rests, per-section speed, the two-kalai strip and
-all four varnams; they wait on their second-source checks, issue #7).
+all four varnams; they wait on their second-source checks, issue #7), and
+the notation laid out by tala cycle at every speed
+(`docs/plan-speed-layout.md`).
 New features are planned and discussed before they are built; do not add
 features speculatively.
 
@@ -29,8 +31,9 @@ features speculatively.
   [`docs/plan-pitch-monitor.md`](docs/plan-pitch-monitor.md),
   [`docs/plan-landing.md`](docs/plan-landing.md),
   [`docs/plan-shruti.md`](docs/plan-shruti.md),
-  [`docs/plan-alankaram-gitam.md`](docs/plan-alankaram-gitam.md) and
-  [`docs/plan-gitam-swarajati-varnam.md`](docs/plan-gitam-swarajati-varnam.md).
+  [`docs/plan-alankaram-gitam.md`](docs/plan-alankaram-gitam.md),
+  [`docs/plan-gitam-swarajati-varnam.md`](docs/plan-gitam-swarajati-varnam.md) and
+  [`docs/plan-speed-layout.md`](docs/plan-speed-layout.md).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
   version is `site/pages/guide/tuning.html`; update both if `Swara.ratio`
@@ -97,6 +100,7 @@ features speculatively.
 |---|---|
 | `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
 | `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt`, `Swarajati.kt`, `Varnam.kt`, each with its sources and fixes in the header); `WordsDisplay` |
+| `shared/.../domain/varisai/NotationLayout.kt` | The notation by tala cycle at the chosen speed (`forPractice`): cycles → rows → beat groups of `CellRef`s, `locate` for the highlight, speech with commas at the angas. Both apps draw the notation and the mirrored tala strip from it (`BeatRow`; iOS `ColumnsLayout`) |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
 | `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` + `FindSaGuide` (Find my Sa) |
 | `shared/.../practice/` | `PracticeHistory`: practised / best sing-along per exercise, continue and next up (stored on device as JSON) |

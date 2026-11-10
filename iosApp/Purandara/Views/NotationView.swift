@@ -1,48 +1,62 @@
 import SwiftUI
 import shared
 
-/// The exercise as a grid: one block per avarta, its akshara cells in the
-/// same columns as the tala strip above. Talas longer than eight beats wrap
-/// onto two rows at an anga boundary (`Tala.rowStarts`). The sounding akshara
-/// and swara are highlighted, and the list follows playback. A gitam's words
-/// go under the swaras (or replace them, per `words`), and each section
-/// starts with a heading. Mirrors Android's `NotationView`.
+/// The exercise as a grid: one block per tala cycle at the chosen speed
+/// (`NotationLayout`), so the swaras under a beat are the ones sung on it.
+/// While a cycle takes at most two rows the tala strip above is its column
+/// header; longer cycles start each row with its beat mark in a gutter. The
+/// sounding akshara and swara are highlighted, and the list follows playback.
+/// A piece's words go under the swaras (or replace them, per `words`), and a
+/// section starts with a heading. Mirrors Android's `NotationView`.
 struct NotationView: View {
-    let varisai: Varisai
+    let layout: NotationLayout
     let playback: PlaybackState
     var marks: [MarkKey: NoteResult] = [:]
     var words: WordsDisplay = .both
     /// Optional content scrolled above the rows (the sing-along panel at accessibility text sizes).
     var header: AnyView?
-    private var tala: Tala { varisai.tala }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var activeCell: CellRef? { NotationView.cell(playback) }
+
+    /// The sounding cell, if any.
+    static func cell(_ playback: PlaybackState) -> CellRef? {
+        guard let repetition = playback.repetition, let avarta = playback.avarta, let akshara = playback.akshara else { return nil }
+        return CellRef(repetition: Int32(repetition), avarta: Int32(avarta), akshara: Int32(akshara))
+    }
+
+    /// The block (tala cycle) being sung, if any.
+    static func currentBlock(_ layout: NotationLayout, _ playback: PlaybackState) -> Int? {
+        cell(playback).flatMap { layout.locate(cell: $0) }.map { Int($0.block) }
+    }
+
     var body: some View {
+        let current = NotationView.currentBlock(layout, playback)
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 12) {
                     if let header { header }
-                    ForEach(Array(varisai.avartas.enumerated()), id: \.offset) { index, avarta in
-                        let rowMarks = marks.filter { $0.key.avarta == index }
+                    ForEach(Array(layout.blocks.enumerated()), id: \.offset) { index, block in
+                        let cells = Set(block.cells.map { "\($0.avarta):\($0.akshara)" })
+                        let blockMarks = marks.filter { cells.contains("\($0.key.avarta):\($0.key.akshara)") }
                         VStack(alignment: .leading, spacing: 4) {
-                            if let section = avarta.section {
-                                Text(section)
+                            if let heading = block.heading {
+                                Text(heading)
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(Color.accentColor)
                                     .padding(.horizontal, 4)
                                     .accessibilityAddTraits(.isHeader)
                             }
-                            AvartaRow(
-                                avarta: avarta,
-                                avartaIndex: index,
-                                varisai: varisai,
-                                activeAkshara: playback.avarta == index ? playback.akshara : nil,
-                                activeSlot: playback.avarta == index ? playback.slot : nil,
-                                marks: rowMarks,
+                            CycleRows(
+                                layout: layout,
+                                block: block,
+                                activeCell: current == index ? activeCell : nil,
+                                activeSlot: current == index ? playback.slot : nil,
+                                marks: blockMarks,
                                 words: words)
                             .accessibilityElement(children: .ignore)
-                            .accessibilityLabel(Text("Avarta \(index + 1): \(spoken(avarta, index: index, marks: rowMarks))"))
+                            .accessibilityLabel(Text("Avarta \(index + 1): \(spoken(index, marks: blockMarks))"))
                         }
                         .id(index)
                     }
@@ -50,12 +64,12 @@ struct NotationView: View {
                 .padding(.horizontal, 12)
             }
             .accessibilityIdentifier("notation") // UI tests find the visible notation area by it
-            .onChange(of: playback.avarta) { avarta in
-                guard let avarta else { return }
+            .onChange(of: current) { block in
+                guard let block else { return }
                 if reduceMotion {
-                    proxy.scrollTo(avarta)
+                    proxy.scrollTo(block)
                 } else {
-                    withAnimation { proxy.scrollTo(avarta) }
+                    withAnimation { proxy.scrollTo(block) }
                 }
             }
         }
@@ -63,65 +77,148 @@ struct NotationView: View {
 }
 
 extension NotationView {
-    /// Row sentence, then the words of a gitam ("M P, D S′ S′ R′. Words: sri ga na na tha").
-    func spoken(_ avarta: Avarta, index: Int, marks: [MarkKey: NoteResult]) -> String {
-        let swaras = spokenSwaras(avarta, index: index, marks: marks)
-        guard let words = avarta.spokenWords() else { return swaras }
+    /// Cycle sentence, then the words ("M P, D S′ S′ R′. Words: sri ga na na tha").
+    func spoken(_ block: Int, marks: [MarkKey: NoteResult]) -> String {
+        let swaras = spokenSwaras(block, marks: marks)
+        guard let words = layout.spokenWords(block: Int32(block)) else { return swaras }
         return String(localized: "\(swaras). Words: \(words)")
     }
 
-    /// Row sentence; after sing-along, each swara with its mark ("S in tune R high…").
-    func spokenSwaras(_ avarta: Avarta, index: Int, marks: [MarkKey: NoteResult]) -> String {
+    /// Cycle sentence, commas at the anga bars; after sing-along, each swara with its mark ("S in tune R high…").
+    func spokenSwaras(_ block: Int, marks: [MarkKey: NoteResult]) -> String {
         let hold = String(localized: "hold")
-        guard !marks.isEmpty else { return avarta.spoken(tala: tala, karvaiWord: hold) }
-        let pieces: [(Int, String)] = avarta.aksharas.enumerated().compactMap { i, akshara in
+        guard !marks.isEmpty else { return layout.spoken(block: Int32(block), karvaiWord: hold) }
+        return layout.spokenWith(block: Int32(block)) { cell, akshara in
             if let swaras = (akshara as? AksharaSwaras)?.swaras {
-                return (i, swaras.enumerated().map { slot, swara in
-                    let word = SingAlongText.markWords(marks[MarkKey(avarta: index, akshara: i, slot: slot)])
+                return swaras.enumerated().map { slot, swara in
+                    let word = SingAlongText.markWords(marks[MarkKey(avarta: Int(cell.avarta), akshara: Int(cell.akshara), slot: slot)])
                     return word.map { "\(swara.spoken()) \($0)" } ?? swara.spoken()
-                }.joined(separator: " "))
+                }.joined(separator: " ")
             }
+            if akshara is AksharaRest { return nil }
             // Written several to a beat (a swarajati), holds inside a beat aren't read out.
-            return varisai.cellsPerBeatIn(avarta: Int32(index)) > 1 ? nil : (i, hold)
+            return layout.heldInsideBeat(cell: cell) ? nil : hold
         }
-        return pieces.enumerated().map { n, piece in
-            n == 0 ? piece.1 : (varisai.startsAnga(avarta: Int32(index), cell: Int32(piece.0)) ? ", " : " ") + piece.1
-        }.joined()
     }
 }
 
-private struct AvartaRow: View {
-    let avarta: Avarta
-    let avartaIndex: Int
-    let varisai: Varisai
-    let activeAkshara: Int?
+/// Columns of one row: views marked `.columns(n)` share the width in
+/// proportion to n, the rest (bars, gaps, the gutter) keep their own width.
+/// The tala strip and the notation both use it, so their columns line up.
+struct ColumnsLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 320
+        let widths = columnWidths(width, subviews)
+        let height = zip(subviews, widths).map { view, w in
+            view.sizeThatFits(ProposedViewSize(width: w, height: proposal.height)).height
+        }.max() ?? 0
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        for (view, w) in zip(subviews, columnWidths(bounds.width, subviews)) {
+            view.place(at: CGPoint(x: x, y: bounds.minY), proposal: ProposedViewSize(width: w, height: bounds.height))
+            x += w
+        }
+    }
+
+    private func columnWidths(_ width: CGFloat, _ subviews: Subviews) -> [CGFloat] {
+        let weights = subviews.map { $0[ColumnWeight.self] ?? 0 }
+        let fixed = zip(subviews, weights).map { view, weight in weight > 0 ? 0 : view.sizeThatFits(.unspecified).width }
+        let unit = max(0, width - fixed.reduce(0, +)) / max(1, weights.reduce(0, +))
+        return zip(fixed, weights).map { fixedWidth, weight in weight > 0 ? weight * unit : fixedWidth }
+    }
+}
+
+private struct ColumnWeight: LayoutValueKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+extension View {
+    /// Takes [n] columns of a `ColumnsLayout` row.
+    func columns(_ n: Int) -> some View { layoutValue(key: ColumnWeight.self, value: CGFloat(n)) }
+}
+
+/// One row of a cycle, shared by the notation and the tala strip: each count
+/// takes its width in columns, an anga bar goes before a new anga, a small gap
+/// between beats of several cells, and a double bar ends the cycle. Mirrors
+/// Android's `BeatRow`.
+struct BeatRow<Group: View>: View {
+    let row: LayoutRow
+    let columns: Int
+    let lastRow: Bool
+    var gutter = false
+    var sectionStarts: Set<CellRef> = []
+    @ViewBuilder let group: (BeatGroup) -> Group
+
+    var body: some View {
+        let groups = row.groups
+        ColumnsLayout {
+            if gutter {
+                Text(row.gutterLabel)
+                    .font(.caption)
+                    .foregroundStyle(Color.subdued)
+                    .frame(width: 20)
+                    .frame(maxHeight: .infinity)
+                    .accessibilityHidden(true)
+            }
+            ForEach(groups.indices, id: \.self) { g in
+                let beatGroup = groups[g]
+                if g > 0 {
+                    if let first = beatGroup.cells.first, sectionStarts.contains(first) {
+                        AngaBar(double: true)
+                    } else if beatGroup.startsAnga {
+                        AngaBar()
+                    } else if beatGroup.cells.count > 1 || groups[g - 1].cells.count > 1 {
+                        Color.clear.frame(width: 4, height: 1)
+                    }
+                }
+                group(beatGroup).columns(Int(beatGroup.width))
+            }
+            if lastRow { AngaBar(double: true) }
+            let missing = columns - Int(row.width)
+            if missing > 0 { Color.clear.frame(height: 1).columns(missing) }
+            if !lastRow { Color.clear.frame(width: 4, height: 1) }
+        }
+    }
+}
+
+private struct CycleRows: View {
+    let layout: NotationLayout
+    let block: CycleBlock
+    let activeCell: CellRef?
     let activeSlot: Int?
     let marks: [MarkKey: NoteResult]
     let words: WordsDisplay
 
     var body: some View {
-        let rows = TalaRows(varisai: varisai, avarta: avarta, index: avartaIndex)
-        let rowWords = words.showsWords ? avarta.words : nil
-        let showSwaras = rowWords == nil || words.showsSwaras
+        let hasWords = words.showsWords && layout.hasWords(block: block.index)
+        let showSwaras = !hasWords || words.showsSwaras
+        let sectionStarts = Set(block.sections.filter { $0.countInCycle > 0 }.map { $0.cell })
         VStack(spacing: 4) {
-            ForEach(rows.ranges.indices, id: \.self) { row in
-                let range = rows.ranges[row]
-                HStack(spacing: 0) {
-                    ForEach(Array(range), id: \.self) { i in
-                        if i > range.lowerBound && varisai.startsAnga(avarta: Int32(avartaIndex), cell: Int32(i)) { AngaBar() }
-                        AksharaCell(
-                            akshara: avarta.aksharas[i],
-                            active: i == activeAkshara,
-                            activeSlot: i == activeAkshara ? activeSlot : nil,
-                            marks: Dictionary(uniqueKeysWithValues: marks.filter { $0.key.akshara == i }.map { ($0.key.slot, $0.value) }),
-                            word: rowWords?[i],
-                            showSwaras: showSwaras)
+            ForEach(block.rows.indices, id: \.self) { r in
+                BeatRow(row: block.rows[r], columns: Int(block.columns), lastRow: r == block.rows.count - 1,
+                        gutter: !block.mirrorsStrip, sectionStarts: sectionStarts) { group in
+                    HStack(spacing: 0) {
+                        if group.cells.isEmpty { Color.clear.frame(maxWidth: .infinity, maxHeight: 1) }
+                        ForEach(group.cells.indices, id: \.self) { c in
+                            let cell = group.cells[c]
+                            AksharaCell(
+                                akshara: layout.akshara(cell: cell),
+                                active: cell == activeCell,
+                                activeSlot: cell == activeCell ? activeSlot : nil,
+                                marks: Dictionary(uniqueKeysWithValues: marks
+                                    .filter { $0.key.avarta == Int(cell.avarta) && $0.key.akshara == Int(cell.akshara) }
+                                    .map { ($0.key.slot, $0.value) }),
+                                word: hasWords ? layout.word(cell: cell) : nil,
+                                showSwaras: showSwaras)
+                        }
                     }
-                    if row == rows.ranges.count - 1 { AngaBar(double: true) }
-                    // Keep a shorter row's columns in line with the longest.
-                    ForEach(0..<rows.missing(row), id: \.self) { _ in
-                        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
-                    }
+                    // Several swaras to a beat: a light band shows which ones share it.
+                    .background(group.cells.count > 1 ? Color.secondary.opacity(0.08) : .clear,
+                                in: RoundedRectangle(cornerRadius: 8))
+                    .padding(.horizontal, 2)
                 }
                 .frame(minHeight: 48)
                 // Grow to fit the swaras plus their marks instead of shrinking the text.
@@ -236,26 +333,11 @@ private struct AngaBar: View {
     }
 }
 
-/// The rows a tala is laid out on (shared rule: `Tala.rowStarts`).
+/// The rows a tala is laid out on (shared rule: `Tala.rowStartsFor`), for
+/// the compact strip.
 struct TalaRows {
     let ranges: [Range<Int>]
     let columns: Int
-
-    init(tala: Tala) {
-        let starts = tala.rowStarts.map { $0.intValue }
-        let ends = Array(starts.dropFirst()) + [Int(tala.aksharas)]
-        ranges = zip(starts, ends).map { $0..<$1 }
-        columns = Int(tala.rowAksharas)
-    }
-
-    /// A piece's notation rows for one avarta: cells, several to a beat in a
-    /// swarajati (`Varisai.rowStartsIn`) — a khanda-gati avarta has its own.
-    init(varisai: Varisai, avarta: Avarta, index: Int) {
-        let starts = varisai.rowStartsIn(avarta: Int32(index)).map { $0.intValue }
-        let ends = Array(starts.dropFirst()) + [avarta.aksharas.count]
-        ranges = zip(starts, ends).map { $0..<$1 }
-        columns = Int(varisai.rowCellsIn(avarta: Int32(index)))
-    }
 
     /// Rows from given start cells, for the tala strip's counts (a two-kalai
     /// piece counts its beats twice; `Tala.rowStartsFor(kalai)`).
@@ -269,13 +351,16 @@ struct TalaRows {
     func missing(_ row: Int) -> Int { columns - ranges[row].count }
 }
 
-/// The tala being kept, current beat filled. Separate from the notation
-/// because at higher kalas several written aksharas share one beat. A
+/// The tala being kept, current count filled. While `block` (the cycle being
+/// sung) takes at most two rows the strip has its rows and columns, so each
+/// mark stands over the swaras sung on it; otherwise one compact row. A
 /// two-kalai piece splits each beat into its kriya and a "·" second count.
+/// Mirrors Android's `TalaStrip`.
 struct TalaStripView: View {
     let beatInAvarta: Int?
     let tala: Tala
     var kalai: Int = 1
+    var block: CycleBlock?
 
     /// "clap 1 2 3, clap wave, clap wave": the marks as words.
     private var spokenBeats: String {
@@ -290,6 +375,25 @@ struct TalaStripView: View {
         }.joined()
     }
 
+    /// Swaras sung to each beat of the block, or nil when the beats differ.
+    private var swarasPerBeat: Int? {
+        guard let block else { return nil }
+        var perBeat: [Int: Int] = [:]
+        for row in block.rows {
+            for group in row.groups { perBeat[Int(group.countInCycle) / kalai, default: 0] += group.cells.count }
+        }
+        let distinct = Set(perBeat.values)
+        return distinct.count == 1 ? distinct.first : nil
+    }
+
+    private var label: String {
+        var parts: [String] = []
+        if kalai > 1 { parts.append(String(localized: "\(kalai) kalai,")) }
+        if let n = swarasPerBeat, n > 1 { parts.append(String(localized: "\(n) swaras to a beat,")) }
+        parts.append(spokenBeats)
+        return "\(tala.name) tala: " + parts.joined(separator: " ")
+    }
+
     private var counts: [TalaCount] { Array(tala.countsAt(kalai: Int32(kalai))) }
 
     private var stripRows: TalaRows {
@@ -298,35 +402,47 @@ struct TalaStripView: View {
                  total: counts.count)
     }
 
+    private func chip(_ text: String, current: Bool) -> some View {
+        Text(text)
+            .font(.headline)
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .foregroundStyle(current ? Color.white : Color.primary)
+            .background(current ? Color.accentColor : Color.secondary.opacity(0.15), in: Capsule())
+    }
+
     var body: some View {
-        let rows = stripRows
         VStack(spacing: 6) {
-            ForEach(rows.ranges.indices, id: \.self) { row in
-                let range = rows.ranges[row]
-                HStack(spacing: 6) {
-                    ForEach(Array(range), id: \.self) { i in
-                        let count = counts[i]
-                        if i > range.lowerBound && count.startsAnga { AngaBar() }
-                        Text(count.label)
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 36)
-                            .foregroundStyle(i == beatInAvarta ? Color.white : Color.primary)
-                            .background(
-                                i == beatInAvarta ? Color.accentColor : Color.secondary.opacity(0.15),
-                                in: Capsule())
+            if let block, block.mirrorsStrip {
+                ForEach(block.rows.indices, id: \.self) { r in
+                    BeatRow(row: block.rows[r], columns: Int(block.columns), lastRow: r == block.rows.count - 1) { group in
+                        chip(group.label, current: Int(group.countInCycle) == beatInAvarta).padding(.horizontal, 3)
                     }
-                    ForEach(0..<rows.missing(row), id: \.self) { _ in
-                        Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
-                    }
+                    .frame(minHeight: 36)
+                    .fixedSize(horizontal: false, vertical: true) // bars must not stretch the strip
                 }
-                .frame(minHeight: 36)
-                .fixedSize(horizontal: false, vertical: true) // bars must not stretch the strip
+            } else {
+                let rows = stripRows
+                ForEach(rows.ranges.indices, id: \.self) { row in
+                    let range = rows.ranges[row]
+                    HStack(spacing: 6) {
+                        ForEach(Array(range), id: \.self) { i in
+                            let count = counts[i]
+                            if i > range.lowerBound && count.startsAnga { AngaBar() }
+                            chip(count.label, current: i == beatInAvarta)
+                        }
+                        ForEach(0..<rows.missing(row), id: \.self) { _ in
+                            Color.clear.frame(maxWidth: .infinity, maxHeight: 1)
+                        }
+                    }
+                    .frame(minHeight: 36)
+                    .fixedSize(horizontal: false, vertical: true) // bars must not stretch the strip
+                }
             }
         }
         // One element whose value is read only when focused: no announcements
         // during playback, but the beat is there for anyone who asks.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("\(tala.name) tala\(kalai > 1 ? ", \(kalai) kalai" : ""): \(spokenBeats)"))
+        .accessibilityLabel(Text(label))
         .accessibilityValue(beatInAvarta.map { Text(kalai > 1 ? "Count \($0 + 1) of \(counts.count)" : "Beat \($0 + 1) of \(tala.beats.count)") } ?? Text(""))
     }
 }

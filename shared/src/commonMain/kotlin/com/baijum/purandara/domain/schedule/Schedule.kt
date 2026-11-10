@@ -207,9 +207,7 @@ class Schedule private constructor(
             phrase: PracticePhrase?,
         ): Schedule {
             require(!range.isEmpty() && range.first >= 0 && range.last < varisai.avartas.size) { "avartas $range outside the piece" }
-            // A tala cycle is filled by a written avarta at @1, by two at @2, and so on —
-            // whatever the gati, which packs more cells into the same tala beat.
-            val cyclesPerPass = range.sumOf { 1.0 / (settings.aksharasPerBeat * varisai.avartas[it].speed) }
+            val cyclesPerPass = cyclesPerPass(varisai, range, settings.kala)
             val reps = repetitionsToFillCycles(cyclesPerPass)
             val notes = mutableListOf<NoteEvent>()
             val cursor = mutableListOf<CursorEvent>()
@@ -282,6 +280,23 @@ class Schedule private constructor(
                 durationSeconds = time,
                 avartaStarts = avartaStarts.toList(),
             )
+        }
+
+        /**
+         * Passes through [range] of [varisai] at [kala] needed to fill whole
+         * tala cycles: what [of] plays and what the notation layout shows.
+         */
+        fun repetitionsFor(varisai: Varisai, range: IntRange, kala: Int): Int =
+            repetitionsToFillCycles(cyclesPerPass(varisai, range, kala))
+
+        /**
+         * Tala cycles one pass through [range] takes. A cycle is filled by a
+         * written avarta at @1, by two at @2, and so on — whatever the gati,
+         * which packs more cells into the same tala beat.
+         */
+        private fun cyclesPerPass(varisai: Varisai, range: IntRange, kala: Int): Double {
+            val perBeat = 1 shl (kala - 1)
+            return range.sumOf { 1.0 / (perBeat * varisai.avartas[it].speed) }
         }
 
         /** Smallest number of passes whose avartas fill whole tala cycles. */

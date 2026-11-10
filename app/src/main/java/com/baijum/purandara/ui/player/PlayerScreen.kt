@@ -76,11 +76,19 @@ import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.schedule.PerformanceSettings
 import com.baijum.purandara.domain.schedule.Schedule
+import com.baijum.purandara.domain.varisai.NotationLayout
 import com.baijum.purandara.domain.varisai.SectionSpan
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.viewmodel.PlaybackState
 import com.baijum.purandara.viewmodel.PracticeUiState
 import kotlin.math.roundToInt
+
+/** The notation laid out by tala cycle for what will play: the section or phrase, at the chosen speed. */
+@Composable
+private fun rememberNotationLayout(varisai: Varisai, state: PracticeUiState): NotationLayout =
+    remember(varisai, state.section, state.phrase, state.settings.kala) {
+        NotationLayout.forPractice(varisai, state.section, state.phrase, state.settings.kala)
+    }
 
 /** Plays one exercise: notation on top, controls below, Play/Stop at the bottom. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -96,6 +104,7 @@ fun PlayerScreen(
     val saPlayable = settings.saMidi in varisai.playableSaMidis
     val canPlay = state.samplesLoaded && saPlayable
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    val layout = rememberNotationLayout(varisai, state)
     Scaffold(
         topBar = {
             PlayerTopBar(
@@ -118,6 +127,7 @@ fun PlayerScreen(
                 beatInAvarta = playback.beatInAvarta,
                 tala = varisai.tala,
                 kalai = varisai.kalai,
+                block = layout.blocks[playback.position?.let { layout.locate(it)?.block } ?: 0],
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             )
             if (!saPlayable) SaOutOfRange(varisai, settings, actions.onSettingsChange)
@@ -126,7 +136,7 @@ fun PlayerScreen(
                 SingAlongPanel(varisai, saPlayable, state, micDenied, actions.onOpenAppSettings)
             }
             NotationView(
-                varisai = varisai,
+                layout = layout,
                 position = playback.position,
                 marks = if (settings.singAlong) state.singAlong.marks else emptyMap(),
                 words = settings.words,

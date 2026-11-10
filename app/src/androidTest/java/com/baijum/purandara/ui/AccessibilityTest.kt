@@ -240,6 +240,17 @@ class AccessibilityTest {
     }
 
     @Test
+    fun secondSpeedReadsOneTalaCycleWithItsAngas() {
+        settings = settings.copy(kala = 2)
+        showPlayer(PlaybackState(playing = true, beatInAvarta = 4))
+        compose.onNodeWithContentDescription("Adi tala: 2 swaras to a beat, clap 1 2 3, clap wave, clap wave")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Beat 5 of 8"))
+        // Two written avartas make one cycle; the commas fall at the beats' angas.
+        compose.onNodeWithContentDescription("Avarta 1: S R G M P hold S R, S R G M, P D N S′").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Avarta 2: S′ N D P M hold S′ N, S′ N D P, M G R S").assertExists()
+    }
+
+    @Test
     fun longTalasWrapButReadAsOneTalaAndOneAvarta() {
         showPlayer(PlaybackState(playing = true, beatInAvarta = 11), id = "alankaram-1")
         compose.onNodeWithText("Mayamalavagowla · Dhruva tala").assertIsDisplayed()

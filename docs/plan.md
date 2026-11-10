@@ -136,7 +136,9 @@ not encoded until the source book or a teacher confirms them:
 
 - Tempo is in **aksharas per minute** (the tala beat). Default 60, range 30–120.
 - **Kala** k puts 2^(k−1) written aksharas into each tala akshara. Swaras speed
-  up while the tala beat stays the same, as the workbook describes.
+  up while the tala beat stays the same, as the workbook describes. The
+  notation is laid out by tala cycle at the chosen kala
+  (`docs/plan-speed-layout.md`).
 - A karvai makes the previous note longer. It is never a rest.
 - The schedule produces, in seconds from the start:
   - `NoteEvent(start, duration, note, frequencyHz, sample, rate)`

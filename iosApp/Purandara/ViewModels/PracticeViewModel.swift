@@ -121,6 +121,17 @@ final class PracticeViewModel: ObservableObject {
     @Published private(set) var samplesLoaded = false
     @Published private(set) var loadError = false
     @Published private(set) var playback = PlaybackState()
+    /// The notation of [varisai] laid out by tala cycle for what will play:
+    /// the phrase or section, at the chosen speed (`NotationLayout.forPractice`).
+    func notationLayout(_ varisai: Varisai) -> NotationLayout {
+        let key = "\(varisai.id)|\(practiceSection?.firstAvarta ?? -1)|\(practicePhrase?.id ?? "")|\(settings.kala)"
+        if let cache = layoutCache, cache.key == key { return cache.layout }
+        let layout = NotationLayout.companion.forPractice(
+            varisai: varisai, section: practiceSection, phrase: practicePhrase, kala: Int32(settings.kala))
+        layoutCache = (key, layout)
+        return layout
+    }
+
     /// One section of the open piece practised alone, or nil for the whole piece (`PlayerView` resets it).
     @Published var practiceSection: SectionSpan? {
         didSet { if playback.playing { stop() }; pausedPractice = nil; practicePaused = false }
@@ -130,6 +141,8 @@ final class PracticeViewModel: ObservableObject {
     }
     @Published private(set) var practicePaused = false
     private var pausedPractice: Varisai?
+    /// The last notation layout built, and what it was built for (not published: a cache).
+    private var layoutCache: (key: String, layout: NotationLayout)?
     @Published private(set) var singAlong = SingAlongUI()
     /// What has been practised (landing page).
     @Published private(set) var history: PracticeHistory

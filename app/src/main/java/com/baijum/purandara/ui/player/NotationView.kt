@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -46,37 +47,41 @@ import com.baijum.purandara.domain.Kriya
 import com.baijum.purandara.domain.Tala
 import com.baijum.purandara.domain.schedule.NotationPosition
 import com.baijum.purandara.domain.varisai.Akshara
-import com.baijum.purandara.domain.varisai.Avarta
+import com.baijum.purandara.domain.varisai.BeatGroup
+import com.baijum.purandara.domain.varisai.CellRef
+import com.baijum.purandara.domain.varisai.CycleBlock
+import com.baijum.purandara.domain.varisai.LayoutRow
+import com.baijum.purandara.domain.varisai.NotationLayout
 import com.baijum.purandara.domain.varisai.HELD
-import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.singalong.NoteResult
 import com.baijum.purandara.viewmodel.MarkKey
 import com.baijum.purandara.ui.LocalReduceMotion
 
 /**
- * The exercise as a grid: one block per avarta, its akshara cells in the
- * same columns as the [TalaStrip] above (so the marks are not repeated on
- * every row). Talas longer than eight beats wrap onto two rows at an anga
- * boundary ([Tala.rowStarts]). A gitam's words go under the swaras (or
- * replace them, per [words]), and each section starts with a heading. The
+ * The exercise as a grid: one block per tala cycle at the chosen speed
+ * ([NotationLayout]), so the swaras under a beat are the ones sung on it.
+ * While a cycle takes at most two rows the [TalaStrip] above is its column
+ * header; longer cycles (the third and fourth speeds, a swarajati) start each
+ * row with its beat mark in a gutter. A piece's words go under the swaras (or
+ * replace them, per [words]), and a section starts with a heading. The
  * sounding akshara and swara are highlighted, and the list follows playback.
  */
 @Composable
 fun NotationView(
-    varisai: Varisai,
+    layout: NotationLayout,
     position: NotationPosition?,
     modifier: Modifier = Modifier,
     marks: Map<MarkKey, NoteResult> = emptyMap(),
     words: WordsDisplay = WordsDisplay.BOTH,
 ) {
-    val tala = varisai.tala
     val listState = rememberLazyListState()
     val reduceMotion = LocalReduceMotion.current
-    val currentAvarta = position?.avarta
+    val located = position?.let { layout.locate(it) }
+    val currentBlock = located?.block
 
-    LaunchedEffect(currentAvarta) {
-        val target = currentAvarta ?: return@LaunchedEffect
+    LaunchedEffect(currentBlock) {
+        val target = currentBlock ?: return@LaunchedEffect
         val visible = listState.layoutInfo.visibleItemsInfo
         val fullyVisible = visible.any { it.index == target && it.offset >= 0 &&
             it.offset + it.size <= listState.layoutInfo.viewportEndOffset }
@@ -87,25 +92,26 @@ fun NotationView(
 
     val karvaiWord = stringResource(R.string.karvai_spoken)
     LazyColumn(state = listState, modifier = modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        itemsIndexed(varisai.avartas) { index, avarta ->
-            val rowMarks = marks.filterKeys { it.avarta == index }
-            val swaras = if (rowMarks.isEmpty()) avarta.spoken(tala, karvaiWord) else markedSpoken(avarta, index, rowMarks, varisai, karvaiWord)
-            val spoken = avarta.spokenWords()?.let { stringResource(R.string.avarta_words, swaras, it) } ?: swaras
+        itemsIndexed(layout.blocks) { index, block ->
+            val cells = block.cells.map { it.avarta to it.akshara }.toSet()
+            val blockMarks = marks.filterKeys { (it.avarta to it.akshara) in cells }
+            val swaras = if (blockMarks.isEmpty()) layout.spoken(index, karvaiWord) else markedSpoken(layout, index, blockMarks, karvaiWord)
+            val spoken = layout.spokenWords(index)?.let { stringResource(R.string.avarta_words, swaras, it) } ?: swaras
             val description = stringResource(R.string.avarta_description, index + 1, spoken)
             Column {
-                avarta.section?.let { section ->
+                block.heading?.let { heading ->
                     Text(
-                        section,
+                        heading,
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 16.dp).semantics { heading() },
                     )
                 }
-                AvartaRow(
-                    avarta = avarta,
-                    layout = AvartaLayout(varisai, index),
-                    active = position?.takeIf { it.avarta == index },
-                    rowMarks = rowMarks,
+                CycleRows(
+                    layout = layout,
+                    block = block,
+                    active = position.takeIf { currentBlock == index },
+                    marks = blockMarks,
                     words = words,
                     modifier = Modifier
                         .padding(horizontal = 12.dp)
@@ -116,52 +122,100 @@ fun NotationView(
     }
 }
 
-/** One avarta's row layout: where its rows start and the longest row's cells. */
-private data class AvartaLayout(private val varisai: Varisai, private val avarta: Int) {
-    val rowStarts: List<Int> get() = varisai.rowStartsIn(avarta)
-    val rowCells: Int get() = varisai.rowCellsIn(avarta)
+/**
+ * One row of a cycle, shared by the notation and the tala strip so their
+ * columns line up: each count takes its width in columns ([BeatGroup.width]),
+ * an anga bar goes before a new anga, a small gap between beats of several
+ * cells, and a double bar ends the cycle. [gutter] adds the row's beat mark.
+ */
+@Composable
+private fun BeatRow(
+    row: LayoutRow,
+    columns: Int,
+    lastRow: Boolean,
+    gutter: Boolean,
+    modifier: Modifier = Modifier,
+    sectionStarts: Set<CellRef> = emptySet(),
+    group: @Composable RowScope.(BeatGroup) -> Unit,
+) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        if (gutter) GutterMark(row.gutterLabel)
+        row.groups.forEachIndexed { g, beatGroup ->
+            if (g > 0) {
+                when {
+                    beatGroup.cells.firstOrNull() in sectionStarts -> AngaBar(double = true)
+                    beatGroup.startsAnga -> AngaBar()
+                    beatGroup.cells.size > 1 || row.groups[g - 1].cells.size > 1 -> Spacer(Modifier.width(BEAT_GAP_DP.dp))
+                }
+            }
+            group(beatGroup)
+        }
+        if (lastRow) AngaBar(double = true)
+        // Keep the columns of a shorter row in line with the longest.
+        val missing = columns - row.width
+        if (missing > 0) Spacer(Modifier.weight(missing.toFloat()))
+        if (!lastRow) Spacer(Modifier.width(DOUBLE_BAR_DP.dp))
+    }
+}
 
-    /** Whether cell [cell] starts an anga (an anga bar goes before it). */
-    fun startsAnga(cell: Int): Boolean = varisai.startsAnga(avarta, cell)
+/** A row's beat mark (x, 1, v) when the cycle is too long for the strip to head it. Decorative. */
+@Composable
+private fun GutterMark(label: String) {
+    Text(
+        label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.width(GUTTER_DP.dp),
+    )
 }
 
 @Composable
-private fun AvartaRow(
-    avarta: Avarta,
-    layout: AvartaLayout,
+private fun CycleRows(
+    layout: NotationLayout,
+    block: CycleBlock,
     active: NotationPosition?,
-    rowMarks: Map<MarkKey, NoteResult>,
+    marks: Map<MarkKey, NoteResult>,
     words: WordsDisplay,
     modifier: Modifier = Modifier,
 ) {
-    val activeAkshara = active?.akshara
+    val activeCell = active?.let { CellRef(it.repetition, it.avarta, it.akshara) }
     val activeSlot = active?.slot
-    val rowWords = avarta.words?.takeIf { words.showsWords }
-    val showSwaras = rowWords == null || words.showsSwaras
+    val hasWords = words.showsWords && block.cells.any { layout.word(it) != null }
+    val showSwaras = !hasWords || words.showsSwaras
     // Taller rows with larger system text, so swaras grow instead of shrinking to fit.
     val grow = 1f + (LocalDensity.current.fontScale - 1f).coerceAtLeast(0f) * ROW_GROWTH
-    val rowHeight = (ROW_HEIGHT_DP + if (rowWords != null && showSwaras) WORDS_HEIGHT_DP else 0).dp * grow
-    val starts = layout.rowStarts
-    val ends = starts.drop(1) + avarta.aksharas.size
+    val rowHeight = (ROW_HEIGHT_DP + if (hasWords && showSwaras) WORDS_HEIGHT_DP else 0).dp * grow
+    val sectionStarts = block.sections.filter { it.countInCycle > 0 }.map { it.cell }.toSet()
     Column(modifier.fillMaxWidth()) {
-        starts.zip(ends).forEachIndexed { row, (from, to) ->
-            Row(Modifier.fillMaxWidth().height(rowHeight), verticalAlignment = Alignment.CenterVertically) {
-                for (i in from until to) {
-                    if (i > from && layout.startsAnga(i)) AngaBar()
-                    AksharaCell(
-                        akshara = avarta.aksharas[i],
-                        active = i == activeAkshara,
-                        activeSlot = activeSlot.takeIf { i == activeAkshara },
-                        marks = rowMarks.filterKeys { it.akshara == i }.mapKeys { it.key.slot },
-                        word = rowWords?.get(i),
-                        showSwaras = showSwaras,
-                        modifier = Modifier.weight(1f),
-                    )
+        block.rows.forEachIndexed { r, row ->
+            BeatRow(
+                row = row,
+                columns = block.columns,
+                lastRow = r == block.rows.lastIndex,
+                gutter = !block.mirrorsStrip,
+                sectionStarts = sectionStarts,
+                modifier = Modifier.height(rowHeight),
+            ) { group ->
+                // Several swaras to a beat: a light band shows which ones share it.
+                val band = if (group.cells.size > 1) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = BAND_ALPHA) else Color.Transparent
+                Row(
+                    Modifier.weight(group.width.toFloat()).fillMaxHeight().padding(vertical = 4.dp, horizontal = 2.dp)
+                        .background(band, RoundedCornerShape(8.dp)),
+                ) {
+                    if (group.cells.isEmpty()) Spacer(Modifier.weight(1f))
+                    group.cells.forEach { cell ->
+                        AksharaCell(
+                            akshara = layout.akshara(cell),
+                            active = cell == activeCell,
+                            activeSlot = activeSlot.takeIf { cell == activeCell },
+                            marks = marks.filterKeys { it.avarta == cell.avarta && it.akshara == cell.akshara }.mapKeys { it.key.slot },
+                            word = layout.word(cell).takeIf { hasWords },
+                            showSwaras = showSwaras,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
-                if (row == starts.lastIndex) AngaBar(double = true)
-                // Keep the columns of a shorter row in line with the longest.
-                val missing = layout.rowCells - (to - from)
-                if (missing > 0) Spacer(Modifier.weight(missing.toFloat()))
             }
         }
     }
@@ -257,24 +311,20 @@ private fun MarkGlyphs(akshara: Akshara.Swaras, marks: Map<Int, NoteResult>) {
     Text(glyphs, fontSize = MARK_SP.sp, maxLines = 1)
 }
 
-/** Row sentence with each swara's mark, e.g. "S in tune R high G in tune, …". */
+/** Cycle sentence with each swara's mark, e.g. "S in tune R high G in tune, …". */
 @Composable
-private fun markedSpoken(avarta: Avarta, index: Int, marks: Map<MarkKey, NoteResult>, varisai: Varisai, karvaiWord: String): String {
-    val words = avarta.aksharas.mapIndexedNotNull { i, akshara ->
-        val text = when (akshara) {
-            // Written several to a beat (a swarajati), holds inside a beat aren't read out.
-            Akshara.Karvai -> if (varisai.cellsPerBeatIn(index) > 1) null else karvaiWord
+private fun markedSpoken(layout: NotationLayout, block: Int, marks: Map<MarkKey, NoteResult>, karvaiWord: String): String {
+    val markWords = marks.mapValues { markWords(it.value) }
+    return layout.spokenWith(block) { cell, akshara ->
+        when (akshara) {
+            Akshara.Karvai -> if (layout.heldInsideBeat(cell)) null else karvaiWord
             Akshara.Rest -> null // silence: nothing to read
             is Akshara.Swaras -> akshara.swaras.mapIndexed { slot, swara ->
-                val mark = markWords(marks[MarkKey(index, i, slot)])
+                val mark = markWords[MarkKey(cell.avarta, cell.akshara, slot)]
                 if (mark == null) swara.spoken() else "${swara.spoken()} $mark"
             }.joinToString(" ")
         }
-        text?.let { i to it }
     }
-    return words.mapIndexed { n, (i, text) ->
-        if (n > 0 && varisai.startsAnga(index, i)) ", $text" else if (n > 0) " $text" else text
-    }.joinToString("")
 }
 
 @Composable
@@ -290,27 +340,31 @@ private fun AngaBar(double: Boolean = false) {
 }
 
 /**
- * The tala being kept: one mark per beat of the avarta, the current beat
- * filled. At higher kalas several written aksharas share one beat, so this is
- * separate from the marks printed above the notation. A two-kalai piece
- * ([kalai] 2) splits each beat into its kriya and a `"·"` second count, 16
- * columns for Adi. One accessibility node whose state is read only when
- * focused, so nothing is announced during playback.
+ * The tala being kept, the current count filled. While [block] (the cycle
+ * being sung) takes at most two rows, the strip has its rows and columns, so
+ * each mark stands over the swaras sung on it; otherwise one compact row (and
+ * the notation rows carry their own marks). A two-kalai piece ([kalai] 2)
+ * splits each beat into its kriya and a `"·"` second count. One accessibility
+ * node whose state is read only when focused, so nothing is announced during
+ * playback.
  */
 @Composable
-fun TalaStrip(beatInAvarta: Int?, tala: Tala, kalai: Int = 1, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
+fun TalaStrip(beatInAvarta: Int?, tala: Tala, kalai: Int = 1, block: CycleBlock? = null, modifier: Modifier = Modifier) {
     val clap = stringResource(R.string.clap)
     val wave = stringResource(R.string.wave)
     val counts = tala.countsAt(kalai)
     val kalaiLabel = if (kalai > 1) stringResource(R.string.kalai_label, kalai) else ""
-    val talaLabel = stringResource(R.string.tala_label, tala.name, "$kalaiLabel ${spokenBeats(tala, clap, wave)}".trim())
+    val perBeat = block?.swarasPerBeat(kalai)
+    val densityLabel = if (perBeat != null && perBeat > 1) stringResource(R.string.swaras_per_beat, perBeat) else ""
+    val talaLabel = stringResource(
+        R.string.tala_label,
+        tala.name,
+        listOf(kalaiLabel, densityLabel, spokenBeats(tala, clap, wave)).filter { it.isNotEmpty() }.joinToString(" "),
+    )
     val beatText = beatInAvarta?.let {
         if (kalai > 1) stringResource(R.string.count_of, it + 1, counts.size)
         else stringResource(R.string.beat_of, it + 1, tala.aksharas)
     } ?: ""
-    val starts = tala.rowStartsFor(kalai) // one count per beat at kalai 1: the same rows as before
-    val ends = starts.drop(1) + counts.size
     Column(
         modifier.fillMaxWidth().clearAndSetSemantics {
             contentDescription = talaLabel
@@ -318,38 +372,61 @@ fun TalaStrip(beatInAvarta: Int?, tala: Tala, kalai: Int = 1, modifier: Modifier
         },
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        starts.zip(ends).forEach { (from, to) ->
-            Row(
-                Modifier.fillMaxWidth().height(36.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                for (i in from until to) {
-                    val count = counts[i]
-                    if (i > from && count.startsAnga) AngaBar()
-                    val current = i == beatInAvarta
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .height(36.dp)
-                            .background(if (current) colors.primary else colors.surfaceVariant, RoundedCornerShape(18.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            count.label,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = if (current) colors.onPrimary else colors.onSurfaceVariant,
-                        )
-                    }
+        if (block != null && block.mirrorsStrip) {
+            block.rows.forEachIndexed { r, row ->
+                BeatRow(row, block.columns, lastRow = r == block.rows.lastIndex, gutter = false, modifier = Modifier.height(36.dp)) { group ->
+                    TalaChip(group.label, group.countInCycle == beatInAvarta, Modifier.weight(group.width.toFloat()).padding(horizontal = 3.dp))
                 }
-                val missing = tala.rowCellsFor(kalai) - (to - from)
-                if (missing > 0) Spacer(Modifier.weight(missing.toFloat()))
+            }
+        } else {
+            val starts = tala.rowStartsFor(kalai) // one count per beat at kalai 1: the same rows as before
+            val ends = starts.drop(1) + counts.size
+            starts.zip(ends).forEach { (from, to) ->
+                Row(
+                    Modifier.fillMaxWidth().height(36.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    for (i in from until to) {
+                        val count = counts[i]
+                        if (i > from && count.startsAnga) AngaBar()
+                        TalaChip(count.label, i == beatInAvarta, Modifier.weight(1f))
+                    }
+                    val missing = tala.rowCellsFor(kalai) - (to - from)
+                    if (missing > 0) Spacer(Modifier.weight(missing.toFloat()))
+                }
             }
         }
     }
 }
 
+/** Swaras sung to each beat of this cycle, or null when the beats differ (a khanda section joins it). */
+private fun CycleBlock.swarasPerBeat(kalai: Int): Int? =
+    rows.flatMap { it.groups }.groupBy { it.countInCycle / kalai }.values.map { beat -> beat.sumOf { it.cells.size } }
+        .distinct().singleOrNull()
+
+@Composable
+private fun TalaChip(label: String, current: Boolean, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier
+            .height(36.dp)
+            .background(if (current) colors.primary else colors.surfaceVariant, RoundedCornerShape(18.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.titleMedium,
+            color = if (current) colors.onPrimary else colors.onSurfaceVariant,
+        )
+    }
+}
+
 private const val MIN_SWARA_SP = 8
+private const val BEAT_GAP_DP = 4
+private const val DOUBLE_BAR_DP = 4
+private const val GUTTER_DP = 20
+private const val BAND_ALPHA = 0.5f
 private const val MARK_SP = 11
 private const val ROW_HEIGHT_DP = 48
 private const val ROW_GROWTH = 0.75f
