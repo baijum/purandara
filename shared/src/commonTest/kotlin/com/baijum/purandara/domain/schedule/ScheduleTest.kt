@@ -6,8 +6,10 @@ import com.baijum.purandara.domain.Pitch
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Swara
+import com.baijum.purandara.domain.Tala
 import com.baijum.purandara.domain.Talas
 import com.baijum.purandara.domain.Tuning
+import com.baijum.purandara.domain.varisai.Akshara
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.domain.varisai.VarisaiParser
 import com.baijum.purandara.domain.varisai.VarisaiSet
@@ -77,11 +79,83 @@ class ScheduleTest {
 
     @Test
     fun pairsSplitTheAkshara() {
-        val s = Schedule.of(varisai("janta-1"), PerformanceSettings(saHz = saC3, tempo = 60))
-        assertEquals(0.0, s.notes[0].startSeconds, 1e-9)
-        assertEquals(0.5, s.notes[1].startSeconds, 1e-9)
-        assertEquals(0.5, s.notes[0].durationSeconds, 1e-9)
-        assertEquals(1, s.notes[1].position.slot)
+        val janta = varisai("janta-1")
+        assertEquals(2, janta.avartas.size)
+        assertEquals(16, janta.aksharaCount)
+        janta.avartas.forEach { avarta ->
+            assertEquals(8, avarta.aksharas.size)
+            assertEquals(1, avarta.speed)
+            avarta.aksharas.forEach { cell ->
+                assertEquals(2, (cell as? Akshara.Swaras)?.swaras?.size)
+            }
+        }
+        val expectedNotes = listOf(32, 32, 64, 128)
+        val expectedRepetitions = listOf(1, 1, 2, 4)
+        val expectedBeats = listOf(16, 8, 8, 8)
+        for (kala in 1..4) {
+            val s = Schedule.of(janta, PerformanceSettings(saHz = saC3, tempo = 60, kala = kala))
+            assertEquals(expectedNotes[kala - 1], s.notes.size, "kala $kala notes")
+            assertEquals(expectedRepetitions[kala - 1], s.repetitions, "kala $kala repetitions")
+            val slotSeconds = 0.5 / 2.0.pow(kala - 1)
+            s.notes.forEachIndexed { i, note ->
+                assertEquals(i * slotSeconds, note.startSeconds, 1e-9, "kala $kala note $i onset")
+                assertEquals(slotSeconds, note.durationSeconds, 1e-9, "kala $kala note $i duration")
+                assertEquals(NotationPosition(i / 32, (i % 32) / 16, (i % 16) / 2, i % 2), note.position)
+            }
+            assertAdiBeatsAtSixty(s, expectedBeats[kala - 1])
+        }
+    }
+
+    @Test
+    fun janta7HoldsExtendSingleSwarasAtEveryKala() {
+        val janta = varisai("janta-7")
+        val cells = janta.avartas.flatMap { it.aksharas }
+        assertEquals(20, janta.avartas.size)
+        assertEquals(160, cells.size)
+        assertEquals(20, cells.count { it == Akshara.Karvai })
+        janta.avartas.forEachIndexed { i, avarta ->
+            assertEquals(8, avarta.aksharas.size)
+            assertEquals(1, avarta.speed)
+            assertEquals(
+                if (i % 2 == 0) listOf(1, 4) else emptyList(),
+                avarta.aksharas.indices.filter { avarta.aksharas[it] == Akshara.Karvai },
+            )
+        }
+        cells.filter { it != Akshara.Karvai }.forEach { cell ->
+            assertEquals(1, (cell as? Akshara.Swaras)?.swaras?.size)
+        }
+        val onsetCells = cells.indices.filter { cells[it] is Akshara.Swaras }
+        assertEquals(140, onsetCells.size)
+        assertEquals(listOf(0, 2, 3, 5, 6, 7), onsetCells.take(6))
+        val expectedNotes = listOf(140, 140, 140, 280)
+        val expectedRepetitions = listOf(1, 1, 1, 2)
+        val expectedBeats = listOf(160, 80, 40, 40)
+        for (kala in 1..4) {
+            val s = Schedule.of(janta, PerformanceSettings(saHz = saC3, tempo = 60, kala = kala))
+            val multiplier = 2.0.pow(kala - 1)
+            assertEquals(expectedNotes[kala - 1], s.notes.size, "kala $kala notes")
+            assertEquals(expectedRepetitions[kala - 1], s.repetitions, "kala $kala repetitions")
+            s.notes.forEachIndexed { i, note ->
+                val cell = onsetCells[i % 140]
+                val repetition = i / 140
+                assertEquals((repetition * 160 + cell) / multiplier, note.startSeconds, 1e-9, "kala $kala note $i onset")
+                // The first and third swaras in each held avarta last two cells, not two onsets.
+                val length = if (cell % 16 == 0 || cell % 16 == 3) 2.0 else 1.0
+                assertEquals(length / multiplier, note.durationSeconds, 1e-9, "kala $kala note $i duration")
+                assertEquals(NotationPosition(repetition, cell / 8, cell % 8, 0), note.position)
+            }
+            assertEquals(160 * expectedRepetitions[kala - 1], s.cursor.size, "kala $kala cursor")
+            s.cursor.forEachIndexed { i, event ->
+                val position = NotationPosition(i / 160, (i % 160) / 8, i % 8, 0)
+                assertEquals(i / multiplier, event.startSeconds, 1e-9, "kala $kala cursor $i")
+                assertEquals(position, event.position)
+                if (cells[i % 160] == Akshara.Karvai) {
+                    assertTrue(s.notes.none { it.position == position }, "kala $kala hold $position has no onset")
+                    assertEquals(position, s.cursorAt(i / multiplier), "kala $kala cursor visits hold $position")
+                }
+            }
+            assertAdiBeatsAtSixty(s, expectedBeats[kala - 1])
+        }
     }
 
     @Test
@@ -162,14 +236,43 @@ class ScheduleTest {
     fun kalasFillWholeAvartasLikeTheWorkbook() {
         // Plain scale: kala 1 = 2 avartas; kala 2 = 1 avarta;
         // kala 3 = sung twice in one avarta; kala 4 = four times in one avarta.
-        val expected = mapOf(1 to (1 to 16), 2 to (1 to 8), 3 to (2 to 8), 4 to (4 to 8))
-        expected.forEach { (kala, repsAndBeats) ->
+        assertEquals(2, plain.avartas.size)
+        assertEquals(16, plain.aksharaCount)
+        plain.avartas.forEach { avarta ->
+            assertEquals(8, avarta.aksharas.size)
+            assertEquals(1, avarta.speed)
+            avarta.aksharas.forEach { cell ->
+                assertEquals(1, (cell as? Akshara.Swaras)?.swaras?.size)
+            }
+        }
+        val expectedNotes = listOf(16, 16, 32, 64)
+        val expectedRepetitions = listOf(1, 1, 2, 4)
+        val expectedBeats = listOf(16, 8, 8, 8)
+        for (kala in 1..4) {
             val s = Schedule.of(plain, PerformanceSettings(saHz = saC3, tempo = 60, kala = kala))
-            assertEquals(repsAndBeats.first, s.repetitions, "kala $kala repetitions")
-            assertEquals(repsAndBeats.second, s.beats.size, "kala $kala beats")
-            assertEquals(repsAndBeats.second.toDouble(), s.durationSeconds, 1e-9, "kala $kala duration")
-            assertEquals(16 * repsAndBeats.first, s.notes.size)
-            assertEquals(1.0 / 2.0.pow(kala - 1), s.notes[0].durationSeconds, 1e-9)
+            assertEquals(expectedNotes[kala - 1], s.notes.size, "kala $kala notes")
+            assertEquals(expectedRepetitions[kala - 1], s.repetitions, "kala $kala repetitions")
+            val cellSeconds = 1.0 / 2.0.pow(kala - 1)
+            s.notes.forEachIndexed { i, note ->
+                assertEquals(i * cellSeconds, note.startSeconds, 1e-9, "kala $kala note $i onset")
+                assertEquals(cellSeconds, note.durationSeconds, 1e-9, "kala $kala note $i duration")
+                assertEquals(NotationPosition(i / 16, (i % 16) / 8, i % 8, 0), note.position)
+            }
+            assertAdiBeatsAtSixty(s, expectedBeats[kala - 1])
+        }
+    }
+
+    private fun assertAdiBeatsAtSixty(s: Schedule, expectedBeats: Int) {
+        val context = "${s.varisai.id} kala ${s.settings.kala}"
+        assertEquals(Tala.ADI, s.tala, context)
+        assertEquals(expectedBeats, s.beats.size, "$context beats")
+        assertEquals(expectedBeats.toDouble(), s.durationSeconds, 1e-9, "$context duration")
+        assertEquals(0, s.beats.size % 8, "$context fills whole Adi cycles")
+        s.beats.forEachIndexed { i, beat ->
+            assertEquals(i * 1.0, beat.startSeconds, 1e-9, "$context beat $i start")
+            assertEquals(i, beat.index, "$context beat $i index")
+            assertEquals(i % 8, beat.beatInAvarta, "$context beat $i in avarta")
+            assertEquals(Tala.ADI.beats[i % 8], beat.beat, "$context beat $i identity")
         }
     }
 

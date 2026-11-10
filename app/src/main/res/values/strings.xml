@@ -75,6 +75,13 @@
     <string name="slower">Slower</string>
     <string name="faster">Faster</string>
     <string name="kala">Speed</string>
+    <string name="speed_multiplier">Speed · %1$d×</string>
+    <string name="speed_multiplier_spoken">Speed, %1$d times the written pace</string>
+    <string name="about_speed">About speed</string>
+    <string name="speed_help_pace">Speed 1–4 uses 1×, 2×, 4× and 8× the written pace. Tempo sets the tala beat, which stays unchanged.</string>
+    <string name="speed_help_paired">Janta 1–6 and both Vakra Janta exercises have two swaras per written cell: 2, 4, 8 or 16 individual swaras per beat at settings 1–4.</string>
+    <string name="speed_help_holds">Janta 7 uses single-swara cells and holds instead. Holds continue a note; rests are silent. Neither starts a new note. Mixed passages need not have one constant note count.</string>
+    <string name="done">Done</string>
     <string name="kala_1">First kala</string>
     <string name="kala_2">Second kala</string>
     <string name="kala_3">Third kala</string>

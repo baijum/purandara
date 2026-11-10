@@ -1,6 +1,10 @@
 package com.baijum.purandara.ui
 
+import android.graphics.Bitmap
+import android.view.KeyEvent
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -17,6 +21,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
@@ -28,8 +33,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.baijum.purandara.audio.HarmoniumArticulation
 import com.baijum.purandara.audio.PracticePhase
 import com.baijum.purandara.practice.PracticeMode
@@ -69,6 +76,7 @@ import com.baijum.purandara.ui.shruti.ShrutiScreen
 import com.baijum.purandara.shruti.FindSaProgress
 import com.baijum.purandara.shruti.FindSaStep
 import com.baijum.purandara.viewmodel.ShrutiUiState
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -90,21 +98,25 @@ class AccessibilityTest {
         singAlong: SingAlongState = SingAlongState(micPermitted = true),
         id: String = "sarali-4",
         micDenied: Boolean = false,
+        fontScale: Float? = null,
     ) {
         compose.setContent {
-            PurandaraTheme {
-                PlayerScreen(
-                    varisai = VarisaiCatalog.byId(id)!!,
-                    state = PracticeUiState(settings = settings, samplesLoaded = true, playback = playback, singAlong = singAlong),
-                    micDenied = micDenied,
-                    actions = PlayerActions(
-                        onBack = {},
-                        onTogglePlay = {},
-                        onSettingsChange = { settings = it(settings) },
-                        onToggleSingAlong = { singAlongToggled++ },
-                        onSelectSection = { sectionPicked = it?.label ?: "whole" },
-                    ),
-                )
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale ?: density.fontScale)) {
+                PurandaraTheme {
+                    PlayerScreen(
+                        varisai = VarisaiCatalog.byId(id)!!,
+                        state = PracticeUiState(settings = settings, samplesLoaded = true, playback = playback, singAlong = singAlong),
+                        micDenied = micDenied,
+                        actions = PlayerActions(
+                            onBack = {},
+                            onTogglePlay = {},
+                            onSettingsChange = { settings = it(settings) },
+                            onToggleSingAlong = { singAlongToggled++ },
+                            onSelectSection = { sectionPicked = it?.label ?: "whole" },
+                        ),
+                    )
+                }
             }
         }
     }
@@ -130,6 +142,7 @@ class AccessibilityTest {
         showPlayer()
         assertTouchTarget(compose.onNodeWithContentDescription("Back").assertHasClickAction())
         assertTouchTarget(compose.onNodeWithContentDescription("Practice settings").assertHasClickAction())
+        assertTouchTarget(compose.onNodeWithContentDescription("About speed").assertHasClickAction())
         for (label in listOf("Slower", "Faster", "First kala", "Second kala", "Third kala", "Fourth kala")) {
             assertTouchTarget(compose.onNodeWithContentDescription(label).assertHasClickAction())
         }
@@ -147,8 +160,94 @@ class AccessibilityTest {
     @Test
     fun kalaButtonsChangeTheSetting() {
         showPlayer()
-        compose.onNodeWithContentDescription("Third kala").performClick()
+        assertSpeedHeading(1)
+        compose.onNodeWithContentDescription("Third kala").performClick().assertIsSelected()
         assertEquals(3, settings.kala)
+        assertSpeedHeading(4)
+        for ((label, kala, multiplier) in listOf(
+            Triple("First kala", 1, 1),
+            Triple("Second kala", 2, 2),
+            Triple("Fourth kala", 4, 8),
+        )) {
+            compose.onNodeWithContentDescription(label).performClick().assertIsSelected()
+            assertEquals(kala, settings.kala)
+            assertSpeedHeading(multiplier)
+        }
+    }
+
+    private fun assertSpeedHeading(multiplier: Int) {
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        compose.onNode(hasContentDescription("Speed, $multiplier times the written pace") and heading).assertIsDisplayed()
+    }
+
+    @Test
+    fun speedHelpHasAnAccessibleTitleScrollableTextAndDismissalWithoutSettingChanges() {
+        settings = settings.copy(kala = 3)
+        showPlayer()
+        val before = settings
+        assertSpeedHeading(4)
+        captureScreenshot("speed-player-normal")
+        assertSpeedHelp("normal")
+        assertEquals(before, settings)
+        assertSpeedHeading(4)
+        // The platform Back action dismisses the same dialog without touching settings.
+        compose.onNodeWithContentDescription("About speed").performClick()
+        compose.onNodeWithText("About speed").assertIsDisplayed()
+        compose.waitForIdle()
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_BACK)
+        compose.onNodeWithText("About speed").assertDoesNotExist()
+        assertEquals(before, settings)
+        assertSpeedHeading(4)
+    }
+
+    @Test
+    fun speedHeadingAndHelpRemainUsableAtLargeTextSizes() {
+        settings = settings.copy(kala = 4)
+        showPlayer(fontScale = 2f)
+        val before = settings
+        assertSpeedHeading(8)
+        assertTouchTarget(compose.onNodeWithContentDescription("Fourth kala").assertIsDisplayed().assertIsSelected())
+        captureScreenshot("speed-player-large-text")
+        assertSpeedHelp("large-text")
+        assertEquals(before, settings)
+        assertSpeedHeading(8)
+    }
+
+    private fun assertSpeedHelp(screenshotSuffix: String) {
+        val about = compose.onNodeWithContentDescription("About speed").assertIsDisplayed().assertHasClickAction()
+        assertTouchTarget(about)
+        about.performClick()
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        val dialog = SemanticsMatcher.keyIsDefined(SemanticsProperties.IsDialog)
+        compose.onNode(hasText("About speed") and heading and hasAnyAncestor(dialog)).assertIsDisplayed()
+        compose.onNode(hasScrollAction() and hasAnyAncestor(dialog)).assertExists()
+        captureScreenshot("speed-help-initial-$screenshotSuffix")
+        for (text in listOf(
+            "Speed 1–4 uses 1×, 2×, 4× and 8× the written pace. Tempo sets the tala beat, which stays unchanged.",
+            "Janta 1–6 and both Vakra Janta exercises have two swaras per written cell: 2, 4, 8 or 16 individual swaras per beat at settings 1–4.",
+            "Janta 7 uses single-swara cells and holds instead. Holds continue a note; rests are silent. Neither starts a new note. Mixed passages need not have one constant note count.",
+        )) {
+            compose.onNodeWithText(text).performScrollTo().assertIsDisplayed()
+        }
+        captureScreenshot("speed-help-final-$screenshotSuffix")
+        val done = compose.onNodeWithText("Done").assertIsDisplayed().assertHasClickAction()
+        assertTouchTarget(done)
+        done.performClick()
+        compose.onNodeWithText("About speed").assertDoesNotExist()
+    }
+
+    private fun captureScreenshot(name: String) {
+        compose.waitForIdle()
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val screenshot = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+        try {
+            File(checkNotNull(instrumentation.targetContext.getExternalFilesDir(null)), "$name.png").outputStream().use {
+                assertTrue("Could not save screenshot $name", screenshot.compress(Bitmap.CompressFormat.PNG, 100, it))
+            }
+        } finally {
+            screenshot.recycle()
+        }
     }
 
     private fun openSettings() {

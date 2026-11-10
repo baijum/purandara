@@ -213,8 +213,10 @@ private struct RecoveryControls: View {
 
 private struct QuickControls: View {
     @Binding var settings: PracticeSettings
+    @State private var showingSpeedHelp = false
 
     private let kalaNames = ["First kala", "Second kala", "Third kala", "Fourth kala"]
+    private var speedMultiplier: Int { Int(settings.performance().aksharasPerBeat) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -224,16 +226,74 @@ private struct QuickControls: View {
             }
             .accessibilityValue(Text("\(settings.tempo) beats per minute"))
 
-            Text("Speed")
-            Picker("Speed", selection: $settings.kala) {
-                ForEach(PracticeSettings.kalaRange, id: \.self) { kala in
-                    Text("\(kala)").tag(kala).accessibilityLabel(Text(kalaNames[kala - 1]))
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("Speed · \(speedMultiplier)×")
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(Text("Speed, \(speedMultiplier) times the written pace"))
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("speed-multiplier")
+                    Spacer()
+                    Button {
+                        showingSpeedHelp = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .accessibilityLabel(Text("About speed"))
                 }
+                Picker("Speed", selection: $settings.kala) {
+                    ForEach(PracticeSettings.kalaRange, id: \.self) { kala in
+                        Text("\(kala)").tag(kala).accessibilityLabel(Text(kalaNames[kala - 1]))
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
         }
         .padding()
+        .sheet(isPresented: $showingSpeedHelp) {
+            SpeedHelpView()
+        }
+    }
+}
+
+/// Written pace is a multiplier, not a universal count of individual swaras.
+/// Keep the explanation out of the fixed controls and let it grow and scroll.
+private struct SpeedHelpView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                // One text element keeps the explanation together for VoiceOver
+                // and the Dynamic Type audit while still scrolling at large sizes.
+                Text("""
+                    Speed 1–4 uses 1×, 2×, 4× and 8× the written pace. Tempo sets the tala beat, which stays unchanged.
+
+                    Janta 1–6 and both Vakra Janta exercises have two swaras per written cell: 2, 4, 8 or 16 individual swaras per beat at settings 1–4.
+
+                    Janta 7 uses single-swara cells and holds instead. Holds continue a note; rests are silent. Neither starts a new note. Mixed passages need not have one constant note count.
+                    """)
+                    .font(.body)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.top, 24) // clear the toolbar's glass shadow
+                    .padding(.bottom)
+            }
+            .accessibilityIdentifier("speed-help")
+            .navigationTitle("About speed")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { dismiss() } label: { Image(systemName: "checkmark") }
+                        .accessibilityLabel(Text("Done"))
+                }
+            }
+        }
     }
 }
 

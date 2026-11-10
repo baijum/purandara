@@ -103,6 +103,7 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [docs/plan-alankaram-gitam.md](docs/plan-alankaram-gitam.md) | Alankarams and the Malahari gitams (done) |
 | [docs/plan-gitam-swarajati-varnam.md](docs/plan-gitam-swarajati-varnam.md) | More gitams, swarajatis, varnams (in progress; open items in issues #1–#6) |
 | [docs/plan-speed-layout.md](docs/plan-speed-layout.md) | Notation laid out by tala cycle at every speed: strip and notation share columns (done) |
+| [docs/plan-speed-clarification.md](docs/plan-speed-clarification.md) | Written-pace multipliers, paired Janta speeds and the player’s About speed help |
 | [docs/plan-site-search.md](docs/plan-site-search.md) | Website: full-text search (done) |
 | [docs/plan-learn.md](docs/plan-learn.md) | Website: the Learn section, beginner theory (done) |
 | [docs/tuning.md](docs/tuning.md) | Just (tanpura) vs Equal (keyboard): exact ratios, cents, frequencies and implementation (the musicians' version is the guide's Tuning page) |

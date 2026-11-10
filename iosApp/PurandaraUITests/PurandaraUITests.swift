@@ -124,6 +124,91 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
+    /// Kala values stay numbered and persisted; the heading explains their
+    /// written-pace multiplier rather than claiming an individual-swara count.
+    @MainActor func testSpeedMultiplierFollowsKalaAndPersists() {
+        let app = launch(["-open", "sarali-4"])
+        XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
+        let heading = app.staticTexts["speed-multiplier"]
+        XCTAssertEqual(heading.label, "Speed, 1 times the written pace")
+        XCTAssertTrue(app.buttons["First kala"].isSelected)
+
+        for (kala, multiplier) in [("Second kala", 2), ("First kala", 1), ("Third kala", 4), ("Fourth kala", 8)] {
+            app.buttons[kala].tap()
+            XCTAssertTrue(app.buttons[kala].isSelected)
+            XCTAssertEqual(heading.label, "Speed, \(multiplier) times the written pace")
+        }
+
+        app.terminate()
+        app.launchArguments = ["-open", "sarali-4"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Fourth kala"].isSelected)
+        XCTAssertEqual(heading.label, "Speed, 8 times the written pace")
+    }
+
+    @MainActor func testSpeedHelpPassesAccessibilityAudit() throws {
+        let app = launch(["-open", "sarali-4"])
+        XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
+        try checkSpeedHelp(app)
+        XCTAssertEqual(app.staticTexts["speed-multiplier"].label, "Speed, 1 times the written pace")
+        XCTAssertTrue(app.buttons["First kala"].isSelected)
+    }
+
+    @MainActor func testSpeedHelpAtLargestTextPassesAccessibilityAudit() throws {
+        let app = launch(["-open", "sarali-4", "-kala", "4",
+                          "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["speed-multiplier"].label, "Speed, 8 times the written pace")
+        try checkSpeedHelp(app, requireScrolling: true)
+        XCTAssertTrue(app.buttons["Fourth kala"].isSelected)
+        XCTAssertEqual(app.staticTexts["speed-multiplier"].label, "Speed, 8 times the written pace")
+    }
+
+    @MainActor private func attachSpeedScreenshot(_ app: XCUIApplication, _ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor private func checkSpeedHelp(_ app: XCUIApplication, requireScrolling: Bool = false) throws {
+        let size = requireScrolling ? "largest" : "normal"
+        attachSpeedScreenshot(app, "Speed \(size) player")
+        let about = app.buttons["About speed"]
+        XCTAssertTrue(about.isHittable)
+        XCTAssertGreaterThanOrEqual(about.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(about.frame.height, 44)
+        about.tap()
+        XCTAssertTrue(app.navigationBars["About speed"].waitForExistence(timeout: 3))
+        attachSpeedScreenshot(app, "Speed \(size) help")
+        let help = app.scrollViews["speed-help"]
+        let explanation = help.staticTexts.containing(NSPredicate(format: "label BEGINSWITH %@", "Speed 1–4 uses")).firstMatch
+        XCTAssertTrue(explanation.exists)
+        XCTAssertTrue(explanation.label.contains("Speed 1–4 uses 1×, 2×, 4× and 8× the written pace. Tempo sets the tala beat, which stays unchanged."))
+        XCTAssertTrue(explanation.label.contains("Janta 1–6 and both Vakra Janta exercises have two swaras per written cell: 2, 4, 8 or 16 individual swaras per beat at settings 1–4."))
+        XCTAssertTrue(explanation.label.contains("Janta 7 uses single-swara cells and holds instead. Holds continue a note; rests are silent. Neither starts a new note. Mixed passages need not have one constant note count."))
+        let done = app.buttons["Done"]
+        XCTAssertTrue(done.isHittable)
+        try audit(app)
+
+        if requireScrolling {
+            XCTAssertGreaterThan(explanation.frame.height, help.frame.height, "the explanation grows with accessibility text sizes")
+            let initialTop = explanation.frame.minY
+            help.swipeUp()
+            XCTAssertLessThan(explanation.frame.minY, initialTop, "the large-text explanation scrolls")
+            for _ in 0..<8 where explanation.frame.maxY > help.frame.maxY { help.swipeUp() }
+            XCTAssertLessThanOrEqual(explanation.frame.maxY, help.frame.maxY + 1, "the final paragraph can be reached")
+            attachSpeedScreenshot(app, "Speed largest help end")
+            try audit(app)
+        }
+
+        XCTAssertTrue(done.isHittable, "dismissal stays available while the explanation scrolls")
+        done.tap()
+        XCTAssertTrue(help.waitForNonExistence(timeout: 3))
+        XCTAssertTrue(about.isHittable)
+    }
+
     /// At the second speed two written avartas make one tala cycle: the strip
     /// wraps over its pairs, and the cycle reads with commas at its angas.
     @MainActor func testSecondSpeedLaysOutOneCyclePerBlock() throws {

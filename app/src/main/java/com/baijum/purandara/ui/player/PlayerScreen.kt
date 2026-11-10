@@ -19,6 +19,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +43,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -321,9 +323,10 @@ private fun QuickControls(
     onSettingsChange: ((PracticeSettings) -> PracticeSettings) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showSpeedHelp by rememberSaveable { mutableStateOf(false) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TempoControl(settings.tempo) { tempo -> onSettingsChange { it.copy(tempo = tempo) } }
-        Text(stringResource(R.string.kala), style = MaterialTheme.typography.titleSmall)
+        SpeedHeading(settings.performance().aksharasPerBeat, onAboutSpeed = { showSpeedHelp = true })
         val kalaNames = listOf(R.string.kala_1, R.string.kala_2, R.string.kala_3, R.string.kala_4).map { stringResource(it) }
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
             PerformanceSettings.KALA_RANGE.forEachIndexed { i, kala ->
@@ -336,6 +339,51 @@ private fun QuickControls(
             }
         }
     }
+    if (showSpeedHelp) SpeedHelpDialog(onDismiss = { showSpeedHelp = false })
+}
+
+/** Keep the explanation out of the fixed controls; the heading can wrap beside its 48 dp action. */
+@Composable
+private fun SpeedHeading(multiplier: Int, onAboutSpeed: () -> Unit) {
+    val description = stringResource(R.string.speed_multiplier_spoken, multiplier)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            stringResource(R.string.speed_multiplier, multiplier),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.weight(1f).clearAndSetSemantics {
+                contentDescription = description
+                heading()
+            },
+        )
+        IconButton(onClick = onAboutSpeed, modifier = Modifier.size(48.dp)) {
+            Icon(painterResource(R.drawable.ic_info), contentDescription = stringResource(R.string.about_speed))
+        }
+    }
+}
+
+@Composable
+private fun SpeedHelpDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(stringResource(R.string.about_speed), modifier = Modifier.semantics { heading() })
+        },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Text(stringResource(R.string.speed_help_pace))
+                Text(stringResource(R.string.speed_help_paired))
+                Text(stringResource(R.string.speed_help_holds))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.done))
+            }
+        },
+    )
 }
 
 /** Sa, tuning, drone, levels, click, count-in and repeat. */
