@@ -10,8 +10,8 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: minimal
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.1.1"
+    CURRENT_PROJECT_VERSION: "2"
     # Static shared.framework produced by `./gradlew :shared:link<Type>FrameworkIos*`
     "FRAMEWORK_SEARCH_PATHS[sdk=iphoneos*]": ["$(inherited)", "$(SRCROOT)/../shared/build/bin/iosArm64/$(KOTLIN_BUILD_TYPE)Framework"]
     "FRAMEWORK_SEARCH_PATHS[sdk=iphonesimulator*]": ["$(inherited)", "$(SRCROOT)/../shared/build/bin/iosSimulatorArm64/$(KOTLIN_BUILD_TYPE)Framework"]
