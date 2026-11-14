@@ -15,6 +15,28 @@ final class PurandaraUITests: XCTestCase {
         return app
     }
 
+    /// After one pass of the first varisai, the run moves to the next one and
+    /// the player keeps playing (advancing must not call the leaving-player stop).
+    @MainActor func testRunAdvancesToTheNextVarisai() throws {
+        let app = launch()
+        let row = app.buttons["Practise Sarali Varisai, All 16 varisais, one after another"].firstMatch
+        for _ in 0..<10 where !(row.exists && row.isHittable) { app.swipeUp() }
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Sarali Varisai run"].waitForExistence(timeout: 5))
+        let start = app.buttons["Start practice"]
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: start)
+        wait(for: [enabled], timeout: 10)
+        start.tap()
+        XCTAssertTrue(app.staticTexts["Sarali Varisai · 1 of 16"].waitForExistence(timeout: 10))
+        // Default plan: speed 1, one pass, so the next varisai follows one pass and a count-in.
+        XCTAssertTrue(app.staticTexts["Sarali Varisai · 2 of 16"].waitForExistence(timeout: 70))
+        XCTAssertTrue(app.buttons["Stop"].exists, "the second varisai is still playing")
+        app.buttons["Stop"].tap()
+        // Stopping on Sarali 2 offers the resume point, not the first varisai.
+        XCTAssertTrue(app.buttons["Start from Sarali Varisai 2"].waitForExistence(timeout: 5))
+    }
+
     // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
     // are: mark each test (not the class, which would break the nonisolated
     // setUp override) and every helper they call.
@@ -44,6 +66,54 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(stop.exists)
         stop.tap()
         XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 3), "stop returns to Play")
+    }
+
+    /// A whole set as one run: plan it, change a speed and a repeat, start,
+    /// read the status, stop and return to the plan; both screens pass the audit.
+    @MainActor func testPractiseASetRunPassesAudit() throws {
+        let app = launch()
+        let row = app.buttons["Practise Sarali Varisai, All 16 varisais, one after another"].firstMatch
+        for _ in 0..<10 where !(row.exists && row.isHittable) { app.swipeUp() }
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Sarali Varisai run"].waitForExistence(timeout: 5))
+        try audit(app)
+
+        let start = app.buttons["Start practice"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: start)
+        wait(for: [enabled], timeout: 10)
+        // The first varisai at second kala, and one more pass for every varisai.
+        app.buttons["Second kala"].firstMatch.tap()
+        app.buttons["One more time"].firstMatch.tap()
+        start.tap()
+        XCTAssertTrue(app.staticTexts["Sarali Varisai · 1 of 16"].waitForExistence(timeout: 10))
+        try audit(app)
+
+        app.buttons["Stop"].tap()
+        XCTAssertTrue(app.buttons["Start practice"].waitForExistence(timeout: 5))
+    }
+
+    /// The run's mic toggle adds the live pitch lane; the synthetic singer
+    /// keeps the test off the simulator's microphone.
+    @MainActor func testRunSingAlongShowsThePitchLane() throws {
+        let app = launch(["-singer", "0"])
+        let row = app.buttons["Practise Sarali Varisai, All 16 varisais, one after another"].firstMatch
+        for _ in 0..<10 where !(row.exists && row.isHittable) { app.swipeUp() }
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Sarali Varisai run"].waitForExistence(timeout: 5))
+
+        let start = app.buttons["Start practice"]
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: start)
+        wait(for: [enabled], timeout: 10)
+        start.tap()
+        XCTAssertTrue(app.staticTexts["Sarali Varisai · 1 of 16"].waitForExistence(timeout: 10))
+        // The run now uses the normal player, whose mic button adds the pitch lane.
+        XCTAssertEqual(app.buttons["Sing along"].value as? String, "Off")
+        app.buttons["Sing along"].tap()
+        XCTAssertEqual(app.buttons["Sing along"].value as? String, "On")
+        XCTAssertTrue(app.otherElements["Your pitch"].waitForExistence(timeout: 5))
     }
 
     // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement

@@ -8,6 +8,14 @@ internal fun PracticeUiState.afterOutputChange(): PracticeUiState = copy(
     shruti = shruti.copy(listeningToRoom = false, reading = null, trace = emptyList(), hold = null),
     findSa = findSa.copy(progress = if (findSa.progress.suggestion != null) findSa.progress else FindSaProgress()),
     singAlong = singAlong.copy(live = null, pass = null),
+    // A run cannot carry on where the old output left it: offer its plan again.
+    run = run?.let {
+        if (it.phase == RunPhase.PLAYING) {
+            it.copy(phase = RunPhase.SETUP, startStep = it.step, pass = 0, kala = 1)
+        } else {
+            it
+        }
+    },
 )
 
 internal enum class BackgroundAudio { SHRUTI, FIND_SA, PLAYBACK, TANPURA }

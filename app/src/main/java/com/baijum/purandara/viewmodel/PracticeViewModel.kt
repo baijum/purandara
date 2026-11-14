@@ -35,6 +35,10 @@ import com.baijum.purandara.domain.varisai.PracticePhrases
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.practice.PracticeHistory
+import com.baijum.purandara.practice.PracticeMode
+import com.baijum.purandara.practice.PracticePolicy
+import com.baijum.purandara.practice.RecoveryMode
+import com.baijum.purandara.practice.RunPlans
 import com.baijum.purandara.shruti.FindSaGuide
 import com.baijum.purandara.shruti.HoldGoal
 import com.baijum.purandara.shruti.HoldTarget
@@ -92,6 +96,10 @@ data class PracticeUiState(
     val findSa: FindSaUiState = FindSaUiState(),
     /** Transient: only an explicit start can resume after an output change. */
     val outputChanged: Boolean = false,
+    /** The open practice run, if any (docs/plan-practice-run.md). */
+    val run: RunUiState? = null,
+    /** The saved plans, for the landing page's continue point. */
+    val runPlans: RunPlans = RunPlans(),
 )
 
 /**
@@ -105,10 +113,34 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     private val audioManager = application.getSystemService(AudioManager::class.java)
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val _state = MutableStateFlow(PracticeUiState(settings = preferences.load(), history = preferences.loadHistory()))
+    private val _state = MutableStateFlow(
+        PracticeUiState(
+            settings = preferences.load(),
+            history = preferences.loadHistory(),
+            runPlans = preferences.loadRunPlans(),
+        ),
+    )
     val state: StateFlow<PracticeUiState> = _state.asStateFlow()
 
     val catalog: List<Varisai> = VarisaiCatalog.all
+
+    /** Plans and plays a whole numbered varisai set as one run; the UI calls `viewModel.runs`. */
+    val runs: RunController = RunController(
+        catalog = catalog,
+        preferences = preferences,
+        host = RunController.Host(
+            settings = { _state.value.settings },
+            state = { _state.value },
+            update = { transform -> _state.update(transform) },
+            play = { varisai, kala ->
+                val next = _state.value.settings.copy(kala = kala)
+                preferences.save(next)
+                _state.update { it.copy(settings = next, selected = varisai, section = null, phrase = null) }
+                play(automaticRestart = true)
+            },
+            stopAll = { stop() },
+        ),
+    )
 
     private var bank: SampleBank? = null
     private var renderer: SampleRenderer? = null
@@ -440,7 +472,8 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         // The player offers a playable Sa instead; never build a schedule the samples can't play.
         if (settings.saMidi !in varisai.playableSaMidis) return
         val schedule = _state.value.practiceSchedule()
-        val r = SampleRenderer(bank, schedule, settings.renderOptions())
+        val runPlaying = _state.value.run?.phase == RunPhase.PLAYING
+        val r = SampleRenderer(bank, schedule, playerOptions(settings, runPlaying))
         renderer = r
         this.schedule = schedule
         if (!automaticRestart) practisedThisPlay = false
@@ -452,7 +485,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             )
         }
         val singAlong = settings.singAlong && (_state.value.singAlong.micPermitted || debugSyntheticSingerCents != null)
-        if (PracticePlayback.policy(settings, singAlong).needsTransport) {
+        if (needsTransport(settings, singAlong, runPlaying)) {
             practicePlayback.start(bank, schedule, settings, singAlong, automaticRestart)
             return
         }
@@ -491,17 +524,19 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
         val countInBeat = r.countInBeat(frames)
         val seconds = r.passSeconds(frames)
+        val attempt = ((frames - r.countInFrames).coerceAtLeast(0) / r.performanceFrames).toInt() + 1
         _state.update {
             it.copy(
                 playback = it.playback.copy(
                     countingIn = countInBeat != null,
                     phase = if (countInBeat != null) PracticePhase.COUNT_IN else PracticePhase.PLAYING,
-                    attempt = ((frames - r.countInFrames).coerceAtLeast(0) / r.performanceFrames).toInt() + 1,
+                    attempt = attempt,
                     position = if (countInBeat != null) null else schedule.cursorAt(seconds),
                     beatInAvarta = countInBeat ?: schedule.beatAt(seconds)?.beatInAvarta,
                 ),
             )
         }
+        if (_state.value.run?.phase == RunPhase.PLAYING) runs.onPlayerPass(attempt)
     }
 
     /** Debug synthetic singer for an exercise: the note being heard, silent in the count-in. */
@@ -629,3 +664,9 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         )
     }
 }
+
+private fun playerOptions(settings: PracticeSettings, runPlaying: Boolean): RenderOptions =
+    if (runPlaying) settings.renderOptions().copy(loop = true) else settings.renderOptions()
+
+private fun needsTransport(settings: PracticeSettings, singAlong: Boolean, runPlaying: Boolean): Boolean =
+    !runPlaying && PracticePlayback.policy(settings, singAlong).needsTransport

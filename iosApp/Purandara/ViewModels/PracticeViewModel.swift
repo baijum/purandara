@@ -23,6 +23,31 @@ struct PlaybackState: Equatable {
     var recovering: Bool { practicePhase == .recovery || practicePhase == .waiting }
 }
 
+enum RunPhase {
+    case setup, playing, complete
+}
+
+/// What the run screen shows (docs/plan-practice-run.md). Mirrors Android's `RunUiState`.
+struct RunUI {
+    var set: VarisaiSet
+    var phase: RunPhase
+    /// Every varisai in the set, in order, with its chosen speed and repeats.
+    var steps: [RunStep]
+    /// The varisai to start at next: the saved continue point, or the current one after a stop.
+    var startStep: Int
+    /// The varisai being sung (or the resume point in the setup screen).
+    var step: Int
+    /// 0-based repeat of the current kala while playing.
+    var pass = 0
+    /// The kala sounding now: the climb starts at 1.
+    var kala = 1
+    /// The whole run from `startStep`, for the estimate.
+    var totalSeconds: Double = 0
+
+    var current: RunStep? { steps.indices.contains(step) ? steps[step] : nil }
+    var stepCount: Int { steps.count }
+}
+
 /// Where a mark goes in the notation.
 struct MarkKey: Hashable {
     let avarta: Int
@@ -146,6 +171,10 @@ final class PracticeViewModel: ObservableObject {
     @Published private(set) var singAlong = SingAlongUI()
     /// What has been practised (landing page).
     @Published private(set) var history: PracticeHistory
+    /// The open practice run, if any (docs/plan-practice-run.md).
+    @Published private(set) var run: RunUI?
+    /// Saved run plans, for each set's continue point on the landing page.
+    @Published private(set) var runPlans: RunPlans
     /// The landing page's tanpura-only drone is sounding.
     @Published private(set) var tanpuraPlaying = false
     @Published private(set) var shruti = ShrutiUI()
@@ -170,6 +199,7 @@ final class PracticeViewModel: ObservableObject {
     private var acceptingTransportOutcomes = false
     private var transportStopRequested = false
     private var schedule: Schedule?
+    private var lastRunAttempt = 0
     private var timer: Timer?
     private var engine: SingAlongEngine?
     /// The exercise playing now has been heard through one full pass (recorded once per play).
@@ -192,6 +222,7 @@ final class PracticeViewModel: ObservableObject {
         self.store = store
         settings = store.load()
         history = store.loadHistory()
+        runPlans = store.loadRunPlans()
         #if DEBUG
         syntheticSingerCents = UserDefaults.standard.object(forKey: "singer") != nil
             ? UserDefaults.standard.double(forKey: "singer") : nil
@@ -259,14 +290,16 @@ final class PracticeViewModel: ObservableObject {
             ?? practiceSection.map { Schedule.companion.ofSection(varisai: varisai, settings: settings.performance(), section: $0) }
             ?? Schedule.companion.of(varisai: varisai, settings: settings.performance())
         if newLogicalPlay { practisedThisPlay = false }
-        if settings.usesTransport {
+        let runPlaying = run?.phase == .playing
+        if !runPlaying && settings.usesTransport {
             playTransport(varisai, bank: bank, schedule: schedule)
             return
         }
+        let options = runPlaying ? RenderOptions.companion.looping(options: settings.renderOptions()) : settings.renderOptions()
         let renderer = SampleRenderer(
             bank: bank,
             schedule: schedule,
-            options: settings.renderOptions())
+            options: options)
         current = varisai
         tanpuraPlaying = false
         self.schedule = schedule
@@ -509,6 +542,211 @@ final class PracticeViewModel: ObservableObject {
             return
         }
         tanpuraPlaying = true
+    }
+
+    // MARK: - Practice runs (docs/plan-practice-run.md)
+
+    /// Opens [set]'s plan at its saved continue point.
+    func openRun(_ set: VarisaiSet) {
+        guard set.practisesAsRun else { return }
+        stopImmediately()
+        let plan = runPlans.planFor(set: set, catalog: catalog)
+        let steps = runSteps(set: set, plan: plan)
+        guard !steps.isEmpty else { return }
+        let start = min(max(Int(plan.nextIndex), 0), steps.count - 1)
+        run = RunUI(set: set, phase: .setup, steps: steps, startStep: start, step: start,
+                    totalSeconds: estimateRun(set: set, steps: steps, start: start))
+    }
+
+    func closeRun() {
+        stopImmediately()
+        current = nil
+        run = nil
+    }
+
+    /// Back from the run: playing returns to the plan; the plan returns to the library.
+    func runBack() {
+        switch run?.phase {
+        case .playing: stopRun()
+        case .setup, .complete, .none: closeRun()
+        }
+    }
+
+    /// The screen went away (swipe back): stop the sound and forget the run.
+    func leaveRun() {
+        stopImmediately()
+        current = nil
+        run = nil
+    }
+
+    func setRunSpeed(index: Int, speed: Int) {
+        updateRunSteps { steps in
+            guard steps.indices.contains(index) else { return steps }
+            return steps.enumerated().map { i, step in
+                i == index ? RunStep(varisai: step.varisai, speed: Self.clampedSpeed(speed), repeats: step.repeats) : step
+            }
+        }
+    }
+
+    func setRunRepeats(index: Int, repeats: Int) {
+        updateRunSteps { steps in
+            guard steps.indices.contains(index) else { return steps }
+            return steps.enumerated().map { i, step in
+                i == index ? RunStep(varisai: step.varisai, speed: step.speed, repeats: Self.clampedRepeats(repeats)) : step
+            }
+        }
+    }
+
+    func applyRunSpeed(_ speed: Int) {
+        updateRunSteps { steps in
+            steps.map { RunStep(varisai: $0.varisai, speed: Self.clampedSpeed(speed), repeats: $0.repeats) }
+        }
+    }
+
+    func applyRunRepeats(_ repeats: Int) {
+        updateRunSteps { steps in
+            steps.map { RunStep(varisai: $0.varisai, speed: $0.speed, repeats: Self.clampedRepeats(repeats)) }
+        }
+    }
+
+    func startRun(from: Int) {
+        playRunStep(from, kala: 1)
+    }
+
+    /// Stop the run and return to its plan with the current varisai as the resume point.
+    func stopRun() {
+        guard var run, run.phase == .playing else { return }
+        stopImmediately()
+        current = nil
+        persistRun(run.set, run.steps, run.step)
+        run.phase = .setup
+        run.startStep = run.step
+        run.kala = 1
+        run.pass = 0
+        self.run = run
+    }
+
+    /// Skip the rest of this varisai and start the next one from first kala.
+    func skipRunStep() {
+        guard let run, run.phase == .playing else { return }
+        if run.step >= run.steps.count - 1 {
+            completeRun()
+        } else {
+            playRunStep(run.step + 1, kala: 1)
+        }
+    }
+
+    func practiseAgain() {
+        guard run?.phase == .complete else { return }
+        playRunStep(0, kala: 1)
+    }
+
+    /// The player started its [attempt]-th (1-based) loop pass of the current kala.
+    private func onRunPass(_ attempt: Int) {
+        guard var run, run.phase == .playing, attempt > 0 else { return }
+        if attempt < lastRunAttempt {
+            lastRunAttempt = attempt
+            run.pass = attempt - 1
+            self.run = run
+            return
+        }
+        guard attempt > lastRunAttempt else { return }
+        lastRunAttempt = attempt
+        guard run.steps.indices.contains(run.step) else { return }
+        let step = run.steps[run.step]
+        if attempt > step.repeats {
+            advanceRun()
+        } else {
+            run.pass = attempt - 1
+            self.run = run
+        }
+    }
+
+    private func advanceRun() {
+        guard let run, run.steps.indices.contains(run.step) else { return }
+        let step = run.steps[run.step]
+        if run.kala < step.speed {
+            playRunStep(run.step, kala: run.kala + 1)
+        } else if run.step < run.steps.count - 1 {
+            playRunStep(run.step + 1, kala: 1)
+        } else {
+            completeRun()
+        }
+    }
+
+    /// Hand [step]'s varisai to the normal player at [kala]; the player loops its passes.
+    private func playRunStep(_ step: Int, kala: Int) {
+        guard var run, run.steps.indices.contains(step) else { return }
+        stopImmediately()
+        current = nil
+        practiceSection = nil
+        practicePhrase = nil
+        var next = settings
+        next.kala = kala
+        settings = next
+        lastRunAttempt = 0
+        run.phase = .playing
+        run.step = step
+        run.startStep = step
+        run.kala = kala
+        run.pass = 0
+        self.run = run
+        persistRun(run.set, run.steps, step)
+        playExercise(run.steps[step].varisai)
+    }
+
+    private func completeRun() {
+        guard var run, run.phase == .playing else { return }
+        stopImmediately()
+        current = nil
+        persistRun(run.set, run.steps, 0)
+        run.phase = .complete
+        run.step = 0
+        run.startStep = 0
+        run.kala = 1
+        run.pass = 0
+        self.run = run
+    }
+
+    private func updateRunSteps(_ transform: ([RunStep]) -> [RunStep]) {
+        guard var run, run.phase == .setup else { return }
+        let steps = transform(run.steps)
+        run.steps = steps
+        run.totalSeconds = estimateRun(set: run.set, steps: steps, start: run.startStep)
+        self.run = run
+        persistRun(run.set, steps, run.startStep)
+    }
+
+    private func persistRun(_ set: VarisaiSet, _ steps: [RunStep], _ nextIndex: Int) {
+        let entries = steps.map { RunEntry.companion.create(varisaiId: $0.varisai.id, speed: $0.speed, repeats: $0.repeats) }
+        let plan = RunPlan.companion.create(set: set.name, nextIndex: Int32(nextIndex), entries: entries)
+        let plans = runPlans.with(plan: plan)
+        store.saveRunPlans(plans)
+        runPlans = plans
+    }
+
+    private func runSteps(set: VarisaiSet, plan: RunPlan) -> [RunStep] {
+        catalog.filter { $0.set == set }.enumerated().map { index, varisai in
+            let entry = plan.entries.indices.contains(index) ? plan.entries[index] : nil
+            return RunStep(varisai: varisai,
+                           speed: Self.clampedSpeed(Int(entry?.speed ?? 1)),
+                           repeats: Self.clampedRepeats(Int(entry?.repeats ?? 1)))
+        }
+    }
+
+    private func estimateRun(set: VarisaiSet, steps: [RunStep], start: Int) -> Double {
+        guard !steps.isEmpty else { return 0 }
+        let run = PracticeRun(set: set, steps: steps, startIndex: Int32(min(max(start, 0), steps.count - 1)),
+                              settings: settings.performance(), countIn: settings.countIn)
+        return run.totalSeconds
+    }
+
+    private static func clampedSpeed(_ speed: Int) -> Int32 {
+        Int32(min(max(speed, PracticeSettings.kalaRange.lowerBound), PracticeSettings.kalaRange.upperBound))
+    }
+
+    private static func clampedRepeats(_ repeats: Int) -> Int32 {
+        Int32(min(max(repeats, 1), Int(RunEntry.companion.MAX_REPEATS)))
     }
 
     // MARK: - Shruti practice and Find my Sa (docs/plan-shruti.md)
@@ -757,6 +995,12 @@ final class PracticeViewModel: ObservableObject {
         history = PracticeHistory(records: [])
         store.saveHistory(history)
     }
+
+    /// UI tests also start without saved run plans.
+    func resetRunPlans() {
+        runPlans = RunPlans(plans: [])
+        store.saveRunPlans(runPlans)
+    }
     #endif
 
     private func updateHistory(_ transform: (PracticeHistory) -> PracticeHistory) {
@@ -811,6 +1055,13 @@ final class PracticeViewModel: ObservableObject {
         outputChanged = true
         resumeAfterBackground = nil
         stopImmediately()
+        if var run, run.phase == .playing {
+            run.phase = .setup
+            run.startStep = run.step
+            run.kala = 1
+            run.pass = 0
+            self.run = run
+        }
         shruti.listeningToRoom = false
         shruti.reading = nil
         shruti.trace = []
@@ -914,7 +1165,9 @@ final class PracticeViewModel: ObservableObject {
         let countInBeat = renderer.countInBeat(frame: frames).map { Int(truncating: $0) }
         let seconds = renderer.passSeconds(frame: frames)
         let position = countInBeat == nil ? schedule.cursorAt(seconds: seconds) : nil
+        let attempt = max(1, Int((frames - Int64(renderer.countInFrames)) / Int64(renderer.performanceFrames)) + 1)
         var next = playback
+        next.attempt = attempt
         next.countingIn = countInBeat != nil
         next.repetition = position.map { Int($0.repetition) }
         next.avarta = position.map { Int($0.avarta) }
@@ -922,6 +1175,7 @@ final class PracticeViewModel: ObservableObject {
         next.slot = position.map { Int($0.slot) }
         next.beatInAvarta = countInBeat ?? schedule.beatAt(seconds: seconds).map { Int($0.beatInAvarta) }
         if next != playback { playback = next }
+        if run?.phase == .playing { onRunPass(attempt) }
     }
 
     // MARK: - Sing along

@@ -18,4 +18,6 @@ class PlayerActions(
     val onContinue: () -> Unit = {},
     val onWaitForMe: () -> Unit = {},
     val onSelectPhrase: (PracticePhrase?) -> Unit = {},
+    /** In a run: skip the rest of this varisai and start the next one. */
+    val onSkipRun: () -> Unit = {},
 )

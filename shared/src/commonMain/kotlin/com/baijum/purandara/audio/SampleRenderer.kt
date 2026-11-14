@@ -94,6 +94,13 @@ data class RenderOptions(
         )
 
         /**
+         * The same mix, looping: a practice run repeats the current kala
+         * until its passes are done. For callers without default arguments
+         * (Swift).
+         */
+        fun looping(options: RenderOptions): RenderOptions = options.copy(loop = true)
+
+        /**
          * The tanpura alone, looping until faded out, for tuning the voice
          * before practice: render with any schedule at the student's Sa.
          */

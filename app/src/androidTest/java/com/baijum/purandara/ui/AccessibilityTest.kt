@@ -27,7 +27,9 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -43,16 +45,22 @@ import com.baijum.purandara.practice.PracticeMode
 import com.baijum.purandara.practice.RecoveryMode
 import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
+import com.baijum.purandara.domain.varisai.VarisaiSet
 import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.ui.library.LibraryActions
 import com.baijum.purandara.ui.library.LibraryScreen
 import com.baijum.purandara.ui.library.LibraryState
 import com.baijum.purandara.practice.PracticeHistory
+import com.baijum.purandara.practice.RunStep
 import com.baijum.purandara.ui.player.PlayerActions
 import com.baijum.purandara.ui.player.PlayerScreen
+import com.baijum.purandara.ui.run.RunActions
+import com.baijum.purandara.ui.run.RunScreen
 import com.baijum.purandara.ui.theme.PurandaraTheme
 import com.baijum.purandara.viewmodel.PlaybackState
 import com.baijum.purandara.viewmodel.PracticeUiState
+import com.baijum.purandara.viewmodel.RunPhase
+import com.baijum.purandara.viewmodel.RunUiState
 import com.baijum.purandara.viewmodel.SingAlongState
 import com.baijum.purandara.viewmodel.MarkKey
 import com.baijum.purandara.domain.Note
@@ -92,6 +100,8 @@ class AccessibilityTest {
     private var settings by mutableStateOf(PracticeSettings())
     private var singAlongToggled = 0
     private var sectionPicked: String? = null
+    private var runSpeedApplied: Int? = null
+    private var runRepeatsApplied: Int? = null
 
     private fun showPlayer(
         playback: PlaybackState = PlaybackState(),
@@ -119,6 +129,139 @@ class AccessibilityTest {
                 }
             }
         }
+    }
+
+    private fun runSteps(count: Int = 3): List<RunStep> =
+        VarisaiCatalog.all.filter { it.set == VarisaiSet.SARALI }.take(count)
+            .mapIndexed { i, varisai -> RunStep(varisai, speed = 1 + i % 4, repeats = 2) }
+
+    private fun showRun(
+        run: RunUiState,
+        fontScale: Float? = null,
+        singAlong: SingAlongState = SingAlongState(),
+    ) {
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale ?: density.fontScale)) {
+                PurandaraTheme {
+                    RunScreen(
+                        state = PracticeUiState(settings = settings, samplesLoaded = true, run = run, singAlong = singAlong),
+                        actions = RunActions(
+                            onBack = {},
+                            onApplySpeed = { runSpeedApplied = it },
+                            onApplyRepeats = { runRepeatsApplied = it },
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    private fun showRunPlayer(
+        run: RunUiState,
+        singAlong: SingAlongState = SingAlongState(),
+        onSkipRun: () -> Unit = {},
+    ) {
+        compose.setContent {
+            PurandaraTheme {
+                PlayerScreen(
+                    varisai = requireNotNull(run.current).varisai,
+                    state = PracticeUiState(
+                        settings = settings, samplesLoaded = true, run = run,
+                        playback = PlaybackState(playing = true), singAlong = singAlong,
+                    ),
+                    actions = PlayerActions(
+                        onBack = {},
+                        onTogglePlay = {},
+                        onSettingsChange = { settings = it(settings) },
+                        onSkipRun = onSkipRun,
+                    ),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun runSetupKeepsEachVarisaiSpeedAndRepeatsSeparate() {
+        val steps = runSteps()
+        showRun(RunUiState(VarisaiSet.SARALI, RunPhase.SETUP, steps, 0, 0, totalSeconds = 120.0))
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        compose.onNode(hasText("Set every varisai to speed") and heading).assertExists()
+        assertTouchTarget(compose.onNodeWithContentDescription("Set every varisai to speed 3").assertHasClickAction().performClick())
+        assertEquals(3, runSpeedApplied)
+        // One speed group per varisai, plus the "set every varisai" buttons.
+        compose.onAllNodesWithContentDescription("First kala").assertCountEquals(steps.size)
+        compose.onAllNodesWithContentDescription("One more time").assertCountEquals(steps.size + 1)
+        // The bulk control comes first and applies to every varisai.
+        compose.onAllNodesWithContentDescription("One more time").onFirst().assertHasClickAction().performClick()
+        assertEquals(4, runRepeatsApplied)
+        assertTouchTarget(compose.onNodeWithText("Start practice").assertHasClickAction())
+        compose.onNodeWithText("about 2 minutes").assertExists()
+    }
+
+    @Test
+    fun runSetupShowsTheSavedContinuePoint() {
+        val steps = runSteps()
+        showRun(RunUiState(VarisaiSet.SARALI, RunPhase.SETUP, steps, 1, 1, totalSeconds = 120.0))
+        assertTouchTarget(compose.onNodeWithText("Start from Sarali Varisai 2").assertHasClickAction())
+        assertTouchTarget(compose.onNodeWithText("Start from the beginning").assertHasClickAction())
+    }
+
+    @Test
+    fun runSetupRemainsUsableAtLargeTextSizes() {
+        showRun(RunUiState(VarisaiSet.SARALI, RunPhase.SETUP, runSteps(), 0, 0, totalSeconds = 120.0), fontScale = 2f)
+        assertTouchTarget(compose.onNodeWithText("Start practice").assertIsDisplayed())
+        compose.onNodeWithText("Set every varisai to speed").performScrollTo().assertIsDisplayed()
+        captureScreenshot("run-setup-large-text")
+    }
+
+    @Test
+    fun runPlayingShowsTheBannerInTheNormalPlayer() {
+        var skipped = 0
+        showRunPlayer(
+            RunUiState(VarisaiSet.SARALI, RunPhase.PLAYING, runSteps(), 0, 1, pass = 1, kala = 2, totalSeconds = 120.0),
+            onSkipRun = { skipped++ },
+        )
+        compose.onNodeWithText("Sarali Varisai · 2 of 3").assertIsDisplayed()
+        compose.onNodeWithText("Second kala · Pass 2 of 2").assertIsDisplayed()
+        assertTouchTarget(compose.onNodeWithText("Stop").assertHasClickAction())
+        assertTouchTarget(compose.onNodeWithContentDescription("Skip to the next varisai").assertHasClickAction().performClick())
+        assertEquals(1, skipped)
+    }
+
+    @Test
+    fun runPlayingShowsTheLivePitchLaneWhenSingAlongIsOn() {
+        settings = settings.copy(singAlong = true)
+        val sa = settings.saHz
+        showRunPlayer(
+            RunUiState(VarisaiSet.SARALI, RunPhase.PLAYING, runSteps(), 0, 0, totalSeconds = 120.0),
+            singAlong = SingAlongState(
+                micPermitted = true,
+                live = SwaraMapper(sa, VarisaiCatalog.raga, settings.tuning).read(sa),
+                pass = 0,
+                trace = emptyList(),
+                onSpeaker = false,
+            ),
+        )
+        compose.onNodeWithContentDescription("Your pitch").assertExists()
+    }
+
+    @Test
+    fun runCompleteOffersAgainAndDone() {
+        showRun(RunUiState(VarisaiSet.SARALI, RunPhase.COMPLETE, runSteps(), 0, 0, totalSeconds = 120.0))
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        compose.onNode(hasText("Sarali Varisai complete") and heading).assertIsDisplayed()
+        compose.onNodeWithText("3 varisais, one after another.").assertIsDisplayed()
+        assertTouchTarget(compose.onNodeWithText("Practise again").assertHasClickAction())
+        assertTouchTarget(compose.onNodeWithText("Done").assertHasClickAction())
+    }
+
+    @Test
+    fun landingPageOffersOneRunThroughEachVarisaiSet() {
+        showLibrary()
+        val row = hasContentDescription("Practise Sarali Varisai, All 16 varisais, one after another")
+        compose.onNode(hasScrollAction()).performScrollToNode(row)
+        assertTouchTarget(compose.onNode(row).assertHasClickAction())
     }
 
     @Test

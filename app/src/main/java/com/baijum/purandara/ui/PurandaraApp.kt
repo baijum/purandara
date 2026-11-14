@@ -25,11 +25,14 @@ import com.baijum.purandara.ui.library.LibraryScreen
 import com.baijum.purandara.ui.library.LibraryState
 import com.baijum.purandara.ui.player.PlayerActions
 import com.baijum.purandara.ui.player.PlayerScreen
+import com.baijum.purandara.ui.run.RunActions
+import com.baijum.purandara.ui.run.RunScreen
 import com.baijum.purandara.ui.shruti.FindSaActions
 import com.baijum.purandara.ui.shruti.FindSaScreen
 import com.baijum.purandara.ui.shruti.ShrutiActions
 import com.baijum.purandara.ui.shruti.ShrutiScreen
 import com.baijum.purandara.viewmodel.PracticeUiState
+import com.baijum.purandara.viewmodel.RunPhase
 import com.baijum.purandara.viewmodel.PracticeViewModel
 
 /** Top-level navigation: the exercise library, or the player for the selected exercise. */
@@ -60,6 +63,8 @@ fun PurandaraApp(viewModel: PracticeViewModel) {
     when {
         state.shruti.open -> ShrutiRoute(viewModel, state, allowMic)
         state.findSa.open -> FindSaRoute(viewModel, state, allowMic)
+        state.run?.phase == RunPhase.PLAYING -> PlayerRoute(viewModel, state, micDenied, runMode = true) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
+        state.run != null -> RunRoute(viewModel, state)
         state.selected == null -> LibraryRoute(viewModel, state)
         else -> PlayerRoute(viewModel, state, micDenied) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
     }
@@ -119,6 +124,7 @@ private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState) {
             tanpuraPlaying = state.tanpuraPlaying,
             samplesLoaded = state.samplesLoaded,
             loadError = state.loadError,
+            runPlans = state.runPlans,
         ),
         actions = LibraryActions(
             onSelect = { varisai -> viewModel.select(varisai) },
@@ -126,27 +132,47 @@ private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState) {
             onSaChange = { midi -> viewModel.updateSettings { it.copy(saMidi = midi) } },
             onOpenShruti = viewModel::openShruti,
             onFindSa = viewModel::openFindSa,
+            onOpenRun = viewModel.runs::open,
         ),
     )
 }
 
 @Composable
-private fun PlayerRoute(viewModel: PracticeViewModel, state: PracticeUiState, micDenied: Boolean, requestMic: () -> Unit) {
+private fun RunRoute(viewModel: PracticeViewModel, state: PracticeUiState) {
+    BackHandler { viewModel.runs.back() }
+    RunScreen(
+        state = state,
+        actions = RunActions(
+            onBack = viewModel.runs::back,
+            onSetSpeed = viewModel.runs::setSpeed,
+            onSetRepeats = viewModel.runs::setRepeats,
+            onApplySpeed = viewModel.runs::applySpeed,
+            onApplyRepeats = viewModel.runs::applyRepeats,
+            onStart = viewModel.runs::start,
+            onAgain = viewModel.runs::again,
+            onDone = viewModel.runs::close,
+        ),
+    )
+}
+
+@Composable
+private fun PlayerRoute(viewModel: PracticeViewModel, state: PracticeUiState, micDenied: Boolean, runMode: Boolean = false, requestMic: () -> Unit) {
     val context = LocalContext.current
     val selected = state.selected ?: return
-    BackHandler { viewModel.select(null) }
+    BackHandler { if (runMode) viewModel.runs.back() else viewModel.select(null) }
     PlayerScreen(
         varisai = selected,
         state = state,
         micDenied = micDenied,
         actions = PlayerActions(
-            onBack = { viewModel.select(null) },
-            onTogglePlay = viewModel::togglePlay,
+            onBack = { if (runMode) viewModel.runs.back() else viewModel.select(null) },
+            onTogglePlay = { if (runMode) viewModel.runs.stop() else viewModel.togglePlay() },
             onSettingsChange = viewModel::updateSettings,
             onContinue = { viewModel.continuePractice() },
             onWaitForMe = { viewModel.continuePractice(waitForMe = true) },
-            onSelectSection = { section -> viewModel.select(selected, section) },
-            onSelectPhrase = { phrase -> viewModel.select(selected, phrase = phrase) },
+            onSelectSection = { section -> if (!runMode) viewModel.select(selected, section) },
+            onSelectPhrase = { phrase -> if (!runMode) viewModel.select(selected, phrase = phrase) },
+            onSkipRun = { if (runMode) viewModel.runs.skip() },
             onToggleSingAlong = {
                 when {
                     state.settings.singAlong -> viewModel.updateSettings { it.copy(singAlong = false) }

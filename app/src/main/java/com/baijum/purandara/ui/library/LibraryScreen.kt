@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -100,26 +101,48 @@ fun LibraryScreen(
                 !state.samplesLoaded -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
             LazyColumn(Modifier.fillMaxSize()) {
-                item(key = "continue") { ContinueCard(catalog, history, nowMillis, compact, actions.onSelect) }
-                item(key = "sa") { SaCard(state, actions) }
-                catalog.groupBy { it.set }.forEach { (set, exercises) ->
-                    stickyHeader(key = set.name) {
-                        SetHeader(set, history.practisedCount(set, catalog), exercises.size)
-                    }
-                    item(key = set.name + "-about") {
-                        Text(
-                            set.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                        )
-                    }
-                    items(exercises, key = { it.id }) { varisai ->
-                        ExerciseRow(varisai, history[varisai.id], compact) { actions.onSelect(varisai) }
-                        HorizontalDivider()
-                    }
-                }
+                libraryItems(catalog, state, actions, compact, nowMillis)
             }
+        }
+    }
+}
+
+private fun LazyListScope.libraryItems(
+    catalog: List<Varisai>,
+    state: LibraryState,
+    actions: LibraryActions,
+    compact: Boolean,
+    nowMillis: Long,
+) {
+    val history = state.history
+    item(key = "continue") { ContinueCard(catalog, history, nowMillis, compact, actions.onSelect) }
+    item(key = "sa") { SaCard(state, actions) }
+    catalog.groupBy { it.set }.forEach { (set, exercises) ->
+        stickyHeader(key = set.name) {
+            SetHeader(set, history.practisedCount(set, catalog), exercises.size)
+        }
+        item(key = set.name + "-about") {
+            Text(
+                set.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+            )
+        }
+        if (set.practisesAsRun) {
+            item(key = set.name + "-run") {
+                RunSetRow(
+                    set = set,
+                    total = exercises.size,
+                    nextIndex = state.runPlans.planFor(set, catalog).nextIndex,
+                    onClick = { actions.onOpenRun(set) },
+                )
+                HorizontalDivider()
+            }
+        }
+        items(exercises, key = { it.id }) { varisai ->
+            ExerciseRow(varisai, history[varisai.id], compact) { actions.onSelect(varisai) }
+            HorizontalDivider()
         }
     }
 }
@@ -228,6 +251,45 @@ private fun SaCard(state: LibraryState, actions: LibraryActions) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/** "Practise Sarali Varisai 1–16": one continuous run through a set, with its saved continue point. */
+@Composable
+private fun RunSetRow(set: VarisaiSet, total: Int, nextIndex: Int, onClick: () -> Unit) {
+    val resuming = nextIndex > 0
+    val title = if (resuming) {
+        stringResource(R.string.run_continue, set.title)
+    } else {
+        stringResource(R.string.run_practise_set, set.title)
+    }
+    val detail = if (resuming) {
+        stringResource(R.string.run_continue_from, nextIndex + 1, total)
+    } else {
+        stringResource(R.string.run_practise_set_detail, total)
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clearAndSetSemantics {
+                contentDescription = "$title, $detail"
+                role = Role.Button
+            },
+    ) {
+        Icon(painterResource(R.drawable.ic_play), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null)
     }
 }
 

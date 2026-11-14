@@ -13,7 +13,8 @@ gitams, swarajatis and varnams (`docs/plan-gitam-swarajati-varnam.md`: the
 varnam stage is built — rests, per-section speed, the two-kalai strip and
 all four varnams; they wait on their second-source checks, issue #7), and
 the notation laid out by tala cycle at every speed
-(`docs/plan-speed-layout.md`). On the website: search (`docs/plan-site-search.md`)
+(`docs/plan-speed-layout.md`) and practice runs through a whole varisai set
+(`docs/plan-practice-run.md`). On the website: search (`docs/plan-site-search.md`)
 and the Learn section, beginner theory for learners (`docs/plan-learn.md`).
 New features are planned and discussed before they are built; do not add
 features speculatively.
@@ -34,7 +35,9 @@ features speculatively.
   [`docs/plan-shruti.md`](docs/plan-shruti.md),
   [`docs/plan-alankaram-gitam.md`](docs/plan-alankaram-gitam.md),
   [`docs/plan-gitam-swarajati-varnam.md`](docs/plan-gitam-swarajati-varnam.md) and
-  [`docs/plan-speed-layout.md`](docs/plan-speed-layout.md) (and, for the website,
+  [`docs/plan-speed-layout.md`](docs/plan-speed-layout.md) and
+  [`docs/plan-practice-run.md`](docs/plan-practice-run.md) (a whole varisai set
+  in one run) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
@@ -105,17 +108,17 @@ features speculatively.
 | `shared/.../domain/varisai/NotationLayout.kt` | The notation by tala cycle at the chosen speed (`forPractice`): cycles → rows → beat groups of `CellRef`s, `locate` for the highlight, speech with commas at the angas. Both apps draw the notation and the mirrored tala strip from it (`BeatRow`; iOS `ColumnsLayout`) |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
 | `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` + `FindSaGuide` (Find my Sa) |
-| `shared/.../practice/` | `PracticeHistory`: practised / best sing-along per exercise, continue and next up (stored on device as JSON) |
+| `shared/.../practice/` | `PracticeHistory`: practised / best sing-along per exercise, continue and next up (stored on device as JSON); `PracticeRun` and `RunPlans`: a set’s run plan (each varisai climbs from first kala to its speed, repeated per kala), saved continue point and the run’s time model (docs/plan-practice-run.md) |
 | `shared/.../domain/schedule/` | `Schedule`: timed note/beat/cursor events, `cursorAt`/`beatAt`; `ofSection` plays one section (`Varisai.sections`) with the piece's avarta numbers |
 | `shared/.../audio/` | `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output) |
 | `shared/.../pitch/` | `PitchDetector` (YIN), `AudioResampler`, `NeuralArbitrator`: ported from ukulele-companion with the interpolation sign fix |
 | `shared/.../singalong/` | `PitchPipeline`, `SwaraMapper` (+ `Zone`, `Strictness`), `SingAlongClock`, `BleedModel` (room noise + leakage), `NoteScorer`, `SingAlongSession`: sing-along scoring |
 | `app/.../audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (`AudioTrack` on a worker thread) |
 | `app/.../audio/` (sing-along) | `MicSource` (`AudioRecordMicSource` with echo cancellation; debug-only `SyntheticSingerMicSource`), `SingAlongEngine`, `PitchListener` (Shruti practice, Find my Sa), `NeuralPitchSupervisor` |
-| `app/.../viewmodel/` | `PracticeViewModel`, `SingAlongState`, `ShrutiState` |
-| `app/.../ui/` | `PurandaraApp` (routes: landing, player, Shruti practice, Find my Sa), `library/` (landing page), `player/`, `shruti/`, `SaControls.kt` (Sa picker, fine-tune, strictness) |
+| `app/.../viewmodel/` | `PracticeViewModel`, `RunController` + `RunState` (a run sequences the normal player through its kalas and repeats), `SingAlongState`, `ShrutiState` |
+| `app/.../ui/` | `PurandaraApp` (routes: landing, player, Shruti practice, Find my Sa, practice run), `library/` (landing page, including each set’s run row), `player/`, `run/` (setup and complete; playing uses the player with a run banner), `shruti/`, `SaControls.kt` (Sa picker, fine-tune, strictness) |
 | `iosApp/Purandara/Audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (renders ahead on a queue into `AVAudioPlayerNode` buffers; no Kotlin on the real-time thread) |
-| `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel`; `LibraryView` (landing page: continue, Sa + tanpura, sets with contours), `PlayerView` (+ settings sheet, `SaChoiceList`), `NotationView` (+ `TalaStripView`), `SingAlongViews`, `ShrutiView` (Shruti practice, Find my Sa) |
+| `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel` (including `RunUI`); `LibraryView` (landing page: continue, Sa + tanpura, sets with contours and run rows), `PlayerView` (+ settings sheet, `SaChoiceList`), `RunView` (run plan and complete; playing uses `PlayerView` with a run banner), `NotationView` (+ `TalaStripView`), `SingAlongViews`, `ShrutiView` (Shruti practice, Find my Sa) |
 | `iosApp/Purandara/Audio/PitchListener.swift` | Mic tap buffers (on the player's engine, for echo cancellation) → windows → pitch frames; debug synthetic singer. Used by `SingAlongEngine`, Shruti practice and Find my Sa |
 | `shared/.../singalong/Display.kt` | Swara labels (R₁, S′) and mark glyphs shared by both apps |
 | `shared/.../singalong/PitchLane.kt` | The sing-along pitch lane's swara lines and range, from the piece's own notes |

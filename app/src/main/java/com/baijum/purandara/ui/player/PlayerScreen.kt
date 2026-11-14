@@ -82,6 +82,7 @@ import com.baijum.purandara.domain.varisai.NotationLayout
 import com.baijum.purandara.domain.varisai.SectionSpan
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.viewmodel.PlaybackState
+import com.baijum.purandara.viewmodel.RunUiState
 import com.baijum.purandara.viewmodel.PracticeUiState
 import kotlin.math.roundToInt
 
@@ -124,6 +125,7 @@ fun PlayerScreen(
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             RagaTalaLine(varisai, state.section, actions.onSelectSection)
+            state.run?.let { run -> if (run.phase == com.baijum.purandara.viewmodel.RunPhase.PLAYING) RunBanner(run, actions.onSkipRun) }
             ReviewedPhrasePicker(varisai, state.phrase, actions.onSelectPhrase)
             TalaStrip(
                 beatInAvarta = playback.beatInAvarta,
@@ -146,16 +148,76 @@ fun PlayerScreen(
             )
             PlaybackStatus(playback, saLabel(settings.saMidi, settings.saCents))
             HorizontalDivider()
-            QuickControls(settings, actions.onSettingsChange, Modifier.padding(16.dp))
+            QuickControls(settings, actions.onSettingsChange, Modifier.padding(16.dp), showSpeed = state.run == null)
         }
     }
-    if (showSettings) {
-        ModalBottomSheet(onDismissRequest = { showSettings = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-            PracticeSettingsSheet(
-                settings = settings,
-                onSettingsChange = actions.onSettingsChange,
-                modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp),
-            )
+    PlayerSettingsSheetHost(
+        show = showSettings,
+        settings = settings,
+        onSettingsChange = actions.onSettingsChange,
+        runMode = state.run != null,
+        onDismiss = { showSettings = false },
+    )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun PlayerSettingsSheetHost(
+    show: Boolean,
+    settings: PracticeSettings,
+    onSettingsChange: ((PracticeSettings) -> PracticeSettings) -> Unit,
+    runMode: Boolean,
+    onDismiss: () -> Unit,
+) {
+    if (!show) return
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        PracticeSettingsSheet(
+            settings = settings,
+            onSettingsChange = onSettingsChange,
+            runMode = runMode,
+            modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp),
+        )
+    }
+}
+
+/** The run's position over the normal player: set, varisai, kala and pass, with Skip. */
+@Composable
+private fun RunBanner(run: RunUiState, onSkip: () -> Unit) {
+    val step = run.current ?: return
+    val kala = stringResource(
+        when (run.kala) {
+            1 -> R.string.kala_1
+            2 -> R.string.kala_2
+            3 -> R.string.kala_3
+            else -> R.string.kala_4
+        },
+    )
+    val skipLabel = stringResource(R.string.run_skip)
+    Surface(
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = MaterialTheme.shapes.medium,
+    ) {
+        Row(
+            Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.run_banner, run.set.shortTitle, run.step + 1, run.steps.size),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    "$kala · ${stringResource(R.string.pass_of, maxOf(1, run.pass + 1), step.repeats)}",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            TextButton(
+                onClick = onSkip,
+                modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = skipLabel },
+            ) {
+                Text(stringResource(R.string.run_skip_short), modifier = Modifier.clearAndSetSemantics {})
+            }
         }
     }
 }
@@ -322,20 +384,23 @@ private fun QuickControls(
     settings: PracticeSettings,
     onSettingsChange: ((PracticeSettings) -> PracticeSettings) -> Unit,
     modifier: Modifier = Modifier,
+    showSpeed: Boolean = true,
 ) {
     var showSpeedHelp by rememberSaveable { mutableStateOf(false) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TempoControl(settings.tempo) { tempo -> onSettingsChange { it.copy(tempo = tempo) } }
-        SpeedHeading(settings.performance().aksharasPerBeat, onAboutSpeed = { showSpeedHelp = true })
-        val kalaNames = listOf(R.string.kala_1, R.string.kala_2, R.string.kala_3, R.string.kala_4).map { stringResource(it) }
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            PerformanceSettings.KALA_RANGE.forEachIndexed { i, kala ->
-                SegmentedButton(
-                    selected = settings.kala == kala,
-                    onClick = { onSettingsChange { it.copy(kala = kala) } },
-                    shape = SegmentedButtonDefaults.itemShape(i, PerformanceSettings.KALA_RANGE.count()),
-                    modifier = Modifier.semantics { contentDescription = kalaNames[i] },
-                ) { Text("$kala", modifier = Modifier.clearAndSetSemantics {}) }
+        if (showSpeed) {
+            SpeedHeading(settings.performance().aksharasPerBeat, onAboutSpeed = { showSpeedHelp = true })
+            val kalaNames = listOf(R.string.kala_1, R.string.kala_2, R.string.kala_3, R.string.kala_4).map { stringResource(it) }
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                PerformanceSettings.KALA_RANGE.forEachIndexed { i, kala ->
+                    SegmentedButton(
+                        selected = settings.kala == kala,
+                        onClick = { onSettingsChange { it.copy(kala = kala) } },
+                        shape = SegmentedButtonDefaults.itemShape(i, PerformanceSettings.KALA_RANGE.count()),
+                        modifier = Modifier.semantics { contentDescription = kalaNames[i] },
+                    ) { Text("$kala", modifier = Modifier.clearAndSetSemantics {}) }
+                }
             }
         }
     }
@@ -392,6 +457,7 @@ private fun PracticeSettingsSheet(
     settings: PracticeSettings,
     onSettingsChange: ((PracticeSettings) -> PracticeSettings) -> Unit,
     modifier: Modifier = Modifier,
+    runMode: Boolean = false,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
@@ -443,8 +509,10 @@ private fun PracticeSettingsSheet(
         )
         ToggleRow(stringResource(R.string.click), settings.click) { on -> onSettingsChange { it.copy(click = on) } }
         ToggleRow(stringResource(R.string.count_in), settings.countIn) { on -> onSettingsChange { it.copy(countIn = on) } }
-        ToggleRow(stringResource(R.string.loop), settings.loop) { on -> onSettingsChange { it.copy(loop = on) } }
-        PracticeModeControls(settings, onSettingsChange)
+        if (!runMode) {
+            ToggleRow(stringResource(R.string.loop), settings.loop) { on -> onSettingsChange { it.copy(loop = on) } }
+            PracticeModeControls(settings, onSettingsChange)
+        }
     }
 }
 

@@ -116,6 +116,15 @@ struct PracticeSettings: Equatable {
             tuning: tuning.kotlin)
     }
 
+    /// The performance settings at a particular kala (a run's current pass).
+    func performance(kala: Int) -> PerformanceSettings {
+        PerformanceSettings.companion.create(
+            saHz: saHz,
+            tempo: Int32(tempo),
+            kala: Int32(kala),
+            tuning: tuning.kotlin)
+    }
+
     var usesTransport: Bool {
         practiceMode == .listenRepeat || (loop && recoveryMode != .continuous)
     }
@@ -166,6 +175,7 @@ struct PracticeSettingsStore {
         static let harmoniumGuide = "practice.harmoniumGuide"
         static let echoCancellation = "practice.echoCancellation"
         static let history = "practice.history"
+        static let runPlans = "practice.runPlans"
         static let strictness = "practice.strictness"
         static let saCents = "practice.saCents"
         static let words = "practice.words"
@@ -207,6 +217,14 @@ struct PracticeSettingsStore {
 
     func saveHistory(_ history: PracticeHistory) {
         defaults.set(history.encode(), forKey: Key.history)
+    }
+
+    func loadRunPlans() -> RunPlans {
+        RunPlans.companion.decode(text: defaults.string(forKey: Key.runPlans))
+    }
+
+    func saveRunPlans(_ plans: RunPlans) {
+        defaults.set(plans.encode(), forKey: Key.runPlans)
     }
 
     func save(_ s: PracticeSettings) {

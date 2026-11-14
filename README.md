@@ -36,6 +36,12 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
   then sing the same unit, with optional pitch feedback and response guide.
   Whole-avarta phrase support is gated on recorded musical review; no phrase
   boundaries are released yet.
+- **Practise a whole set:** take Sarali Varisai, Madhya Sthayi, Janta, Vakra
+  Janta or Dhattu one varisai after another. Each varisai climbs from first
+  kala to the speed you choose, singing every speed 1–7 times (Speed 3, Sing 2
+  is 1, 1, 2, 2, 3, 3). Each speed opens in the normal player with its
+  count-in, room check, tempo, note marks and pass summaries, then moves on.
+  The app remembers each set's plan and where you stopped.
 - **Sing-along:** sing with an exercise and see your pitch as you go. Each
   note is marked in tune, close, high, low, an octave off or a different
   swara, with a summary after every pass. Echo cancellation lets you use the
@@ -104,6 +110,7 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [docs/plan-gitam-swarajati-varnam.md](docs/plan-gitam-swarajati-varnam.md) | More gitams, swarajatis, varnams (in progress; open items in issues #1–#6) |
 | [docs/plan-speed-layout.md](docs/plan-speed-layout.md) | Notation laid out by tala cycle at every speed: strip and notation share columns (done) |
 | [docs/plan-speed-clarification.md](docs/plan-speed-clarification.md) | Written-pace multipliers, paired Janta speeds and the player’s About speed help |
+| [docs/plan-practice-run.md](docs/plan-practice-run.md) | Practising a whole varisai set in one run: per-varisai speed climb and repeats (built) |
 | [docs/plan-site-search.md](docs/plan-site-search.md) | Website: full-text search (done) |
 | [docs/plan-learn.md](docs/plan-learn.md) | Website: the Learn section, beginner theory (done) |
 | [docs/tuning.md](docs/tuning.md) | Just (tanpura) vs Equal (keyboard): exact ratios, cents, frequencies and implementation (the musicians' version is the guide's Tuning page) |

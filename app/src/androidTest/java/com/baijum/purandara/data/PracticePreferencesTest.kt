@@ -6,6 +6,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baijum.purandara.audio.HarmoniumArticulation
 import com.baijum.purandara.practice.PracticeMode
+import com.baijum.purandara.practice.RunEntry
+import com.baijum.purandara.practice.RunPlan
+import com.baijum.purandara.practice.RunPlans
+import com.baijum.purandara.domain.varisai.VarisaiSet
 import com.baijum.purandara.practice.RecoveryMode
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -78,6 +82,16 @@ class PracticePreferencesTest {
         assertEquals(RecoveryMode.CONTINUOUS, defaults.recoveryMode)
         assertEquals(5, defaults.recoverySeconds)
         assertEquals(false, defaults.responseGuide)
+    }
+
+    @Test
+    fun runPlansRoundTripAndStartEmpty() {
+        assertEquals(RunPlans(), preferences.loadRunPlans())
+        val plans = RunPlans().with(
+            RunPlan(VarisaiSet.SARALI.name, 3, listOf(RunEntry("sarali-1", 2, 3))),
+        )
+        preferences.saveRunPlans(plans)
+        assertEquals(plans, PracticePreferences(context).loadRunPlans())
     }
 
     @Test

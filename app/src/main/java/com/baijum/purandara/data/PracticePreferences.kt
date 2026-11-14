@@ -9,6 +9,7 @@ import com.baijum.purandara.domain.schedule.PerformanceSettings
 import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.practice.PracticeMode
+import com.baijum.purandara.practice.RunPlans
 import com.baijum.purandara.practice.RecoveryMode
 import com.baijum.purandara.singalong.Strictness
 
@@ -98,6 +99,12 @@ class PracticePreferences(context: Context) {
         prefs.edit().putString(HISTORY, history.encode()).apply()
     }
 
+    fun loadRunPlans(): RunPlans = RunPlans.decode(prefs.getString(RUN_PLANS, null))
+
+    fun saveRunPlans(plans: RunPlans) {
+        prefs.edit().putString(RUN_PLANS, plans.encode()).apply()
+    }
+
     fun save(s: PracticeSettings) {
         prefs.edit()
             .putInt(SA, s.saMidi)
@@ -140,6 +147,7 @@ class PracticePreferences(context: Context) {
         const val HARMONIUM_GUIDE = "harmonium_guide"
         const val ECHO_CANCELLATION = "echo_cancellation"
         const val HISTORY = "practice_history"
+        const val RUN_PLANS = "practice_run_plans"
         const val STRICTNESS = "strictness"
         const val SA_CENTS = "sa_cents"
         const val WORDS = "words"

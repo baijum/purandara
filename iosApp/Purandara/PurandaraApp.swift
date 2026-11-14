@@ -55,6 +55,7 @@ struct PurandaraApp: App {
         if defaults.bool(forKey: "resetSettings") {
             viewModel.settings = PracticeSettings()
             viewModel.resetHistory()
+            viewModel.resetRunPlans()
         }
         let sa = defaults.integer(forKey: "sa") // launch arguments arrive as strings
         if PracticeSettings.saRange.contains(sa) { viewModel.settings.saMidi = sa }

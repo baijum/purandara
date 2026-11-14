@@ -147,6 +147,19 @@ enum class VarisaiSet(val title: String, val description: String, val shortTitle
     GITAM("Gitam", "First songs, with words: Purandara Dasa's gitams in raga Malahari, then others."),
     SWARAJATI("Swarajati", "Longer songs with several swaras to a beat: each charanam sung as swaras, then with words."),
     VARNAM("Varnam", "The first tana varnams, in two kalai: the purvanga sung in two speeds, the uttaranga in the second."),
+    ;
+
+    /**
+     * Whether a set can be practised as one run, varisai after varisai
+     * (`docs/plan-practice-run.md`). The numbered varisai sets can; the plain
+     * scale (one exercise) and the pieces with sections and written speeds
+     * cannot yet.
+     */
+    val practisesAsRun: Boolean
+        get() = when (this) {
+            SARALI, MADHYA_STHAYI, JANTA, VAKRA_JANTA, DHATTU -> true
+            PLAIN_SCALE, ALANKARAM, GITAM, SWARAJATI, VARNAM -> false
+        }
 }
 
 /**

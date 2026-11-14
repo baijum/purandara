@@ -34,6 +34,9 @@ struct LibraryView: View {
                         .font(.subheadline)
                         .foregroundStyle(Color.subdued)
                         .fixedSize(horizontal: false, vertical: true)
+                    if section.set.practisesAsRun {
+                        runRow(set: section.set, total: section.exercises.count)
+                    }
                     ForEach(section.exercises, id: \.id) { varisai in
                         NavigationLink(value: varisai.id) {
                             ExerciseRow(varisai: varisai, record: viewModel.history.get(varisaiId: varisai.id), showContour: showContours)
@@ -52,6 +55,8 @@ struct LibraryView: View {
                 ShrutiView().outputChangeTestControl()
             } else if id == "find-sa" {
                 FindSaView().outputChangeTestControl()
+            } else if id == "run" {
+                RunView().outputChangeTestControl()
             } else if let varisai = VarisaiCatalog.shared.byId(id: id) {
                 PlayerView(varisai: varisai)
                     .outputChangeTestControl()
@@ -64,6 +69,37 @@ struct LibraryView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal)
         }
+    }
+
+    /// "Practise Sarali Varisai 1–16": one continuous run through a set, with its saved continue point.
+    @ViewBuilder private func runRow(set: VarisaiSet, total: Int) -> some View {
+        let plan = viewModel.runPlans.planFor(set: set, catalog: viewModel.catalog)
+        let next = Int(plan.nextIndex)
+        let title = next > 0 ? "Continue \(set.title)" : "Practise \(set.title)"
+        let detail = next > 0 ? "Continue from \(next + 1) of \(total)" : "All \(total) varisais, one after another"
+        Button {
+            viewModel.openRun(set)
+            path.append("run")
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "play.fill")
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).foregroundStyle(.primary)
+                    Text(detail).font(.subheadline).foregroundStyle(Color.subdued)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(Color.subdued)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(title), \(detail)"))
+        .accessibilityAddTraits(.isButton)
     }
 
     // MARK: - Continue / next up

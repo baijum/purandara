@@ -5,6 +5,8 @@ import shared
 /// Play/Stop at the bottom. Mirrors Android's `PlayerScreen`.
 struct PlayerView: View {
     let varisai: Varisai
+    /// A run: show its banner, a back-to-plan button, and fix the speed for the run.
+    var runMode: Bool = false
     @EnvironmentObject private var viewModel: PracticeViewModel
     @State private var showingSettings = false
     @State private var showingSections = false
@@ -50,6 +52,9 @@ struct PlayerView: View {
                 marks: viewModel.settings.singAlong ? viewModel.singAlong.marks : [:],
                 words: viewModel.settings.words.kotlin,
                 header: AnyView(VStack(spacing: 8) {
+                    if runMode, let run = viewModel.run, let step = run.current {
+                        RunBanner(run: run, step: step) { viewModel.skipRunStep() }
+                    }
                     // Raga and tala scroll with the notation, so they never push rows off screen.
                     Text("\(varisai.raga.name) · \(varisai.tala.name) tala")
                         .font(.subheadline)
@@ -73,30 +78,35 @@ struct PlayerView: View {
                         }.buttonStyle(.bordered)
                             .accessibilityHint(Text("Choose a teacher-reviewed practice phrase"))
                     }
+                    if viewModel.playback.playing {
+                        PlaybackStatus(playback: viewModel.playback, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents)
+                    }
                     if showPanel && typeSize.isAccessibilitySize { SingAlongPanel(varisai: varisai, saPlayable: saPlayable) }
                 }))
                 .frame(maxHeight: .infinity)
-            if viewModel.playback.playing {
-                PlaybackStatus(playback: viewModel.playback, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents)
-            }
             Divider()
-            QuickControls(settings: $viewModel.settings)
+            QuickControls(settings: $viewModel.settings, showSpeed: !runMode)
             }
         }
         .safeAreaInset(edge: .bottom) {
             Button {
-                if viewModel.practicePaused { viewModel.stopImmediately() }
-                else { viewModel.togglePlay(varisai) }
+                if runMode {
+                    viewModel.stopRun()
+                } else if viewModel.practicePaused {
+                    viewModel.stopImmediately()
+                } else {
+                    viewModel.togglePlay(varisai)
+                }
             } label: {
-                Label(viewModel.playback.playing || viewModel.practicePaused ? "Stop" : "Play",
-                      systemImage: viewModel.playback.playing || viewModel.practicePaused ? "stop.fill" : "play.fill")
+                Label(runMode || viewModel.playback.playing || viewModel.practicePaused ? "Stop" : "Play",
+                      systemImage: runMode || viewModel.playback.playing || viewModel.practicePaused ? "stop.fill" : "play.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)
             // Stop stays available even when the Sa is out of range or the samples
             // are still loading; only starting playback needs those (issue #13).
-            .disabled(!viewModel.playback.playing && (!viewModel.canPlay || !saPlayable))
+            .disabled(!runMode && !viewModel.playback.playing && (!viewModel.canPlay || !saPlayable))
             .padding()
             // Opaque: controls scrolling behind a translucent bar fail contrast checks.
             .background(Color(uiColor: .systemBackground))
@@ -105,7 +115,14 @@ struct PlayerView: View {
         // and raga are shown above the notation.
         .navigationTitle(varisai.shortTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(runMode)
         .toolbar {
+            if runMode {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { viewModel.runBack() } label: { Image(systemName: "chevron.left") }
+                        .accessibilityLabel(Text("Back"))
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     viewModel.toggleSingAlong()
@@ -125,9 +142,12 @@ struct PlayerView: View {
             }
         }
         .sheet(isPresented: $showingSettings) {
-            PracticeSettingsView(settings: $viewModel.settings)
+            PracticeSettingsView(settings: $viewModel.settings, runMode: runMode)
         }
         .onDisappear {
+            // In a run the controller owns the player: advancing to the next
+            // varisai must not stop the playback that just started.
+            guard !runMode else { return }
             viewModel.stopImmediately()
             viewModel.practiceSection = nil
             viewModel.practicePhrase = nil
@@ -153,9 +173,9 @@ private struct PlaybackStatus: View {
     var saCents = 0
 
     var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack { sa; Spacer(); status }
-            VStack(alignment: .leading, spacing: 2) { sa; status }
+        VStack(alignment: .leading, spacing: 2) {
+            sa
+            status.fixedSize(horizontal: false, vertical: true)
         }
         .font(.callout)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -164,7 +184,10 @@ private struct PlaybackStatus: View {
     }
 
     private var sa: some View {
-        Text("Sa: \(PracticeSettingsView.saLabel(saMidi, cents: saCents))").fontWeight(.medium).foregroundStyle(Color.subdued)
+        Text("Sa: \(PracticeSettingsView.saLabel(saMidi, cents: saCents))")
+            .fontWeight(.medium)
+            .foregroundStyle(Color.subdued)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder private var status: some View {
@@ -213,6 +236,7 @@ private struct RecoveryControls: View {
 
 private struct QuickControls: View {
     @Binding var settings: PracticeSettings
+    var showSpeed = true
     @State private var showingSpeedHelp = false
 
     private let kalaNames = ["First kala", "Second kala", "Third kala", "Fourth kala"]
@@ -226,6 +250,7 @@ private struct QuickControls: View {
             }
             .accessibilityValue(Text("\(settings.tempo) beats per minute"))
 
+            if showSpeed {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
                     Text("Speed · \(speedMultiplier)×")
@@ -249,6 +274,7 @@ private struct QuickControls: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
+            }
             }
         }
         .padding()
@@ -300,6 +326,7 @@ private struct SpeedHelpView: View {
 /// Sa, drone, levels, click, count-in, repeat and tuning, in a sheet.
 struct PracticeSettingsView: View {
     @Binding var settings: PracticeSettings
+    var runMode = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -377,14 +404,18 @@ struct PracticeSettingsView: View {
 
     private var rhythmSettings: some View {
         Form {
-            NavigationLink("Practice mode") { modeSettings }
+            if !runMode {
+                NavigationLink("Practice mode") { modeSettings }
+            }
             NavigationLink("Click and count-in") {
                 Form {
                     Toggle("Tala click", isOn: $settings.click)
                     Toggle("Count in one avarta", isOn: $settings.countIn)
                 }.navigationTitle("Click and count-in").navigationBarTitleDisplayMode(.inline)
             }
-            NavigationLink("Repeat and recovery") { repeatSettings }
+            if !runMode {
+                NavigationLink("Repeat and recovery") { repeatSettings }
+            }
         }.navigationTitle("Rhythm").navigationBarTitleDisplayMode(.inline)
     }
 
@@ -705,5 +736,44 @@ private struct SectionChoices: View {
             }
         }
         .accessibilityAddTraits(selected == section ? .isSelected : [])
+    }
+}
+
+/// The run's position over the normal player: set, varisai, kala and pass, with Skip.
+private struct RunBanner: View {
+    let run: RunUI
+    let step: RunStep
+    let onSkip: () -> Void
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(run.set.shortTitle) · \(run.step + 1) of \(run.steps.count)")
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("\(runKalaName(run.kala)) · Pass \(max(1, run.pass + 1)) of \(step.repeats)")
+                    .font(.caption)
+                    .foregroundStyle(Color.subdued)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button("Skip", action: onSkip)
+                .buttonStyle(.bordered)
+                .accessibilityLabel(Text("Skip to the next varisai"))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 12)
+        .padding(.top, 8)
+    }
+}
+
+private func runKalaName(_ kala: Int) -> String {
+    switch kala {
+    case 1: return String(localized: "First kala")
+    case 2: return String(localized: "Second kala")
+    case 3: return String(localized: "Third kala")
+    default: return String(localized: "Fourth kala")
     }
 }

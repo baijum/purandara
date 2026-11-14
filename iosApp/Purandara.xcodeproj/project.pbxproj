@@ -11,6 +11,7 @@
 		10224C95DA12A396F0417243 /* PitchListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCCDC87BD7D51343B42D8B7F /* PitchListener.swift */; };
 		124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27118B7E3E2165E03506755 /* LibraryView.swift */; };
 		1AF67FF2548AEBD63FC3668E /* NeuralPitchSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */; };
+		1CB7A1F46322A6F9174301AF /* RunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8F4A84590A79425F21395B /* RunView.swift */; };
 		20652ABAADD16B8AEC84E47A /* VarisaiAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */; };
 		3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC4E97700204636916DBA862 /* PracticeViewModel.swift */; };
 		40BDEF4DD4F2AB7BFFA9A483 /* SharedFrameworkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */; };
@@ -61,6 +62,7 @@
 		8A18B2D52EAB6EBCA1269A1B /* PracticeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeTests.swift; sourceTree = "<group>"; };
 		8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedFrameworkTests.swift; sourceTree = "<group>"; };
 		95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NeuralPitchSupervisor.swift; sourceTree = "<group>"; };
+		9D8F4A84590A79425F21395B /* RunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunView.swift; sourceTree = "<group>"; };
 		9DE6BE56662F27C8F99F8397 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		B293CC2A0F44DA8FA17324B2 /* models */ = {isa = PBXFileReference; lastKnownFileType = folder; name = models; path = ../models; sourceTree = SOURCE_ROOT; };
 		C27118B7E3E2165E03506755 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
@@ -138,6 +140,7 @@
 				C27118B7E3E2165E03506755 /* LibraryView.swift */,
 				E08763E5702FC198877A4751 /* NotationView.swift */,
 				9DE6BE56662F27C8F99F8397 /* PlayerView.swift */,
+				9D8F4A84590A79425F21395B /* RunView.swift */,
 				C9197E6D30958F4BB3EF8BC1 /* ShrutiView.swift */,
 				04B6B95EFED9FE818FAD3842 /* SingAlongViews.swift */,
 			);
@@ -366,6 +369,7 @@
 				7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */,
 				3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */,
 				814E479F470E51F9091B5BB3 /* PurandaraApp.swift in Sources */,
+				1CB7A1F46322A6F9174301AF /* RunView.swift in Sources */,
 				DE2B259645CB04BB365A98C8 /* ShrutiView.swift in Sources */,
 				9B580BACB857D2886E78AD0B /* SingAlongEngine.swift in Sources */,
 				4327EF87BA3A4AA73E3D8BA9 /* SingAlongViews.swift in Sources */,
