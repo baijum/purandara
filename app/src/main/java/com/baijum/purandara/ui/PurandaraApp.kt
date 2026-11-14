@@ -1,6 +1,7 @@
 package com.baijum.purandara.ui
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -25,6 +26,10 @@ import com.baijum.purandara.ui.library.LibraryScreen
 import com.baijum.purandara.ui.library.LibraryState
 import com.baijum.purandara.ui.player.PlayerActions
 import com.baijum.purandara.ui.player.PlayerScreen
+import com.baijum.purandara.ui.recordings.RecordScreen
+import com.baijum.purandara.ui.recordings.RecordingDetailScreen
+import com.baijum.purandara.ui.recordings.RecordingsActions
+import com.baijum.purandara.ui.recordings.RecordingsListScreen
 import com.baijum.purandara.ui.run.RunActions
 import com.baijum.purandara.ui.run.RunScreen
 import com.baijum.purandara.ui.shruti.FindSaActions
@@ -34,11 +39,15 @@ import com.baijum.purandara.ui.shruti.ShrutiScreen
 import com.baijum.purandara.viewmodel.PracticeUiState
 import com.baijum.purandara.viewmodel.RunPhase
 import com.baijum.purandara.viewmodel.PracticeViewModel
+import com.baijum.purandara.viewmodel.RecordingsScreen
+import com.baijum.purandara.viewmodel.RecordingsUiState
+import com.baijum.purandara.viewmodel.RecordingsViewModel
 
 /** Top-level navigation: the exercise library, or the player for the selected exercise. */
 @Composable
-fun PurandaraApp(viewModel: PracticeViewModel) {
+fun PurandaraApp(viewModel: PracticeViewModel, recordings: RecordingsViewModel) {
     val state by viewModel.state.collectAsState()
+    val recordingsState by recordings.state.collectAsState()
     val context = LocalContext.current
     var micDenied by rememberSaveable { mutableStateOf(false) }
 
@@ -57,15 +66,24 @@ fun PurandaraApp(viewModel: PracticeViewModel) {
         viewModel.setMicPermission(granted, restartPractice = true)
     }
     val allowMic = { requestMicForShruti.launch(Manifest.permission.RECORD_AUDIO) }
+    val requestMicForRecording = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        viewModel.setMicPermission(granted)
+    }
 
     AnnounceOutputChange(state)
 
     when {
+        recordingsState.open -> RecordingsRoute(recordings, recordingsState, state.singAlong.micPermitted || recordings.debugSyntheticSingerCents != null) {
+            requestMicForRecording.launch(Manifest.permission.RECORD_AUDIO)
+        }
         state.shruti.open -> ShrutiRoute(viewModel, state, allowMic)
         state.findSa.open -> FindSaRoute(viewModel, state, allowMic)
         state.run?.phase == RunPhase.PLAYING -> PlayerRoute(viewModel, state, micDenied, runMode = true) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
         state.run != null -> RunRoute(viewModel, state)
-        state.selected == null -> LibraryRoute(viewModel, state)
+        state.selected == null -> LibraryRoute(viewModel, state, recordingsState.library.recordings.size) {
+            viewModel.stop()
+            recordings.open(state.settings.tuning, state.settings.saMidi, state.settings.saCents)
+        }
         else -> PlayerRoute(viewModel, state, micDenied) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
     }
 }
@@ -114,7 +132,7 @@ private fun FindSaRoute(viewModel: PracticeViewModel, state: PracticeUiState, al
 }
 
 @Composable
-private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState) {
+private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState, recordingCount: Int, openRecordings: () -> Unit) {
     LibraryScreen(
         catalog = viewModel.catalog,
         state = LibraryState(
@@ -125,6 +143,7 @@ private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState) {
             samplesLoaded = state.samplesLoaded,
             loadError = state.loadError,
             runPlans = state.runPlans,
+            recordingCount = recordingCount,
         ),
         actions = LibraryActions(
             onSelect = { varisai -> viewModel.select(varisai) },
@@ -133,8 +152,35 @@ private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState) {
             onOpenShruti = viewModel::openShruti,
             onFindSa = viewModel::openFindSa,
             onOpenRun = viewModel.runs::open,
+            onOpenRecordings = openRecordings,
         ),
     )
+}
+
+@SuppressLint("MissingPermission") // startRecording is only offered once the mic is allowed
+@Composable
+private fun RecordingsRoute(recordings: RecordingsViewModel, state: RecordingsUiState, micAllowed: Boolean, allowMic: () -> Unit) {
+    BackHandler { recordings.back() }
+    val actions = RecordingsActions(
+        onBack = recordings::back,
+        onNew = recordings::showRecorder,
+        onOpen = recordings::openRecording,
+        onStart = recordings::startRecording,
+        onStop = recordings::stopRecording,
+        onAllowMic = allowMic,
+        onTogglePlay = recordings::togglePlay,
+        onSeek = recordings::seekTo,
+        onRename = recordings::rename,
+        onChangeSa = recordings::changeSa,
+        onChangeRaga = recordings::changeRaga,
+        onDelete = recordings::delete,
+    )
+    val detail = state.detail
+    when {
+        state.screen == RecordingsScreen.RECORD -> RecordScreen(state.recorder, micAllowed, actions)
+        state.screen == RecordingsScreen.DETAIL && detail != null -> RecordingDetailScreen(detail, actions)
+        else -> RecordingsListScreen(state.library, actions)
+    }
 }
 
 @Composable

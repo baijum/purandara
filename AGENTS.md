@@ -14,7 +14,8 @@ varnam stage is built — rests, per-section speed, the two-kalai strip and
 all four varnams; they wait on their second-source checks, issue #7), and
 the notation laid out by tala cycle at every speed
 (`docs/plan-speed-layout.md`) and practice runs through a whole varisai set
-(`docs/plan-practice-run.md`). On the website: search (`docs/plan-site-search.md`)
+(`docs/plan-practice-run.md`) and recordings with approximate swaras
+(`docs/plan-recordings.md`). On the website: search (`docs/plan-site-search.md`)
 and the Learn section, beginner theory for learners (`docs/plan-learn.md`).
 New features are planned and discussed before they are built; do not add
 features speculatively.
@@ -37,7 +38,8 @@ features speculatively.
   [`docs/plan-gitam-swarajati-varnam.md`](docs/plan-gitam-swarajati-varnam.md) and
   [`docs/plan-speed-layout.md`](docs/plan-speed-layout.md) and
   [`docs/plan-practice-run.md`](docs/plan-practice-run.md) (a whole varisai set
-  in one run) (and, for the website,
+  in one run) and [`docs/plan-recordings.md`](docs/plan-recordings.md)
+  (record yourself, see the swaras) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
@@ -109,16 +111,19 @@ features speculatively.
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
 | `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` + `FindSaGuide` (Find my Sa) |
 | `shared/.../practice/` | `PracticeHistory`: practised / best sing-along per exercise, continue and next up (stored on device as JSON); `PracticeRun` and `RunPlans`: a set’s run plan (each varisai climbs from first kala to its speed, repeated per kala), saved continue point and the run’s time model (docs/plan-practice-run.md) |
+| `shared/.../recording/` | Recordings (docs/plan-recordings.md): `RecordingAnalyzer` (decoded audio → `PitchTrack`, SwiftF0 on every window), `PitchTrack` (the saved `.pitch` format), `SwaraTranscriber` (steady stretches → `HeardNote`s in phrases, approximate by design), `RecordingLibrary` + `Recording` (index JSON, auto title); iOS `ByteBridge` for `.pitch` bytes |
 | `shared/.../domain/schedule/` | `Schedule`: timed note/beat/cursor events, `cursorAt`/`beatAt`; `ofSection` plays one section (`Varisai.sections`) with the piece's avarta numbers |
 | `shared/.../audio/` | `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output) |
 | `shared/.../pitch/` | `PitchDetector` (YIN), `AudioResampler`, `NeuralArbitrator`: ported from ukulele-companion with the interpolation sign fix |
 | `shared/.../singalong/` | `PitchPipeline`, `SwaraMapper` (+ `Zone`, `Strictness`), `SingAlongClock`, `BleedModel` (room noise + leakage), `NoteScorer`, `SingAlongSession`: sing-along scoring |
 | `app/.../audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (`AudioTrack` on a worker thread) |
 | `app/.../audio/` (sing-along) | `MicSource` (`AudioRecordMicSource` with echo cancellation; debug-only `SyntheticSingerMicSource`), `SingAlongEngine`, `PitchListener` (Shruti practice, Find my Sa), `NeuralPitchSupervisor` |
-| `app/.../viewmodel/` | `PracticeViewModel`, `RunController` + `RunState` (a run sequences the normal player through its kalas and repeats), `SingAlongState`, `ShrutiState` |
-| `app/.../ui/` | `PurandaraApp` (routes: landing, player, Shruti practice, Find my Sa, practice run), `library/` (landing page, including each set’s run row), `player/`, `run/` (setup and complete; playing uses the player with a run banner), `shruti/`, `SaControls.kt` (Sa picker, fine-tune, strictness) |
+| `app/.../audio/` (recordings) | `Recorder` (`AudioRecord` unprocessed → AAC .m4a; debug `SyntheticSingerInput`), `RecordingDecoder` (.m4a → shared analyser); `data/RecordingStore` (files in `filesDir/recordings`) |
+| `app/.../viewmodel/` | `RecordingsViewModel` (record, analyse, list, play, rename, Sa/raga, delete; kept apart from `PracticeViewModel`), `PracticeViewModel`, `RunController` + `RunState` (a run sequences the normal player through its kalas and repeats), `SingAlongState`, `ShrutiState` |
+| `app/.../ui/` | `PurandaraApp` (routes: landing, player, Shruti practice, Find my Sa, practice run), `library/` (landing page, including each set’s run row), `player/`, `run/` (setup and complete; playing uses the player with a run banner), `recordings/` (list, record, recording), `shruti/`, `SaControls.kt` (Sa picker, fine-tune, strictness) |
 | `iosApp/Purandara/Audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (renders ahead on a queue into `AVAudioPlayerNode` buffers; no Kotlin on the real-time thread) |
 | `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel` (including `RunUI`); `LibraryView` (landing page: continue, Sa + tanpura, sets with contours and run rows), `PlayerView` (+ settings sheet, `SaChoiceList`), `RunView` (run plan and complete; playing uses `PlayerView` with a run banner), `NotationView` (+ `TalaStripView`), `SingAlongViews`, `ShrutiView` (Shruti practice, Find my Sa) |
+| `iosApp/Purandara/Audio/Recorder.swift` | Recordings: `Recorder` (own `AVAudioEngine`, `.measurement` mode → AAC .m4a; debug synthetic singer) and `RecordingDecoder`; `RecordingsViewModel` (+ `RecordingStore`, Application Support/recordings) and `RecordingsViews` (list, record, recording with swaras, trace, playback) |
 | `iosApp/Purandara/Audio/PitchListener.swift` | Mic tap buffers (on the player's engine, for echo cancellation) → windows → pitch frames; debug synthetic singer. Used by `SingAlongEngine`, Shruti practice and Find my Sa |
 | `shared/.../singalong/Display.kt` | Swara labels (R₁, S′) and mark glyphs shared by both apps |
 | `shared/.../singalong/PitchLane.kt` | The sing-along pitch lane's swara lines and range, from the piece's own notes |
@@ -142,7 +147,7 @@ traps on the isolation check): build them in a `nonisolated` helper, and pass Ko
 to the main actor in a `Handoff`. Debug launch arguments `-open <varisai-id> -autoplay YES` open
 (and play) an exercise for screenshots (`-open shruti` / `-open find-sa` open the Sa
 screens); add `-singAlong YES -singer <cents>` for a synthetic singer on iOS, and
-`-resetSettings YES` to start from default settings and an empty history (then `-sa <midi>` to pick a Sa). On Android (debug builds),
+`-resetSettings YES` to start from default settings, an empty history and no recordings (then `-sa <midi>` to pick a Sa). On Android (debug builds),
 `adb shell am start -n com.baijum.purandara/.MainActivity --ef singer 0` replaces
 the microphone with a synthetic singer (the value is cents off target), so
 sing-along can be exercised on an emulator.

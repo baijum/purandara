@@ -22,11 +22,15 @@ data class PitchFrame(val timeSeconds: Double, val frequencyHz: Double?, val rms
  * if (pipeline.beginFrame()) pipeline.onNeuralResult(platformSwiftF0(window))  // every 5th frame
  * val frame = pipeline.process(window, captureTime)
  * ```
- * Not thread-safe: one instance per stream, used from one thread.
+ * Offline analysis (recordings) passes a smaller `neuralInterval` to consult
+ * SwiftF0 more often. Not thread-safe: one instance per stream, used from one thread.
  */
-class PitchPipeline(private val sampleRate: Int) {
+class PitchPipeline(private val sampleRate: Int, neuralInterval: Int) {
+    /** Live use: SwiftF0 every [NeuralArbitrator.SUPERVISOR_INTERVAL] windows. */
+    constructor(sampleRate: Int) : this(sampleRate, NeuralArbitrator.SUPERVISOR_INTERVAL)
+
     private val detector = PitchDetector()
-    private val arbitrator = NeuralArbitrator()
+    private val arbitrator = NeuralArbitrator(neuralInterval)
     private var previous: Double? = null
     private val recent = ArrayDeque<Double>(SMOOTHING_FRAMES)
 

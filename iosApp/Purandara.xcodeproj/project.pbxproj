@@ -13,10 +13,12 @@
 		1AF67FF2548AEBD63FC3668E /* NeuralPitchSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */; };
 		1CB7A1F46322A6F9174301AF /* RunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8F4A84590A79425F21395B /* RunView.swift */; };
 		20652ABAADD16B8AEC84E47A /* VarisaiAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */; };
+		34D35436357FCA6B0825B7CC /* RecordingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F910BDD0ED1448678F3310D8 /* RecordingsViewModel.swift */; };
 		3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC4E97700204636916DBA862 /* PracticeViewModel.swift */; };
 		40BDEF4DD4F2AB7BFFA9A483 /* SharedFrameworkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */; };
 		4327EF87BA3A4AA73E3D8BA9 /* SingAlongViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B6B95EFED9FE818FAD3842 /* SingAlongViews.swift */; };
 		517D5DDFB720C0F8694AA932 /* models in Resources */ = {isa = PBXBuildFile; fileRef = B293CC2A0F44DA8FA17324B2 /* models */; };
+		6E0971212388D03C08303FAD /* RecordingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A9D911905EF1995C38295C /* RecordingsViews.swift */; };
 		6E156FF71407AFDB27CB73C6 /* onnxruntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C4C4F762B6B0F60ADE2A6A72 /* onnxruntime.xcframework */; };
 		7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C9FF674A7F91662569737F /* PracticeSettings.swift */; };
 		7E5B9A9F2648990917F1D608 /* PlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE6BE56662F27C8F99F8397 /* PlayerView.swift */; };
@@ -30,6 +32,7 @@
 		D9FA91204D0D5862998418F9 /* PurandaraUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5FBDB9CFC6E06CA052AF937 /* PurandaraUITests.swift */; };
 		DE2B259645CB04BB365A98C8 /* ShrutiView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9197E6D30958F4BB3EF8BC1 /* ShrutiView.swift */; };
 		FC3F796F00AA989D622B24F0 /* NotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E08763E5702FC198877A4751 /* NotationView.swift */; };
+		FFB640FF50C2BF3CDD9B09C8 /* Recorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2913954C0BC39ADF66A7FFCD /* Recorder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +55,7 @@
 /* Begin PBXFileReference section */
 		04B6B95EFED9FE818FAD3842 /* SingAlongViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingAlongViews.swift; sourceTree = "<group>"; };
 		27C642EBB842FC0EB61A4F50 /* SingAlongEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingAlongEngine.swift; sourceTree = "<group>"; };
+		2913954C0BC39ADF66A7FFCD /* Recorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recorder.swift; sourceTree = "<group>"; };
 		483E84CDF43D5F521EB0595D /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		49C9FF674A7F91662569737F /* PracticeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeSettings.swift; sourceTree = "<group>"; };
 		51ADA9130DD6170AD77733F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -65,6 +69,7 @@
 		9D8F4A84590A79425F21395B /* RunView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunView.swift; sourceTree = "<group>"; };
 		9DE6BE56662F27C8F99F8397 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		B293CC2A0F44DA8FA17324B2 /* models */ = {isa = PBXFileReference; lastKnownFileType = folder; name = models; path = ../models; sourceTree = SOURCE_ROOT; };
+		B3A9D911905EF1995C38295C /* RecordingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingsViews.swift; sourceTree = "<group>"; };
 		C27118B7E3E2165E03506755 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		C4C4F762B6B0F60ADE2A6A72 /* onnxruntime.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = onnxruntime.xcframework; path = Frameworks/onnxruntime.xcframework; sourceTree = "<group>"; };
 		C5FBDB9CFC6E06CA052AF937 /* PurandaraUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurandaraUITests.swift; sourceTree = "<group>"; };
@@ -74,6 +79,7 @@
 		E08763E5702FC198877A4751 /* NotationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotationView.swift; sourceTree = "<group>"; };
 		E9E3789F99C97FAB0759E82A /* PurandaraTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PurandaraTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HarmoniumSamples.swift; sourceTree = "<group>"; };
+		F910BDD0ED1448678F3310D8 /* RecordingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingsViewModel.swift; sourceTree = "<group>"; };
 		FCCDC87BD7D51343B42D8B7F /* PitchListener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PitchListener.swift; sourceTree = "<group>"; };
 		FE49BD3C45C04B12B704AEB6 /* Purandara.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Purandara.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -110,6 +116,7 @@
 				F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */,
 				95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */,
 				FCCDC87BD7D51343B42D8B7F /* PitchListener.swift */,
+				2913954C0BC39ADF66A7FFCD /* Recorder.swift */,
 				27C642EBB842FC0EB61A4F50 /* SingAlongEngine.swift */,
 				6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */,
 			);
@@ -120,6 +127,7 @@
 			isa = PBXGroup;
 			children = (
 				DC4E97700204636916DBA862 /* PracticeViewModel.swift */,
+				F910BDD0ED1448678F3310D8 /* RecordingsViewModel.swift */,
 			);
 			path = ViewModels;
 			sourceTree = "<group>";
@@ -140,6 +148,7 @@
 				C27118B7E3E2165E03506755 /* LibraryView.swift */,
 				E08763E5702FC198877A4751 /* NotationView.swift */,
 				9DE6BE56662F27C8F99F8397 /* PlayerView.swift */,
+				B3A9D911905EF1995C38295C /* RecordingsViews.swift */,
 				9D8F4A84590A79425F21395B /* RunView.swift */,
 				C9197E6D30958F4BB3EF8BC1 /* ShrutiView.swift */,
 				04B6B95EFED9FE818FAD3842 /* SingAlongViews.swift */,
@@ -369,6 +378,9 @@
 				7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */,
 				3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */,
 				814E479F470E51F9091B5BB3 /* PurandaraApp.swift in Sources */,
+				FFB640FF50C2BF3CDD9B09C8 /* Recorder.swift in Sources */,
+				34D35436357FCA6B0825B7CC /* RecordingsViewModel.swift in Sources */,
+				6E0971212388D03C08303FAD /* RecordingsViews.swift in Sources */,
 				1CB7A1F46322A6F9174301AF /* RunView.swift in Sources */,
 				DE2B259645CB04BB365A98C8 /* ShrutiView.swift in Sources */,
 				9B580BACB857D2886E78AD0B /* SingAlongEngine.swift in Sources */,
@@ -503,7 +515,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Purandara;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Sing along listens to your voice to show how close each swara is. Audio stays on this device and is never recorded.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Sing along listens to your voice to show how close each swara is, and Recordings saves what you record. Audio stays on this device and is never sent anywhere.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -645,7 +657,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = Purandara;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Sing along listens to your voice to show how close each swara is. Audio stays on this device and is never recorded.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Sing along listens to your voice to show how close each swara is, and Recordings saves what you record. Audio stays on this device and is never sent anywhere.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

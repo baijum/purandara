@@ -53,6 +53,10 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
   swara lines; hold Sa, Pa or upper Sa for 10, 20 or 30 seconds.
 - **Find my Sa:** sing your lowest and highest comfortable notes and get a
   suggested kattai.
+- **Recordings:** record yourself and see the swaras the app heard
+  (approximately), with your pitch on the swara lines; play back with the
+  swaras highlighted, and re-read against another Sa or raga. Kept on the
+  device only.
 - **Accessibility:** TalkBack and VoiceOver labels throughout, large text
   supported, checked by automated accessibility tests on both platforms.
 
@@ -111,6 +115,7 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [docs/plan-speed-layout.md](docs/plan-speed-layout.md) | Notation laid out by tala cycle at every speed: strip and notation share columns (done) |
 | [docs/plan-speed-clarification.md](docs/plan-speed-clarification.md) | Written-pace multipliers, paired Janta speeds and the player’s About speed help |
 | [docs/plan-practice-run.md](docs/plan-practice-run.md) | Practising a whole varisai set in one run: per-varisai speed climb and repeats (built) |
+| [docs/plan-recordings.md](docs/plan-recordings.md) | Recordings with approximate swaras: record, analyse, play back (built) |
 | [docs/plan-site-search.md](docs/plan-site-search.md) | Website: full-text search (done) |
 | [docs/plan-learn.md](docs/plan-learn.md) | Website: the Learn section, beginner theory (done) |
 | [docs/tuning.md](docs/tuning.md) | Just (tanpura) vs Equal (keyboard): exact ratios, cents, frequencies and implementation (the musicians' version is the guide's Tuning page) |

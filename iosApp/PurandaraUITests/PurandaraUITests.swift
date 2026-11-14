@@ -134,6 +134,29 @@ final class PurandaraUITests: XCTestCase {
         link.tap()
     }
 
+    /// Recordings (docs/plan-recordings.md): the list, recording a synthetic
+    /// Sarali, and the swaras it heard, each screen audited.
+    @MainActor func testRecordingReadsTheSwarasAndPassesAudit() throws {
+        let app = launch(["-singer", "0"])
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Recordings'")).firstMatch
+        for _ in 0..<4 where !(row.exists && row.isHittable) { app.swipeUp() }
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Recordings"].waitForExistence(timeout: 5))
+        try audit(app)
+        app.buttons["New recording"].tap()
+        let start = app.buttons["Start recording"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        try audit(app)
+        start.tap()
+        Thread.sleep(forTimeInterval: 9) // one Sarali up and down
+        try audit(app)
+        app.buttons["Stop recording"].tap()
+        XCTAssertTrue(app.navigationBars["Recording"].waitForExistence(timeout: 20))
+        let phrase = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Phrase 1: S, R1, G3, M1, P, D1, N3'")).firstMatch
+        XCTAssertTrue(phrase.waitForExistence(timeout: 5), "the synthetic Sarali is read as its swaras")
+        try audit(app)
+    }
+
     // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
     // are: mark each test (not the class, which would break the nonisolated
     // setUp override) and every helper they call.

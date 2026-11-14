@@ -151,7 +151,7 @@
     <string name="sing_along">Sing along</string>
     <string name="sing_along_on">On</string>
     <string name="sing_along_off">Off</string>
-    <string name="mic_reason">Sing along listens to your voice to show how close each swara is. Audio stays on this device and is never recorded.</string>
+    <string name="mic_reason">Sing along listens to your voice to show how close each swara is, and Recordings saves what you record. Audio stays on this device and is never sent anywhere.</string>
     <string name="mic_denied">Microphone access is off, so sing-along can\'t hear you. You can allow it in Settings.</string>
     <string name="open_settings">Open settings</string>
     <string name="headphones_hint">Headphones give the most accurate results.</string>
@@ -221,4 +221,66 @@
     <string name="run_done">Done</string>
     <string name="run_all_speed_desc">Set every varisai to speed %1$d</string>
     <string name="run_speed_desc">Speed, %1$d</string>
+
+    <!-- Recordings (docs/plan-recordings.md) -->
+    <string name="recordings_title">Recordings</string>
+    <string name="recordings_row_detail">Record yourself and see the swaras you sang</string>
+    <string name="recordings_row_count">Record yourself and see the swaras · %1$d saved</string>
+    <string name="recordings_empty">Record yourself singing and the app shows the swaras it heard, with your pitch on the swara lines. Recordings stay on this device.</string>
+    <string name="recordings_new">New recording</string>
+    <string name="recording_row_desc">%1$s, %2$s</string>
+    <string name="record_title">New recording</string>
+    <string name="record_start">Start recording</string>
+    <string name="record_stop">Stop recording</string>
+    <string name="record_sa">Swaras are read against Sa %1$s. You can change it afterwards.</string>
+    <string name="record_hint">No tanpura plays while recording. Use your own tanpura if you like; set Sa to match it.</string>
+    <string name="record_elapsed">Recording, %1$s</string>
+    <string name="record_limit_near">Recording stops at 10 minutes.</string>
+    <string name="record_analysing">Finding the swaras…</string>
+    <string name="record_failed">That recording could not be saved. Try again.</string>
+    <string name="mic_needed_record">Allow the microphone to record yourself.</string>
+    <string name="recording_rename">Rename</string>
+    <string name="recording_rename_title">Rename recording</string>
+    <string name="recording_rename_hint">Leave empty for the automatic title.</string>
+    <string name="recording_title_field">Title</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="recording_delete">Delete</string>
+    <string name="recording_delete_title">Delete this recording?</string>
+    <string name="recording_delete_body">%1$s will be deleted from this device. This can\'t be undone.</string>
+    <string name="recording_raga">Raga</string>
+    <string name="recording_raga_none">None (default names)</string>
+    <string name="recording_swaras">Swaras heard</string>
+    <string name="recording_approximate">Approximate: gamakas and slides are read as their steadiest notes. Check them against your pitch below.</string>
+    <string name="recording_no_swaras">No steady swaras were heard.</string>
+    <string name="recording_unreadable">The pitch of this recording could not be read.</string>
+    <string name="recording_trace">Your pitch</string>
+    <string name="recording_trace_summary">%1$s in %2$s, from %3$s to %4$s</string>
+    <string name="recording_trace_empty">No notes</string>
+    <string name="recording_play">Play</string>
+    <string name="recording_pause">Pause</string>
+    <string name="recording_position">Position</string>
+    <string name="recording_position_value">%1$s of %2$s</string>
+    <string name="recording_phrase_desc">Phrase %1$d: %2$s</string>
+    <string name="swara_low">low %1$s</string>
+    <string name="swara_high">high %1$s</string>
+    <string name="swara_held">%1$s held</string>
+    <string name="swara_not_in_raga">%1$s, not in the raga</string>
+    <string name="recording_jump_hint">play from here</string>
+    <plurals name="notes">
+        <item quantity="one">%d note</item>
+        <item quantity="other">%d notes</item>
+    </plurals>
+    <plurals name="phrases">
+        <item quantity="one">%d phrase</item>
+        <item quantity="other">%d phrases</item>
+    </plurals>
+    <plurals name="minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <plurals name="seconds">
+        <item quantity="one">%d second</item>
+        <item quantity="other">%d seconds</item>
+    </plurals>
 </resources>

@@ -61,10 +61,14 @@ data class SwaraReading(
     val zone: Zone get() = Zone.of(centsOff, strictness)
 }
 
-/** Names sung pitches relative to Sa in a raga and tuning. */
+/**
+ * Names sung pitches relative to Sa in a raga and tuning. With no raga
+ * (a recording not yet given one), every position takes its default name
+ * and counts as in raga.
+ */
 class SwaraMapper(
     private val saHz: Double,
-    private val raga: Raga,
+    private val raga: Raga?,
     private val tuning: Tuning,
     private val strictness: Strictness = Strictness.PRECISE,
 ) {
@@ -73,7 +77,7 @@ class SwaraMapper(
     }
 
     private val ragaByPosition: Map<Int, Swara> =
-        raga.swaras.associateBy { it.semitone }
+        raga?.swaras?.associateBy { it.semitone }.orEmpty()
 
     fun read(frequencyHz: Double): SwaraReading? {
         if (frequencyHz <= 0.0 || !frequencyHz.isFinite()) return null
@@ -88,7 +92,7 @@ class SwaraMapper(
             swara = swara,
             octave = octave,
             centsOff = Pitch.cents(target, frequencyHz),
-            inRaga = position in ragaByPosition,
+            inRaga = raga == null || position in ragaByPosition,
             westernName = Shruti.noteName(Pitch.nearestMidi(frequencyHz)),
             strictness = strictness,
         )

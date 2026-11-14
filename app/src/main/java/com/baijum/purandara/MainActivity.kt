@@ -11,6 +11,7 @@ import com.baijum.purandara.ui.PurandaraApp
 import com.baijum.purandara.ui.rememberReduceMotion
 import com.baijum.purandara.ui.theme.PurandaraTheme
 import com.baijum.purandara.viewmodel.PracticeViewModel
+import com.baijum.purandara.viewmodel.RecordingsViewModel
 
 /**
  * Single-activity entry point.
@@ -21,6 +22,7 @@ import com.baijum.purandara.viewmodel.PracticeViewModel
  */
 class MainActivity : AppCompatActivity() {
     private val practiceViewModel: PracticeViewModel by viewModels()
+    private val recordingsViewModel: RecordingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,11 +31,12 @@ class MainActivity : AppCompatActivity() {
         // replaces the microphone with a synthetic singer (cents off target).
         if (BuildConfig.DEBUG && intent.hasExtra(EXTRA_SINGER)) {
             practiceViewModel.debugSyntheticSingerCents = intent.getFloatExtra(EXTRA_SINGER, 0f).toDouble()
+            recordingsViewModel.debugSyntheticSingerCents = practiceViewModel.debugSyntheticSingerCents
         }
         setContent {
             CompositionLocalProvider(LocalReduceMotion provides rememberReduceMotion()) {
                 PurandaraTheme {
-                    PurandaraApp(practiceViewModel)
+                    PurandaraApp(practiceViewModel, recordingsViewModel)
                 }
             }
         }
@@ -47,6 +50,7 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         practiceViewModel.onBackgrounded()
+        recordingsViewModel.onBackgrounded()
     }
 
     override fun onStart() {

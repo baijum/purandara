@@ -26,6 +26,7 @@ extension View {
 @main
 struct PurandaraApp: App {
     @StateObject private var viewModel = PracticeViewModel()
+    @StateObject private var recordings = RecordingsViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var path: [String] = []
 
@@ -35,20 +36,24 @@ struct PurandaraApp: App {
                 LibraryView(path: $path)
             }
             .environmentObject(viewModel)
+            .environmentObject(recordings)
             .onAppear(perform: openFromLaunchArguments)
         }
         .onChange(of: scenePhase) { phase in
             // Practice audio stops when the app leaves the screen, and resumes
             // (a fresh session) on return (issue #11).
-            if phase == .background { viewModel.onBackgrounded() }
+            if phase == .background {
+                viewModel.onBackgrounded()
+                recordings.onBackgrounded()
+            }
             if phase == .active { viewModel.onForegrounded() }
         }
     }
 
     /// Debug aid for screenshots, UI tests and manual checks:
-    /// `-open sarali-4` opens an exercise (`-open shruti` / `-open find-sa` the Sa screens), `-autoplay YES` also starts it once samples load,
+    /// `-open sarali-4` opens an exercise (`-open shruti` / `-open find-sa` the Sa screens, `-open recordings` / `-open record` the recordings), `-autoplay YES` also starts it once samples load,
     /// `-singAlong YES` turns sing-along on, `-singer <cents>` uses a synthetic singer,
-    /// `-resetSettings YES` starts from default settings (UI tests), `-sa <midi>` then picks a Sa.
+    /// `-resetSettings YES` starts from default settings and no recordings (UI tests), `-sa <midi>` then picks a Sa.
     private func openFromLaunchArguments() {
         #if DEBUG
         let defaults = UserDefaults.standard
@@ -56,10 +61,16 @@ struct PurandaraApp: App {
             viewModel.settings = PracticeSettings()
             viewModel.resetHistory()
             viewModel.resetRunPlans()
+            recordings.resetAll()
         }
         let sa = defaults.integer(forKey: "sa") // launch arguments arrive as strings
         if PracticeSettings.saRange.contains(sa) { viewModel.settings.saMidi = sa }
         guard let id = defaults.string(forKey: "open") else { return }
+        if id == "recordings" || id == "record" {
+            recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents)
+            path = id == "record" ? ["recordings", "record"] : ["recordings"]
+            return
+        }
         path = [id]
         if defaults.bool(forKey: "singAlong") { viewModel.settings.singAlong = true }
         if let raw = defaults.string(forKey: "practiceMode"), let mode = PracticeSettings.ModeChoice(rawValue: raw) {

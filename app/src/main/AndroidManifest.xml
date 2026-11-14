@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Sing-along only: audio is analysed on the device and never stored or sent. -->
+    <!-- Sing-along, Shruti practice and Find my Sa analyse audio on the device; Recordings
+         (docs/plan-recordings.md) saves what the student records, on the device only. Never sent. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
 

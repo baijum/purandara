@@ -79,7 +79,7 @@ carnatic,varisai,sarali,alankaram,gitam,shruti,tanpura,raga,tala,swara,singing,i
 ## App Review information
 
 - Sign-in required: No
-- Notes: Fully offline; no account. The microphone is used only for the optional sing-along, Shruti practice and Find my Sa features, and audio is analysed on device, never recorded or sent anywhere.
+- Notes: Fully offline; no account. The microphone is used only for the optional sing-along, Shruti practice, Find my Sa and Recordings features. Audio is analysed on device; Recordings saves what the user records on the device only. Nothing is ever sent anywhere.
 
 ## Screenshots
 

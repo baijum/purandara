@@ -57,6 +57,7 @@ GUIDE = [
     ("sing-along.html", "Sing along"),
     ("shruti-practice.html", "Shruti practice"),
     ("find-my-sa.html", "Find my Sa"),
+    ("recordings.html", "Recordings"),
     ("settings.html", "Practice settings"),
     ("tuning.html", "Tuning: Just and Equal"),
     ("microphones.html", "Microphones and headphones"),

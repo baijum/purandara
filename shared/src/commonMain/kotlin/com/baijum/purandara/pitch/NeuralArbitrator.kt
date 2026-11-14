@@ -50,7 +50,11 @@ data class NeuralPitchResult(
  * val decision = arbitrator.arbitrate(yinResult, neuralResult)
  * ```
  */
-class NeuralArbitrator {
+class NeuralArbitrator(private val supervisorInterval: Int = SUPERVISOR_INTERVAL) {
+    init {
+        require(supervisorInterval >= 1) { "supervisorInterval must be at least 1" }
+    }
+
     companion object {
         /** Run neural inference every N audio frames. */
         const val SUPERVISOR_INTERVAL = 5
@@ -121,14 +125,15 @@ class NeuralArbitrator {
     // --- Frame-interval gating -----------------------------------------------
 
     /**
-     * Advances the frame counter and returns `true` every [SUPERVISOR_INTERVAL]
-     * frames, signalling the caller to run neural inference.
+     * Advances the frame counter and returns `true` every [supervisorInterval]
+     * frames ([SUPERVISOR_INTERVAL] live; offline analysis can afford every
+     * frame), signalling the caller to run neural inference.
      *
      * On non-inference frames the neural result TTL is aged automatically.
      */
     fun shouldRunInference(): Boolean {
         frameCounter++
-        if (frameCounter % SUPERVISOR_INTERVAL == 0) {
+        if (frameCounter % supervisorInterval == 0) {
             return true
         }
         if (resultAgeFrames < Int.MAX_VALUE) {

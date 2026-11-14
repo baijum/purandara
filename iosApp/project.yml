@@ -47,7 +47,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Purandara
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.music
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Sing along listens to your voice to show how close each swara is. Audio stays on this device and is never recorded."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Sing along listens to your voice to show how close each swara is, and Recordings saves what you record. Audio stays on this device and is never sent anywhere."
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES

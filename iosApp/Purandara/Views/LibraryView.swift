@@ -6,6 +6,7 @@ import shared
 /// (docs/plan-landing.md). Mirrors Android's `LibraryScreen`.
 struct LibraryView: View {
     @EnvironmentObject private var viewModel: PracticeViewModel
+    @EnvironmentObject private var recordings: RecordingsViewModel
     /// The navigation path, for the Sa card's buttons (links in a shared row would all open the first).
     @Binding var path: [String]
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -28,6 +29,7 @@ struct LibraryView: View {
             }
             continueSection
             saSection
+            recordingsSection
             ForEach(sections, id: \.set.name) { section in
                 Section {
                     Text(section.set.description_)
@@ -57,6 +59,12 @@ struct LibraryView: View {
                 FindSaView().outputChangeTestControl()
             } else if id == "run" {
                 RunView().outputChangeTestControl()
+            } else if id == "recordings" {
+                RecordingsListView(path: $path)
+            } else if id == "record" {
+                RecordView(path: $path)
+            } else if id.hasPrefix("recording:") {
+                RecordingDetailView(id: String(id.dropFirst("recording:".count)), path: $path)
             } else if let varisai = VarisaiCatalog.shared.byId(id: id) {
                 PlayerView(varisai: varisai)
                     .outputChangeTestControl()
@@ -159,6 +167,37 @@ struct LibraryView: View {
         formatter.dateTimeStyle = .named
         let text = formatter.localizedString(from: DateComponents(day: -max(0, days)))
         return text.prefix(1).capitalized + text.dropFirst()
+    }
+
+    // MARK: - Recordings (docs/plan-recordings.md)
+
+    private var recordingsSection: some View {
+        let count = recordings.library.recordings.count
+        let detail = count == 0
+            ? String(localized: "Record yourself and see the swaras you sang")
+            : String(localized: "Record yourself and see the swaras · \(count) saved")
+        return Section {
+            Button {
+                viewModel.stopTanpura()
+                recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents)
+                path.append("recordings")
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "mic.fill").foregroundStyle(Color.accentColor).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Recordings").foregroundStyle(.primary)
+                        Text(detail).font(.subheadline).foregroundStyle(Color.subdued).fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right").foregroundStyle(Color.subdued).accessibilityHidden(true)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("Recordings, \(detail)"))
+            .accessibilityAddTraits(.isButton)
+        }
     }
 
     // MARK: - Your Sa
