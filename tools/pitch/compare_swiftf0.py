@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Compare the bundled SwiftF0 model with v0.3.0 (docs/plan-swiftf0-upgrade.md).
+"""Compare the old SwiftF0 model with v0.3.0 (docs/plan-swiftf0-upgrade.md).
 
-Not part of the build. Set up once, from this directory:
+Not part of the build. Set up once, from this directory (the old model left
+the repo when the apps moved to v0.3.0; it is in the git history):
 
     python3 -m venv .venv && .venv/bin/pip install numpy onnxruntime
+    mkdir -p .cache && git show ae14cd3:models/swift_f0_model.onnx > .cache/swift_f0_old.onnx
     curl -L -o .cache/swift_f0_v0.3.0.onnx \
       https://raw.githubusercontent.com/lars76/swift-f0/v0.3.0/swift_f0/model.onnx
 
@@ -49,7 +51,7 @@ import numpy as np
 import onnxruntime as ort
 
 HERE = Path(__file__).resolve().parent
-OLD_MODEL = HERE.parent.parent / "models" / "swift_f0_model.onnx"
+OLD_MODEL = HERE / ".cache" / "swift_f0_old.onnx"
 NEW_MODEL = HERE / ".cache" / "swift_f0_v0.3.0.onnx"
 NEW_SHA256 = "6385e8c2ebc3872e82c9ff5946228de44cd3be77a750ea53698b7dbfe94b0a22"
 

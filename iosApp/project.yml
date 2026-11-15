@@ -31,7 +31,7 @@ targets:
       - path: ../audio
         type: folder
         buildPhase: resources
-      # SwiftF0 pitch model, shared with Android (models/swift_f0_model.onnx).
+      # SwiftF0 pitch model, shared with Android (models/swift_f0_v0.3.0.onnx).
       - path: ../models
         type: folder
         buildPhase: resources

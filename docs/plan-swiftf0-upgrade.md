@@ -5,8 +5,12 @@ below as recommended. Step 1 (the comparison tool and evaluation) is done on
 synthetic tracks and 10 of the student's recordings; decisions 3 and 4 were
 settled by the results (*Results*). Step 2 (shared code) is built: see
 *Built in step 2*. Step 3 (Android) is built: *Built in step 3*. Step 4
-(iOS) is built: *Built in step 4*. Next: step 5 (remove the old model, bump
-the analysis version, docs).
+(iOS) is built: *Built in step 4*. Step 5 is done: the old model left both
+apps (it is in the git history, `ae14cd3`), `ANALYSIS_VERSION` is 2 (with the
+quiet-voice fix), and `models/README.md` and ATTRIBUTION describe v0.3.0 and
+the ONNX Runtime versions. Still open: move iOS to ONNX Runtime 1.32 when
+Microsoft publishes it, and retune the Recordings thresholds on the
+student's recordings (step 6, ongoing).
 
 ## Where things stand
 

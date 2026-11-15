@@ -41,15 +41,23 @@ Thank you, Sankalp Gulati, for recording and sharing this tanpura.
 
 ## Machine learning model
 
-### SwiftF0 (`models/swift_f0_model.onnx`)
+### SwiftF0 v0.3.0 (`models/swift_f0_v0.3.0.onnx`)
 
-- **Author:** [lars76](https://github.com/lars76)
-- **Source:** [github.com/lars76/swift-f0](https://github.com/lars76/swift-f0);
+- **Author:** Lars Nieradzik ([lars76](https://github.com/lars76))
+- **Source:** [github.com/lars76/swift-f0](https://github.com/lars76/swift-f0),
+  tag `v0.3.0`, file `swift_f0/model.onnx` (SHA-256
+  `6385e8c2ebc3872e82c9ff5946228de44cd3be77a750ea53698b7dbfe94b0a22`); training code and the
+  shipped run: [lars76/swift-f0-training](https://github.com/lars76/swift-f0-training);
   paper: Nieradzik, "SwiftF0", [arXiv:2508.18440](https://arxiv.org/abs/2508.18440)
 - **License:** [MIT](https://opensource.org/licenses/MIT)
-- **Use:** monophonic pitch estimation that checks the YIN detector during
-  sing-along (mainly correcting octave errors). Bundled unchanged; runs
-  fully offline.
+- **Use:** monophonic pitch estimation. Live (sing-along, Shruti practice,
+  Find my Sa) it corrects the YIN detector's octave errors; for recordings
+  it runs over the whole recording, and gives the pitch alone when the
+  student sings with their own tanpura. Bundled unchanged (renamed); runs
+  fully offline. The silence gate the reference applies outside the model
+  is in the app's own code (`shared/.../pitch/SwiftF0.kt`). Replaced an
+  earlier export of the same project's model (2026-11-15,
+  docs/plan-swiftf0-upgrade.md).
 
 ## Runtime libraries
 
@@ -57,8 +65,9 @@ Thank you, Sankalp Gulati, for recording and sharing this tanpura.
 
 - **Author:** [Microsoft](https://github.com/microsoft/onnxruntime)
 - **License:** [MIT](https://opensource.org/licenses/MIT)
-- **Use:** runs the SwiftF0 model. Android: `com.microsoft.onnxruntime:onnxruntime-android`.
-  iOS: the ONNX Runtime C xcframework, downloaded at build time by
+- **Use:** runs the SwiftF0 model. Android: `com.microsoft.onnxruntime:onnxruntime-android` 1.32.0.
+  iOS: the ONNX Runtime C xcframework 1.30.0 (the newest Microsoft has
+  published for iOS), downloaded at build time by
   `iosApp/setup_onnxruntime.sh` (checksummed).
 
 ## Icons
