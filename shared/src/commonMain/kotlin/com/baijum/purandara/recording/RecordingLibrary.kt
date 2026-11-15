@@ -108,8 +108,12 @@ class RecordingLibrary(recordings: Collection<Recording> = emptyList()) {
     override fun hashCode(): Int = recordings.hashCode()
 
     companion object {
-        /** Bump when the analysis changes enough that old `.pitch` files should be redone. */
-        const val ANALYSIS_VERSION = 1
+        /**
+         * Bump when the analysis changes enough that old `.pitch` files should
+         * be redone. 2: SwiftF0 v0.3 over the whole recording, and YIN no longer
+         * discards quiet voices (docs/plan-swiftf0-upgrade.md).
+         */
+        const val ANALYSIS_VERSION = 2
 
         /** The version of recordings saved before the field was written. */
         const val FIRST_ANALYSIS_VERSION = 1

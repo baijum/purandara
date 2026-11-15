@@ -38,6 +38,12 @@ data class PitchResult(
 class PitchDetector(
     private val minFrequency: Double = MIN_FREQUENCY,
     private val maxFrequency: Double = MAX_FREQUENCY,
+    /**
+     * Windows quieter than this RMS are silence. Live listening uses
+     * [SILENCE_THRESHOLD]; recordings, made without gain control, pass a
+     * lower one and leave the voice decision to the transcriber.
+     */
+    private val silenceThreshold: Float = SILENCE_THRESHOLD,
 ) {
     private val fftProcessor = Fft()
 
@@ -57,7 +63,7 @@ class PitchDetector(
         const val MAX_FREQUENCY = 1100.0
 
         /** Minimum RMS amplitude to consider a buffer as containing a signal. */
-        private const val SILENCE_THRESHOLD = 0.01f
+        const val SILENCE_THRESHOLD = 0.01f
 
         /**
          * Neighbourhood radius (in samples) for the Best Local Estimate
@@ -162,7 +168,7 @@ class PitchDetector(
         previousFrequency: Double? = null,
     ): PitchResult? {
         // --- Silence gate ---------------------------------------------------
-        if (rms(samples) < SILENCE_THRESHOLD) return null
+        if (rms(samples) < silenceThreshold) return null
 
         val halfLen = samples.size / 2
         if (halfLen < 2) return null

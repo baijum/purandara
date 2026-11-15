@@ -13,6 +13,7 @@ import com.baijum.purandara.recording.RecordingTestTracks.SA_HZ
 import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /** Synthetic voice → analyser → transcriber, as the apps run it after Stop. */
 class RecordingAnalyzerTest {
@@ -86,6 +87,21 @@ class RecordingAnalyzerTest {
             if (t < 0.5 || i >= swaras.size) null else SA_HZ * swaras[i].ratio
         }
         return swaras to audio
+    }
+
+    @Test
+    fun aQuietVoiceIsStillRead() {
+        // An iPad's built-in mic without gain control: a sung voice at an RMS
+        // of about 0.006, below live listening's silence level of 0.01.
+        val (swaras, loud) = sarali()
+        val sung = loud.filter { it != 0f }
+        val rms = kotlin.math.sqrt(sung.sumOf { it.toDouble() * it } / sung.size).toFloat()
+        val quiet = FloatArray(loud.size) { loud[it] / rms * 0.006f }
+        val track = analyse(quiet, 1000)
+        val voiced = (0 until track.size).count { track.frequencyAt(it) != null }
+        assertTrue(voiced > track.size / 2, "most frames have a pitch: $voiced of ${track.size}")
+        val t = SwaraTranscriber.transcribe(track, SA_HZ, Raga.MAYAMALAVAGOWLA, Tuning.JUST)
+        assertEquals(swaras, t.notes.map { it.swara })
     }
 
     @Test

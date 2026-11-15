@@ -42,7 +42,7 @@ class RecordingAnalyzer private constructor(
     constructor(sampleRate: Int, neuralInterval: Int, neural: ((FloatArray) -> NeuralPitchResult?)?) :
         this(sampleRate, neuralInterval, neural, null, PitchRange.FULL)
 
-    private val pipeline = PitchPipeline(sampleRate, neuralInterval)
+    private val pipeline = PitchPipeline(sampleRate, neuralInterval, octaveOnly = false, silenceRms = SILENCE_RMS)
     private val chunker = model?.let { SwiftF0Chunker(it, range) }
     private val resampler = if (model != null) StreamResampler(sampleRate) else null
     private val window = FloatArray(PitchPipeline.WINDOW_SIZE)
@@ -124,5 +124,14 @@ class RecordingAnalyzer private constructor(
     companion object {
         /** SwiftF0 on every window: offline there's time, and it removes more octave slips. */
         const val NEURAL_EVERY_WINDOW = 1
+
+        /**
+         * YIN's silence level for recordings, far below live listening's
+         * 0.01: recordings have no gain control, and an iPad's built-in mic
+         * puts a sung voice at an RMS of 0.005–0.01, so 0.01 discarded most
+         * of every recording. The transcriber's own floor (from the
+         * recording's room level, at least 0.003) decides what is voice.
+         */
+        const val SILENCE_RMS = 0.001f
     }
 }
