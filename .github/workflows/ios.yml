@@ -22,7 +22,9 @@ jobs:
     # passing pairs (10:1, 8.8:1, 21:1 vs 4.5:1 required) that Xcode 27's
     # audit does not (issue #8).
     runs-on: xcode-27
-    timeout-minutes: 40
+    # Green runs took 36-39 minutes by 2026-11-15 and the suite keeps growing
+    # (32 UI tests); 40 cut runs off during the last test.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Pin the toolchain the tests are green on locally (Xcode 27.2, issue #8);
