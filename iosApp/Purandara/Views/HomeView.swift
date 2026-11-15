@@ -1,73 +1,45 @@
 import SwiftUI
 import shared
 
-/// The landing page: continue / next up, the student's Sa with a tanpura to
-/// tune to, then every exercise by set with its shape and progress
-/// (docs/plan-landing.md). Mirrors Android's `LibraryScreen`.
-struct LibraryView: View {
+/// Home: continue / next up, the student's Sa with a tanpura to tune to,
+/// then the sets by group, each leading to its page (docs/plan-landing.md,
+/// docs/plan-navigation.md). Mirrors Android's `HomeScreen`.
+struct HomeView: View {
     @EnvironmentObject private var viewModel: PracticeViewModel
-    @EnvironmentObject private var recordings: RecordingsViewModel
-    /// The navigation path, for the Sa card's buttons (links in a shared row would all open the first).
-    @Binding var path: [String]
     @Environment(\.dynamicTypeSize) private var typeSize
-
-    private var sections: [(set: VarisaiSet, exercises: [Varisai])] {
-        VarisaiSet.entries.map { set in (set, viewModel.catalog.filter { $0.set == set }) }
-            .filter { !$0.exercises.isEmpty }
-    }
+    /// An About button in the toolbar (the tabs; the sidebar lists About itself).
+    let showAbout: Bool
+    let openSet: (VarisaiSet) -> Void
 
     /// At accessibility text sizes the drawings give their space to text.
     private var showContours: Bool { !typeSize.isAccessibilitySize }
 
     var body: some View {
         List {
-            if viewModel.loadError {
-                Text("The harmonium sounds could not be loaded.")
-                    .foregroundStyle(.red)
-            } else if !viewModel.samplesLoaded {
-                ProgressView("Preparing the harmonium…")
-            }
+            LoadStatus()
             continueSection
-            saSection
-            ForEach(sections, id: \.set.name) { section in
+            SaSection()
+            ForEach(NavGroup.entries.filter(\.foldable), id: \.name) { group in
                 Section {
-                    Text(section.set.description_)
-                        .font(.subheadline)
-                        .foregroundStyle(Color.subdued)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if section.set.practisesAsRun {
-                        runRow(set: section.set, total: section.exercises.count)
-                    }
-                    ForEach(section.exercises, id: \.id) { varisai in
-                        NavigationLink(value: varisai.id) {
-                            ExerciseRow(varisai: varisai, record: viewModel.history.get(varisaiId: varisai.id), showContour: showContours)
-                        }
+                    ForEach(group.destinations.compactMap { ($0 as? NavDestination.SetPage)?.set }, id: \.name) { set in
+                        setRow(set)
                     }
                 } header: {
-                    SetHeader(set: section.set,
-                              practised: Int(viewModel.history.practisedCount(set: section.set, catalog: viewModel.catalog)),
-                              total: section.exercises.count)
+                    Text(group.title)
+                        .foregroundStyle(Color.subdued)
+                        .accessibilityAddTraits(.isHeader)
                 }
             }
         }
         .navigationTitle("Purandara")
-        .navigationDestination(for: String.self) { id in
-            if id == "shruti" {
-                ShrutiView().outputChangeTestControl()
-            } else if id == "find-sa" {
-                FindSaView().outputChangeTestControl()
-            } else if id == "run" {
-                RunView().outputChangeTestControl()
-            } else if id == "recordings" {
-                RecordingsListView(path: $path)
-            } else if id == "record" {
-                RecordView(path: $path)
-            } else if id.hasPrefix("recording:") {
-                RecordingDetailView(id: String(id.dropFirst("recording:".count)), path: $path)
-            } else if let varisai = VarisaiCatalog.shared.byId(id: id) {
-                PlayerView(varisai: varisai)
-                    .outputChangeTestControl()
-                    .onAppear { viewModel.stopTanpura() }
+        .toolbar {
+            if showAbout {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(value: "about") {
+                        Image(systemName: "info.circle")
+                    }
+                    .accessibilityLabel(Text("About"))
+                }
             }
         }
         .safeAreaInset(edge: .top) {
@@ -78,22 +50,15 @@ struct LibraryView: View {
         }
     }
 
-    /// "Practise Sarali Varisai 1–16": one continuous run through a set, with its saved continue point.
-    @ViewBuilder private func runRow(set: VarisaiSet, total: Int) -> some View {
-        let plan = viewModel.runPlans.planFor(set: set, catalog: viewModel.catalog)
-        let next = Int(plan.nextIndex)
-        let title = next > 0 ? "Continue \(set.title)" : "Practise \(set.title)"
-        let detail = next > 0 ? "Continue from \(next + 1) of \(total)" : "All \(total) varisais, one after another"
-        Button {
-            viewModel.openRun(set)
-            path.append("run")
-        } label: {
+    /// A set: its title and progress, leading to its page.
+    private func setRow(_ set: VarisaiSet) -> some View {
+        let total = viewModel.catalog.filter { $0.set == set }.count
+        let practised = Int(viewModel.history.practisedCount(set: set, catalog: viewModel.catalog))
+        let detail = practised > 0 ? String(localized: "\(practised) of \(total) practised") : (total == 1 ? String(localized: "1 exercise") : String(localized: "\(total) exercises"))
+        return Button { openSet(set) } label: {
             HStack(spacing: 12) {
-                Image(systemName: "play.fill")
-                    .foregroundStyle(Color.accentColor)
-                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).foregroundStyle(.primary)
+                    Text(set.title).foregroundStyle(.primary)
                     Text(detail).font(.subheadline).foregroundStyle(Color.subdued)
                 }
                 Spacer(minLength: 8)
@@ -105,7 +70,7 @@ struct LibraryView: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("\(title), \(detail)"))
+        .accessibilityLabel(Text("\(set.title), \(detail)"))
         .accessibilityAddTraits(.isButton)
     }
 
@@ -168,17 +133,103 @@ struct LibraryView: View {
         return text.prefix(1).capitalized + text.dropFirst()
     }
 
-    /// Opens Recordings (docs/plan-recordings.md) with the current Sa and tuning.
-    private func openRecordings() {
-        viewModel.stopTanpura()
-        recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents,
-                               strictness: viewModel.settings.strictness.kotlin)
-        path.append("recordings")
+}
+
+/// One set's page: what it trains, a run through it (numbered varisai sets),
+/// then its exercises with their shape and progress. Mirrors Android's `SetScreen`.
+struct SetView: View {
+    @EnvironmentObject private var viewModel: PracticeViewModel
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let set: VarisaiSet
+    /// The stack's path, for the run (links in a shared row would all open the first).
+    @Binding var path: [String]
+
+    private var exercises: [Varisai] { viewModel.catalog.filter { $0.set == set } }
+
+    var body: some View {
+        let practised = Int(viewModel.history.practisedCount(set: set, catalog: viewModel.catalog))
+        List {
+            LoadStatus()
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    if set.shortTitle != set.title { Text(set.title).font(.headline) }
+                    Text(set.description_)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if practised > 0 {
+                        Text("\(practised) of \(exercises.count) practised")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.subdued)
+                    }
+                }
+                if set.practisesAsRun {
+                    runRow(set: set, total: exercises.count)
+                }
+                ForEach(exercises, id: \.id) { varisai in
+                    NavigationLink(value: varisai.id) {
+                        ExerciseRow(varisai: varisai, record: viewModel.history.get(varisaiId: varisai.id),
+                                    showContour: !typeSize.isAccessibilitySize)
+                    }
+                }
+            }
+        }
+        .navigationTitle(set.shortTitle)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: - Your Sa
+    /// "Practise Sarali Varisai 1–16": one continuous run through a set, with its saved continue point.
+    @ViewBuilder private func runRow(set: VarisaiSet, total: Int) -> some View {
+        let plan = viewModel.runPlans.planFor(set: set, catalog: viewModel.catalog)
+        let next = Int(plan.nextIndex)
+        let title = next > 0 ? "Continue \(set.title)" : "Practise \(set.title)"
+        let detail = next > 0 ? "Continue from \(next + 1) of \(total)" : "All \(total) varisais, one after another"
+        Button {
+            viewModel.openRun(set)
+            path.append("run")
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "play.fill")
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).foregroundStyle(.primary)
+                    Text(detail).font(.subheadline).foregroundStyle(Color.subdued)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(Color.subdued)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(title), \(detail)"))
+        .accessibilityAddTraits(.isButton)
+    }
 
-    private var saSection: some View {
+}
+
+/// The harmonium samples are loading, or could not be loaded.
+private struct LoadStatus: View {
+    @EnvironmentObject private var viewModel: PracticeViewModel
+
+    var body: some View {
+        if viewModel.loadError {
+            Text("The harmonium sounds could not be loaded.")
+                .foregroundStyle(.red)
+        } else if !viewModel.samplesLoaded {
+            ProgressView("Preparing the harmonium…")
+        }
+    }
+}
+
+/// Your Sa: the Sa choice and a tanpura to settle the voice on (Home and the Sa tab).
+struct SaSection: View {
+    @EnvironmentObject private var viewModel: PracticeViewModel
+
+    var body: some View {
         Section {
             NavigationLink {
                 SaChoiceList(saMidi: $viewModel.settings.saMidi, saCents: $viewModel.settings.saCents)
@@ -203,18 +254,6 @@ struct LibraryView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(!viewModel.samplesLoaded)
-                // In this one row with the tanpura: separate list rows push each
-                // other out of the accessibility audit's view at large text sizes.
-                Button { path.append("shruti") } label: { iconText("Practise Sa", systemImage: "waveform") }
-                    .buttonStyle(.bordered)
-                    .disabled(!viewModel.samplesLoaded)
-                Button { path.append("find-sa") } label: { iconText("Find my Sa", systemImage: "person.wave.2") }
-                    .buttonStyle(.bordered)
-                    .disabled(!viewModel.samplesLoaded)
-                // Here, not a row of its own, for the same reason (the Dynamic Type audit on CI).
-                Button(action: openRecordings) { iconText("Recordings", systemImage: "mic") }
-                    .buttonStyle(.bordered)
-                    .accessibilityHint(Text("Record yourself and see the swaras you sang"))
                 Text("Settle your voice on Sa before you practise.")
                     .font(.footnote)
                     .foregroundStyle(Color.subdued)
@@ -226,37 +265,6 @@ struct LibraryView: View {
                 .foregroundStyle(Color.subdued)
                 .accessibilityAddTraits(.isHeader)
         }
-    }
-}
-
-/// An image and a title that wraps (Label clips its title in list rows).
-private func iconText(_ title: LocalizedStringKey, systemImage: String) -> some View {
-    HStack(alignment: .firstTextBaseline, spacing: 8) {
-        Image(systemName: systemImage).accessibilityHidden(true)
-        Text(title).multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// Set title, with "n of m practised" once any has been.
-private struct SetHeader: View {
-    let set: VarisaiSet
-    let practised: Int
-    let total: Int
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack { title; Spacer(); count }
-            VStack(alignment: .leading) { title; count }
-        }
-        .foregroundStyle(Color.subdued)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-    }
-
-    private var title: some View { Text(set.title) }
-
-    @ViewBuilder private var count: some View {
-        if practised > 0 { Text("\(practised) of \(total) practised") }
     }
 }
 

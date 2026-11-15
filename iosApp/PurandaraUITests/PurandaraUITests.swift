@@ -18,7 +18,7 @@ final class PurandaraUITests: XCTestCase {
     /// After one pass of the first varisai, the run moves to the next one and
     /// the player keeps playing (advancing must not call the leaving-player stop).
     @MainActor func testRunAdvancesToTheNextVarisai() throws {
-        let app = launch()
+        let app = launch(["-open", "set-SARALI"])
         let row = app.buttons["Practise Sarali Varisai, All 16 varisais, one after another"].firstMatch
         scrollTo(row, in: app)
         XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -115,9 +115,9 @@ final class PurandaraUITests: XCTestCase {
     // are: mark each test (not the class, which would break the nonisolated
     // setUp override) and every helper they call.
     @MainActor func testOpenPlayCountInAndStop() {
-        let app = launch()
+        let app = launch(["-open", "set-SARALI"])
         let row = app.buttons["Sarali Varisai 4, S R G M P , S R"].firstMatch
-        // Below the landing page's cards: scroll until the row is on screen.
+        // Down the set page: scroll until the row is on screen.
         scrollTo(row, in: app)
         row.tap()
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
@@ -145,7 +145,7 @@ final class PurandaraUITests: XCTestCase {
     /// A whole set as one run: plan it, change a speed and a repeat, start,
     /// read the status, stop and return to the plan; both screens pass the audit.
     @MainActor func testPractiseASetRunPassesAudit() throws {
-        let app = launch()
+        let app = launch(["-open", "set-SARALI"])
         let row = app.buttons["Practise Sarali Varisai, All 16 varisais, one after another"].firstMatch
         scrollTo(row, in: app)
         XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -171,7 +171,7 @@ final class PurandaraUITests: XCTestCase {
     /// The run's mic toggle adds the live pitch lane; the synthetic singer
     /// keeps the test off the simulator's microphone.
     @MainActor func testRunSingAlongShowsThePitchLane() throws {
-        let app = launch(["-singer", "0"])
+        let app = launch(["-singer", "0", "-open", "set-SARALI"])
         let row = app.buttons["Practise Sarali Varisai, All 16 varisais, one after another"].firstMatch
         scrollTo(row, in: app)
         XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -199,6 +199,69 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
+    /// The navigation (docs/plan-navigation.md) on iPhone: three tabs; Home
+    /// leads to a set page; the Sa tab and About pass the audit.
+    @MainActor func testTabsSetPageSaTabAndAboutPassAudit() throws {
+        let app = launch()
+        XCTAssertTrue(app.navigationBars["Purandara"].waitForExistence(timeout: 5))
+        for tab in ["Practise", "Sa", "Recordings"] {
+            XCTAssertTrue(app.tabBars.buttons[tab].exists, "the \(tab) tab")
+        }
+        let set = app.buttons["Janta Varisai, 7 exercises"].firstMatch
+        scrollTo(set, in: app)
+        set.tap()
+        XCTAssertTrue(app.navigationBars["Janta Varisai"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Practise Janta Varisai, All 7 varisais, one after another"].exists)
+        try audit(app)
+        app.navigationBars.buttons.element(boundBy: 0).tap() // Back to Home
+        app.buttons["About"].tap()
+        XCTAssertTrue(app.navigationBars["About"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.links["Open the guide on the website"].exists || app.buttons["Open the guide on the website"].exists)
+        try audit(app)
+        app.tabBars.buttons["Sa"].tap()
+        XCTAssertTrue(app.navigationBars["Sa"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Shruti practice"].exists)
+        XCTAssertTrue(app.buttons["Find my Sa"].exists)
+        try audit(app)
+    }
+
+    /// Leaving the Sa tab stops Shruti practice; coming back shows the Sa page, not a restarted practice.
+    @MainActor func testLeavingTheSaTabClosesShrutiPractice() throws {
+        let app = launch(["-open", "shruti"])
+        XCTAssertTrue(app.navigationBars["Shruti practice"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Practise"].tap()
+        XCTAssertTrue(app.navigationBars["Purandara"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Sa"].tap()
+        XCTAssertTrue(app.navigationBars["Sa"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars["Shruti practice"].exists)
+    }
+
+    /// The iPad sidebar (regular width): every destination is listed, choosing
+    /// one shows it, and the sidebar passes the audit. Runs on an iPad simulator.
+    @MainActor func testSidebarListsTheDestinationsAndPassesAudit() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "the sidebar is the iPad layout")
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = launch()
+        let sidebar = app.collectionViews["sidebar"]
+        XCTAssertTrue(sidebar.waitForExistence(timeout: 5))
+        try audit(app, sidebar: true)
+        // Rows load as they scroll into view (landscape shows only part of the list).
+        for item in ["Home", "Plain scale", "Varnam", "Shruti practice", "Find my Sa", "Recordings", "About"] {
+            let row = sidebar.staticTexts[item]
+            for _ in 0..<4 where !row.exists { sidebar.swipeUp(velocity: .slow) }
+            XCTAssertTrue(row.exists, "the sidebar lists \(item)")
+        }
+        try audit(app, sidebar: true)
+        sidebar.staticTexts["About"].tap()
+        XCTAssertTrue(app.navigationBars["About"].waitForExistence(timeout: 5))
+        try audit(app, sidebar: true)
+        for _ in 0..<4 where !sidebar.staticTexts["Sarali Varisai"].isHittable { sidebar.swipeDown(velocity: .slow) }
+        sidebar.staticTexts["Sarali Varisai"].tap()
+        XCTAssertTrue(app.navigationBars["Sarali Varisai"].waitForExistence(timeout: 5))
+        try audit(app, sidebar: true)
+    }
+
     /// Scrolls the landing page until [element] is hittable: slowly up, then back
     /// down if it was passed. Fast swipes on a loaded CI runner can jump past a
     /// row, and a loop that only swipes up never comes back to it.
@@ -207,7 +270,7 @@ final class PurandaraUITests: XCTestCase {
         for _ in 0..<12 where !(element.exists && element.isHittable) { app.swipeDown(velocity: .slow) }
     }
 
-    /// Taps a landing-page link once samples have loaded, scrolling to it if needed.
+    /// Taps a link (Home, the Sa tab) once samples have loaded, scrolling to it if needed.
     @MainActor private func openFromLanding(_ app: XCUIApplication, _ label: String) {
         let link = app.buttons[label].firstMatch
         scrollTo(link, in: app)
@@ -220,7 +283,7 @@ final class PurandaraUITests: XCTestCase {
     /// Sarali, and the swaras it heard, each screen audited.
     @MainActor func testRecordingReadsTheSwarasAndPassesAudit() throws {
         let app = launch(["-singer", "0"])
-        openFromLanding(app, "Recordings")
+        app.tabBars.buttons["Recordings"].tap()
         XCTAssertTrue(app.navigationBars["Recordings"].waitForExistence(timeout: 5))
         try audit(app)
         app.buttons["New recording"].tap()
@@ -242,7 +305,8 @@ final class PurandaraUITests: XCTestCase {
     // setUp override) and every helper they call.
     @MainActor func testShrutiPracticeHoldsSaAndPassesAudit() throws {
         let app = launch(["-singer", "0"])
-        openFromLanding(app, "Practise Sa")
+        app.tabBars.buttons["Sa"].tap()
+        openFromLanding(app, "Shruti practice")
         XCTAssertTrue(app.navigationBars["Shruti practice"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["S · in tune · +0¢ · C3"].waitForExistence(timeout: 10) || true)
         try audit(app)
@@ -261,6 +325,7 @@ final class PurandaraUITests: XCTestCase {
     // setUp override) and every helper they call.
     @MainActor func testFindMySaSuggestsASaAndUsesIt() throws {
         let app = launch(["-singer", "0"])
+        app.tabBars.buttons["Sa"].tap()
         openFromLanding(app, "Find my Sa")
         // The synthetic singer sings G2, then G4.
         let result = app.staticTexts["Suggested Sa: D♯3 · 2½ kattai"]
@@ -268,7 +333,7 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
         app.buttons["Use this"].tap()
         let newSa = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "D♯3 · 2½ kattai")).firstMatch
-        XCTAssertTrue(newSa.waitForExistence(timeout: 5), "the landing page shows the new Sa")
+        XCTAssertTrue(newSa.waitForExistence(timeout: 5), "the Sa tab shows the new Sa")
     }
 
     // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
@@ -717,21 +782,28 @@ final class PurandaraUITests: XCTestCase {
     /// fold in the same way; every such text uses a scaling text style, checked
     /// by screenshot at the largest size. Contrast, labels and everything outside
     /// the notation area are checked as strictly as ever.
-    @MainActor private func audit(_ app: XCUIApplication, longNotation: Bool = false) throws {
+    ///
+    /// With [sidebar] (the iPad layout), Dynamic Type warnings on the sidebar's
+    /// rows are ignored: the menu is taller than the screen, so whichever rows
+    /// sit at its edges are ones larger text pushes out of view (the warning
+    /// moves to whichever row is there). The rows are a scrolling system list in
+    /// the body text style, checked by screenshot at the largest size.
+    @MainActor private func audit(_ app: XCUIApplication, longNotation: Bool = false, sidebar: Bool = false) throws {
         let visibleNotation = longNotation ? app.scrollViews["notation"].frame : .zero
+        let sidebarFrame = sidebar ? app.collectionViews["sidebar"].frame : .zero
         // On a loaded runner the audit machinery itself can time out ("Audit
         // failed to complete in time", issue #28). That is never a code signal:
         // settle and retry once before failing.
         do {
-            try performAudit(app, longNotation: longNotation, visibleNotation: visibleNotation)
+            try performAudit(app, longNotation: longNotation, visibleNotation: visibleNotation, sidebar: sidebarFrame)
         } catch {
             print("AUDIT: retrying after the audit did not complete: \(error)")
             Thread.sleep(forTimeInterval: 2)
-            try performAudit(app, longNotation: longNotation, visibleNotation: visibleNotation)
+            try performAudit(app, longNotation: longNotation, visibleNotation: visibleNotation, sidebar: sidebarFrame)
         }
     }
 
-    @MainActor private func performAudit(_ app: XCUIApplication, longNotation: Bool, visibleNotation: CGRect) throws {
+    @MainActor private func performAudit(_ app: XCUIApplication, longNotation: Bool, visibleNotation: CGRect, sidebar: CGRect = .zero) throws {
         try app.performAccessibilityAudit { issue in
             let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)' at \($0.frame)" } ?? "?"
             if issue.auditType == .contrast {
@@ -748,6 +820,9 @@ final class PurandaraUITests: XCTestCase {
             if issue.auditType == .dynamicType, let label = issue.element?.label,
                label.range(of: #"^(([SRGMPDN][′\x{0323}]?)+|,|[a-z·]+|–)$"#, options: .regularExpression) != nil {
                 return true // ignored, see above
+            }
+            if issue.auditType == .dynamicType, let frame = issue.element?.frame, sidebar.contains(frame) {
+                return true // a sidebar row at the menu's edge, see above
             }
             if longNotation {
                 guard let element = issue.element else {

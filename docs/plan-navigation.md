@@ -1,7 +1,7 @@
 # Plan: a navigation menu (drawer, tabs, sidebar)
 
 Status: **approved** (2026-11-15), with the recommended defaults for the open
-questions. N1 and N2 done.
+questions. N1–N3 done.
 
 Today everything starts from one long landing page (`docs/plan-landing.md`):
 Continue, the Sa card (tanpura, Practise Sa, Find my Sa, Recordings), then all
@@ -18,9 +18,10 @@ sidebar on regular width (`ContentView.swift`).
 ## Decisions (chosen by the user)
 
 1. **iOS follows ukulele-companion.** A `TabView` on compact width (iPhone,
-   iPad portrait or split screen); a `NavigationSplitView` sidebar on regular
-   width (iPad landscape). There's no slide-in drawer on iOS: it isn't a native
-   pattern there.
+   iPad split screen); a `NavigationSplitView` sidebar on regular width (a
+   full-screen iPad, either orientation: like ukulele-companion, the choice
+   follows the size class). There's no slide-in drawer on iOS: it isn't a
+   native pattern there.
 2. **Each set is its own item.** The menu lists every set, grouped; each opens
    a page with that set's description, run row and exercises. Home keeps
    Continue and the Sa card.
@@ -85,9 +86,9 @@ SA & VOICE
 |---|---|
 | Practise (`music.note.list`) | Home → set pages → player / run |
 | Sa (`tuningfork`) | A small hub: Your Sa (picker, tanpura), Shruti practice, Find my Sa |
-| Recordings (`waveform`) | The recordings list → record / detail |
+| Recordings (`mic`) | The recordings list → record / detail |
 
-About sits in the Practise tab's toolbar menu. Each tab keeps its own
+About is a button in the Practise tab's toolbar. Each tab keeps its own
 `NavigationStack` path. The sidebar (regular width) lists the full menu above,
 with the detail column holding the chosen destination's `NavigationStack`.
 
@@ -139,10 +140,20 @@ with the detail column holding the chosen destination's `NavigationStack`.
   their view models, so the menu reads them and can't disagree with the
   screen. Tests: `NavigationAccessibilityTest` (menu button, headings, items,
   folding, About) and the Home and set-page tests in `AccessibilityTest`.
-- **N3 iOS.** `RootView`: `TabView` on compact width, `NavigationSplitView` on
-  regular width; the Sa hub; set pages split out of `LibraryView`; launch
-  arguments. Update `PurandaraUITests` (audit each tab, the sidebar on an iPad
-  simulator, a set page). `xcodegen generate`.
+- **N3 iOS.** Done. `Views/NavigationViews.swift`: `AppNavigation` (the tab,
+  each tab's path, the sidebar selection and detail path, kept in step, so
+  launch arguments land in either layout), `RootView` (tabs or sidebar by size
+  class), the Sa tab (`SaHubView`), `AboutView`, and the screens any stack can
+  push (`appDestinations`). `HomeView.swift` (was `LibraryView`): `HomeView`,
+  `SetView`, `SaSection` (Home and the Sa tab). Leaving the Sa tab pops it, so
+  Shruti practice stops and doesn't restart on return. The sidebar's group
+  names are rows (section headers cap Dynamic Type); the set groups fold
+  (`DisclosureGroup`); at accessibility sizes its decorative icons go. Tests:
+  `testTabsSetPageSaTabAndAboutPassAudit`, `testLeavingTheSaTabClosesShrutiPractice`,
+  and `testSidebarListsTheDestinationsAndPassesAudit` (iPad simulators only;
+  Dynamic Type warnings on sidebar rows are ignored, as the menu is taller
+  than the screen; checked by screenshot at the largest size); the tests that
+  reached screens from the landing page now use `-open set-SARALI` or the tabs.
 - **N4 Docs and site.** Guide (`site/pages/guide/index.html`, `settings.html`)
   and its screenshots, store screenshots, README feature summary, the AGENTS.md
   code map and status line; mark `docs/plan-landing.md` as superseded in part.

@@ -27,14 +27,13 @@ extension View {
 struct PurandaraApp: App {
     @StateObject private var viewModel = PracticeViewModel()
     @StateObject private var recordings = RecordingsViewModel()
+    @StateObject private var navigation = AppNavigation()
     @Environment(\.scenePhase) private var scenePhase
-    @State private var path: [String] = []
 
     var body: some Scene {
         WindowGroup {
-            NavigationStack(path: $path) {
-                LibraryView(path: $path)
-            }
+            RootView()
+            .environmentObject(navigation)
             .environmentObject(viewModel)
             .environmentObject(recordings)
             .onAppear(perform: openFromLaunchArguments)
@@ -51,7 +50,8 @@ struct PurandaraApp: App {
     }
 
     /// Debug aid for screenshots, UI tests and manual checks:
-    /// `-open sarali-4` opens an exercise (`-open shruti` / `-open find-sa` the Sa screens, `-open recordings` / `-open record` the recordings), `-autoplay YES` also starts it once samples load,
+    /// `-open sarali-4` opens an exercise (`-open shruti` / `-open find-sa` the Sa screens, `-open recordings` / `-open record` the recordings,
+    /// `-open set-SARALI` a set page, `-open about` About), `-autoplay YES` also starts it once samples load,
     /// `-singAlong YES` turns sing-along on, `-singer <cents>` uses a synthetic singer,
     /// `-resetSettings YES` starts from default settings and no recordings (UI tests), `-sa <midi>` then picks a Sa.
     private func openFromLaunchArguments() {
@@ -69,10 +69,10 @@ struct PurandaraApp: App {
         if id == "recordings" || id == "record" {
             recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents,
                                strictness: viewModel.settings.strictness.kotlin)
-            path = id == "record" ? ["recordings", "record"] : ["recordings"]
+            navigation.open(id)
             return
         }
-        path = [id]
+        navigation.open(id)
         if defaults.bool(forKey: "singAlong") { viewModel.settings.singAlong = true }
         if let raw = defaults.string(forKey: "practiceMode"), let mode = PracticeSettings.ModeChoice(rawValue: raw) {
             viewModel.settings.practiceMode = mode

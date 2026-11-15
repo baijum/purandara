@@ -9,8 +9,8 @@
 /* Begin PBXBuildFile section */
 		0296579E3B2E308DB06B5A52 /* HarmoniumSamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */; };
 		0C08EE7190997F0013919899 /* RagaEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC8F2927353BC7ECF21CFBA /* RagaEditorView.swift */; };
+		0D76B123686030CE263AC2C3 /* NavigationViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0438513931E04C557E0D0B10 /* NavigationViews.swift */; };
 		10224C95DA12A396F0417243 /* PitchListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCCDC87BD7D51343B42D8B7F /* PitchListener.swift */; };
-		124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27118B7E3E2165E03506755 /* LibraryView.swift */; };
 		1AF67FF2548AEBD63FC3668E /* NeuralPitchSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */; };
 		1CB7A1F46322A6F9174301AF /* RunView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8F4A84590A79425F21395B /* RunView.swift */; };
 		20652ABAADD16B8AEC84E47A /* VarisaiAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */; };
@@ -19,6 +19,7 @@
 		40BDEF4DD4F2AB7BFFA9A483 /* SharedFrameworkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D181B368D46AF5D5BA1A4D4 /* SharedFrameworkTests.swift */; };
 		4327EF87BA3A4AA73E3D8BA9 /* SingAlongViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04B6B95EFED9FE818FAD3842 /* SingAlongViews.swift */; };
 		517D5DDFB720C0F8694AA932 /* models in Resources */ = {isa = PBXBuildFile; fileRef = B293CC2A0F44DA8FA17324B2 /* models */; };
+		6340F2125F90877CF30486B3 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BC6442AAC7ECA7E1BA8B71A /* HomeView.swift */; };
 		6E0971212388D03C08303FAD /* RecordingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A9D911905EF1995C38295C /* RecordingsViews.swift */; };
 		6E156FF71407AFDB27CB73C6 /* onnxruntime.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C4C4F762B6B0F60ADE2A6A72 /* onnxruntime.xcframework */; };
 		7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49C9FF674A7F91662569737F /* PracticeSettings.swift */; };
@@ -54,7 +55,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0438513931E04C557E0D0B10 /* NavigationViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationViews.swift; sourceTree = "<group>"; };
 		04B6B95EFED9FE818FAD3842 /* SingAlongViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingAlongViews.swift; sourceTree = "<group>"; };
+		0BC6442AAC7ECA7E1BA8B71A /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		27C642EBB842FC0EB61A4F50 /* SingAlongEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SingAlongEngine.swift; sourceTree = "<group>"; };
 		2913954C0BC39ADF66A7FFCD /* Recorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Recorder.swift; sourceTree = "<group>"; };
 		483E84CDF43D5F521EB0595D /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
@@ -72,7 +75,6 @@
 		9DE6BE56662F27C8F99F8397 /* PlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerView.swift; sourceTree = "<group>"; };
 		B293CC2A0F44DA8FA17324B2 /* models */ = {isa = PBXFileReference; lastKnownFileType = folder; name = models; path = ../models; sourceTree = SOURCE_ROOT; };
 		B3A9D911905EF1995C38295C /* RecordingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingsViews.swift; sourceTree = "<group>"; };
-		C27118B7E3E2165E03506755 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryView.swift; sourceTree = "<group>"; };
 		C4C4F762B6B0F60ADE2A6A72 /* onnxruntime.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = onnxruntime.xcframework; path = Frameworks/onnxruntime.xcframework; sourceTree = "<group>"; };
 		C5FBDB9CFC6E06CA052AF937 /* PurandaraUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurandaraUITests.swift; sourceTree = "<group>"; };
 		C9197E6D30958F4BB3EF8BC1 /* ShrutiView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShrutiView.swift; sourceTree = "<group>"; };
@@ -147,7 +149,8 @@
 			isa = PBXGroup;
 			children = (
 				483E84CDF43D5F521EB0595D /* Colors.swift */,
-				C27118B7E3E2165E03506755 /* LibraryView.swift */,
+				0BC6442AAC7ECA7E1BA8B71A /* HomeView.swift */,
+				0438513931E04C557E0D0B10 /* NavigationViews.swift */,
 				E08763E5702FC198877A4751 /* NotationView.swift */,
 				9DE6BE56662F27C8F99F8397 /* PlayerView.swift */,
 				5DC8F2927353BC7ECF21CFBA /* RagaEditorView.swift */,
@@ -373,7 +376,8 @@
 			files = (
 				BF08A74FECBA0408C6B1285C /* Colors.swift in Sources */,
 				0296579E3B2E308DB06B5A52 /* HarmoniumSamples.swift in Sources */,
-				124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */,
+				6340F2125F90877CF30486B3 /* HomeView.swift in Sources */,
+				0D76B123686030CE263AC2C3 /* NavigationViews.swift in Sources */,
 				1AF67FF2548AEBD63FC3668E /* NeuralPitchSupervisor.swift in Sources */,
 				FC3F796F00AA989D622B24F0 /* NotationView.swift in Sources */,
 				10224C95DA12A396F0417243 /* PitchListener.swift in Sources */,

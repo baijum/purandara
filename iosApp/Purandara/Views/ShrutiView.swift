@@ -243,6 +243,9 @@ private struct OutputChangedNotice: View {
 struct FindSaView: View {
     @EnvironmentObject private var viewModel: PracticeViewModel
     @Environment(\.dismiss) private var dismiss
+    /// After "Use this": back to where Find my Sa was opened from (nil), or the
+    /// sidebar's Home, where there is nothing to go back to.
+    var onUsed: (() -> Void)?
 
     private var micAllowed: Bool { viewModel.singAlong.micPermitted || viewModel.syntheticSingerCents != nil }
 
@@ -306,7 +309,7 @@ struct FindSaView: View {
                 }
                 Button {
                     viewModel.useSuggestedSa()
-                    dismiss()
+                    if let onUsed { onUsed() } else { dismiss() }
                 } label: { WrappingText("Use this") }
                 .buttonStyle(.borderedProminent)
                 Button { viewModel.retryFindSa() } label: { WrappingText("Try again") }

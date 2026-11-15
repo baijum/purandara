@@ -46,7 +46,7 @@ features speculatively.
   (recordings with an external tanpura) and [`docs/plan-recording-insights.md`](docs/plan-recording-insights.md)
   ("How it went", what you meant to sing, your own raga; steps 1–3 built) and
   [`docs/plan-navigation.md`](docs/plan-navigation.md) (a navigation menu: Android drawer,
-  iOS tabs and iPad sidebar; approved, N1–N2 built) (and, for the website,
+  iOS tabs and iPad sidebar; approved, N1–N3 built) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
@@ -130,7 +130,7 @@ features speculatively.
 | `app/.../viewmodel/` | `RecordingsViewModel` (record, analyse, list, play, rename, Sa/raga, delete; kept apart from `PracticeViewModel`; `RagaEditing` for Your own raga), `PracticeViewModel`, `RunController` + `RunState` (a run sequences the normal player through its kalas and repeats), `SingAlongState`, `ShrutiState` |
 | `app/.../ui/` | `PurandaraApp` (routes: the menu's destinations in `MenuScaffold`, with the player, practice run and recorder pushed above; `AppNavigator`), `navigation/` (`TopLevelNav.kt`: the drawer, modal or permanent, and `NavigationButton`), `library/` (`HomeScreen`: continue, Sa, the sets; `SetScreen`: a set's page with its run row), `about/`, `player/`, `run/` (setup and complete; playing uses the player with a run banner), `recordings/` (list, record, recording; `RagaEditor` for Your own raga), `shruti/`, `SaControls.kt` (Sa picker, fine-tune, strictness) |
 | `iosApp/Purandara/Audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (renders ahead on a queue into `AVAudioPlayerNode` buffers; no Kotlin on the real-time thread) |
-| `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel` (including `RunUI`); `LibraryView` (landing page: continue, Sa + tanpura, sets with contours and run rows), `PlayerView` (+ settings sheet, `SaChoiceList`), `RunView` (run plan and complete; playing uses `PlayerView` with a run banner), `NotationView` (+ `TalaStripView`), `SingAlongViews`, `ShrutiView` (Shruti practice, Find my Sa) |
+| `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel` (including `RunUI`); `NavigationViews` (`AppNavigation`, `RootView`: tabs on compact width, a sidebar on regular; the Sa tab, `AboutView`, `appDestinations` for pushed screens); `HomeView` (Home: continue, Sa + tanpura, the sets; `SetView`: a set's page with contours and its run row; `SaSection`), `PlayerView` (+ settings sheet, `SaChoiceList`), `RunView` (run plan and complete; playing uses `PlayerView` with a run banner), `NotationView` (+ `TalaStripView`), `SingAlongViews`, `ShrutiView` (Shruti practice, Find my Sa) |
 | `iosApp/Purandara/Audio/Recorder.swift` | Recordings: `Recorder` (own `AVAudioEngine`, `.measurement` mode → AAC .m4a; debug synthetic singer) and `RecordingDecoder`; `RecordingsViewModel` (+ `RecordingStore`, Application Support/recordings) and `RecordingsViews` (list, record, recording with swaras, trace, playback); `RagaEditorView` (Your own raga, a sheet) |
 | `iosApp/Purandara/Audio/PitchListener.swift` | Mic tap buffers (on the player's engine, for echo cancellation) → windows → the shared `LivePitch` → pitch frames; debug synthetic singer. Used by `SingAlongEngine`, Shruti practice and Find my Sa. `NeuralPitchSupervisor.swift` is the SwiftF0 v0.3 ONNX session (a shared `SwiftF0Model`) |
 | `shared/.../singalong/Display.kt` | Swara labels (R₁, S′) and mark glyphs shared by both apps |
@@ -155,7 +155,7 @@ Closures that a background queue calls must not be created inside `@MainActor` c
 traps on the isolation check): build them in a `nonisolated` helper, and pass Kotlin values
 to the main actor in a `Handoff`. Debug launch arguments `-open <varisai-id> -autoplay YES` open
 (and play) an exercise for screenshots (`-open shruti` / `-open find-sa` open the Sa
-screens); add `-singAlong YES -singer <cents>` for a synthetic singer on iOS, and
+screens, `-open set-SARALI` a set page, `-open about` About); add `-singAlong YES -singer <cents>` for a synthetic singer on iOS, and
 `-resetSettings YES` to start from default settings, an empty history and no recordings (then `-sa <midi>` to pick a Sa). On Android (debug builds),
 `adb shell am start -n com.baijum.purandara/.MainActivity --ef singer 0` replaces
 the microphone with a synthetic singer (the value is cents off target), so
@@ -223,7 +223,7 @@ off screen fail the Dynamic Type check (and a half-visible row at the bottom edg
 contrast), so keep a screen's first view to a few tall rows; buttons sharing a list row
 need their own button style, and navigation links in one row all open the first, so push
 through the path instead; at accessibility text sizes move secondary panels into the scrolling
-content. The audit helper ignores three things: contrast findings (the check is
+content; list section headers cap Dynamic Type like footers (put a heading in the section, or a row in the iPad sidebar). The audit helper ignores four things: contrast findings (the check is
 environment noise: it flags pairs that pass WCAG AA by wide margins and reports
 different sets per device and runtime under one Xcode build, so contrast is
 logged, not fatal — real contrast checking happens on the tuned local toolchain,
@@ -231,6 +231,8 @@ issue #8), Dynamic Type warnings on notation
 cells (swaras, pairs, karvai: they shrink to fit their column by design), and,
 for exercises taller than the screen (`longNotation`), issues on rows outside
 the visible notation area (the lazy list keeps them loaded behind the
-controls). Top-bar titles don't scale, so long ones are cut off: use
+controls), and, with `sidebar` (the iPad layout), Dynamic Type warnings on the
+sidebar's rows (the menu is taller than the screen, so whichever rows sit at its
+edges are flagged; they scale, checked by screenshot). Top-bar titles don't scale, so long ones are cut off: use
 `Varisai.shortTitle` there. UI tests
 launch with `-resetSettings YES` because settings persist between launches.
