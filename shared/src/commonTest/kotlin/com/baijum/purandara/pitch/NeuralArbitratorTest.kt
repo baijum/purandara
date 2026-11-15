@@ -392,6 +392,54 @@ class NeuralArbitratorTest {
         while (!arb.shouldRunInference()) { /* advance */ }
     }
 
+    // ── No pitch and live (octave-only) mode ─────────────────────────
+
+    @Test
+    fun noPitchNeverDisablesTheModel() {
+        val arb = NeuralArbitrator()
+        repeat(NeuralArbitrator.FAILURE_THRESHOLD * 10) { arb.onNoPitch() }
+        assertFalse(arb.isDisabledByFailures, "silence is not a failure")
+        assertNull(arb.currentResult())
+    }
+
+    @Test
+    fun noPitchResetsTheFailureCountAndConsistency() {
+        val arb = NeuralArbitrator()
+        repeat(NeuralArbitrator.FAILURE_THRESHOLD - 1) { arb.onInferenceFailure() }
+        arb.onNoPitch()
+        arb.onInferenceFailure()
+        assertFalse(arb.isDisabledByFailures)
+
+        val yin = PitchResult(frequencyHz = 440.0, confidence = 0.15)
+        val neural = NeuralPitchResult(frequencyHz = 880.0, confidence = 0.90)
+        advanceToInferenceFrame(arb)
+        arb.onInferenceResult(neural)
+        arb.onNoPitch()
+        advanceToInferenceFrame(arb)
+        arb.onInferenceResult(neural)
+        assertEquals("neural_inconsistent", arb.arbitrate(yin, neural).reason, "a gap restarts the consistency count")
+    }
+
+    @Test
+    fun octaveOnlyStillCorrectsOctaves() {
+        val arb = NeuralArbitrator(octaveOnly = true)
+        val yin = PitchResult(frequencyHz = 440.0, confidence = 0.15)
+        val neural = NeuralPitchResult(frequencyHz = 880.0, confidence = 0.90)
+        buildConsistency(arb, neural)
+        assertEquals("octave_correction", arb.arbitrate(yin, neural).reason)
+    }
+
+    @Test
+    fun octaveOnlyNeverOverridesOnStrongDisagreement() {
+        val arb = NeuralArbitrator(octaveOnly = true)
+        val yin = PitchResult(frequencyHz = 440.0, confidence = 0.2)
+        val neural = NeuralPitchResult(frequencyHz = 660.0, confidence = 0.95)
+        buildConsistency(arb, neural)
+        val decision = arb.arbitrate(yin, neural)
+        assertEquals(PitchSource.YIN, decision.source)
+        assertEquals(440.0, decision.frequencyHz)
+    }
+
     private fun buildConsistency(arb: NeuralArbitrator, neural: NeuralPitchResult) {
         repeat(NeuralArbitrator.CONSISTENCY_FRAMES) {
             advanceToInferenceFrame(arb)

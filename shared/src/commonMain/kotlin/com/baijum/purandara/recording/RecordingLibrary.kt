@@ -15,6 +15,10 @@ import kotlinx.serialization.json.Json
  * @property ragaKey the raga chosen for naming, or null for default names.
  * @property customTitle the student's own title; null shows the [autoTitle].
  * @property analysisVersion the [RecordingLibrary.ANALYSIS_VERSION] that made the `.pitch` file.
+ *   Defaults to the first version: the index leaves out values equal to the
+ *   default, so a default of the current version would make every old
+ *   recording look up to date after a bump. New recordings pass
+ *   [RecordingLibrary.ANALYSIS_VERSION].
  */
 @Serializable
 data class Recording(
@@ -25,8 +29,11 @@ data class Recording(
     val saCents: Int = 0,
     val ragaKey: String? = null,
     val customTitle: String? = null,
-    val analysisVersion: Int = RecordingLibrary.ANALYSIS_VERSION,
+    val analysisVersion: Int = RecordingLibrary.FIRST_ANALYSIS_VERSION,
 ) {
+    /** True when the `.pitch` file predates the current analysis and should be redone from the audio. */
+    val needsAnalysis: Boolean get() = analysisVersion < RecordingLibrary.ANALYSIS_VERSION
+
     val raga: Raga? get() = ragaKey?.let { Ragas.byKey(it) }
 
     val saHz: Double get() = Shruti.saHz(saMidi, saCents)
@@ -73,6 +80,9 @@ class RecordingLibrary(recordings: Collection<Recording> = emptyList()) {
     fun changeRaga(id: String, ragaKey: String?): RecordingLibrary =
         update(id) { it.copy(ragaKey = ragaKey?.takeIf { key -> Ragas.byKey(key) != null }) }
 
+    /** Marks the recording's `.pitch` file as made by the current analysis. */
+    fun analysed(id: String): RecordingLibrary = update(id) { it.copy(analysisVersion = ANALYSIS_VERSION) }
+
     fun delete(id: String): RecordingLibrary = RecordingLibrary(recordings.filter { it.id != id })
 
     /** Keeps only recordings whose audio and pitch files are among [fileNames] (the folder's contents). */
@@ -100,6 +110,9 @@ class RecordingLibrary(recordings: Collection<Recording> = emptyList()) {
     companion object {
         /** Bump when the analysis changes enough that old `.pitch` files should be redone. */
         const val ANALYSIS_VERSION = 1
+
+        /** The version of recordings saved before the field was written. */
+        const val FIRST_ANALYSIS_VERSION = 1
 
         /** Longest recording, in seconds (10 minutes). */
         const val MAX_SECONDS = 600

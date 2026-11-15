@@ -1,4 +1,5 @@
-// Ported from ukulele-companion (same author, MIT): NeuralArbitrator.kt + NeuralPitchResult.kt. Changes: package only.
+// Ported from ukulele-companion (same author, MIT): NeuralArbitrator.kt + NeuralPitchResult.kt.
+// Changes: configurable interval; onNoPitch (no pitch is not a failure); octaveOnly for live use.
 package com.baijum.purandara.pitch
 
 import kotlin.math.abs
@@ -50,7 +51,15 @@ data class NeuralPitchResult(
  * val decision = arbitrator.arbitrate(yinResult, neuralResult)
  * ```
  */
-class NeuralArbitrator(private val supervisorInterval: Int = SUPERVISOR_INTERVAL) {
+class NeuralArbitrator(
+    private val supervisorInterval: Int = SUPERVISOR_INTERVAL,
+    /**
+     * Allow only the octave correction, not the strong-disagreement override:
+     * for live listening, where the SwiftF0 reading is about 70 ms old and so
+     * disagrees with YIN at every note change (docs/plan-swiftf0-upgrade.md).
+     */
+    private val octaveOnly: Boolean = false,
+) {
     init {
         require(supervisorInterval >= 1) { "supervisorInterval must be at least 1" }
     }
@@ -171,6 +180,20 @@ class NeuralArbitrator(private val supervisorInterval: Int = SUPERVISOR_INTERVAL
         return isDisabledByFailures
     }
 
+    /**
+     * Records a successful run that found no pitch (silence, a breath, outside
+     * the range). Unlike [onInferenceFailure] this never disables the model:
+     * treating "no pitch" as a failure switched SwiftF0 off for good after any
+     * pause of 15 runs.
+     */
+    fun onNoPitch() {
+        lastResult = null
+        resultAgeFrames = 0
+        consecutiveFailures = 0
+        consistencyFrames = 0
+        lastFrequencyForConsistency = null
+    }
+
     // --- Result access -------------------------------------------------------
 
     /**
@@ -243,7 +266,8 @@ class NeuralArbitrator(private val supervisorInterval: Int = SUPERVISOR_INTERVAL
             )
         }
 
-        return if (semitoneGap >= ARBITRATION_STRONG_SEMITONES &&
+        return if (!octaveOnly &&
+            semitoneGap >= ARBITRATION_STRONG_SEMITONES &&
             neuralResult.confidence >= 0.93 &&
             yinResult.confidence >= yinThreshold * YIN_CONFIDENCE_STRONG_FRACTION
         ) {

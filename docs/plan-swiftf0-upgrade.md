@@ -3,7 +3,8 @@
 Status: **planned** (2026-11-15); the maintainer agreed the decisions
 below as recommended. Step 1 (the comparison tool and evaluation) is done on
 synthetic tracks and 10 of the student's recordings; decisions 3 and 4 were
-settled by the results (*Results*).
+settled by the results (*Results*). Step 2 (shared code) is built: see
+*Built in step 2*. Next: Android (step 3).
 
 ## Where things stand
 
@@ -141,6 +142,36 @@ reading (new-offline) and with the old model:
   because 71–73 Hz is below mandra Pa. Elsewhere it changes nothing on this
   voice. On the synthetic high voices it is what removes the octave-up
   errors.
+
+## Built in step 2 (shared)
+
+- `pitch/SwiftF0.kt`: the constants; `range(saHz)`; `silenceGate`;
+  `SwiftF0Model` (the platform's ONNX run: 16 kHz audio and a `PitchRange` in,
+  `SwiftF0Output` with Float pitch and confidence out, null on failure);
+  `StreamResampler` (the `AudioResampler` filter carried across calls, so a
+  stream gives the same samples in pieces of any size); `SwiftF0Chunker`
+  (250-frame chunks with the 11 / 10 overlap, fed as the audio is decoded);
+  `SwiftF0Track`; and `SwiftF0Live` (the 176 ms rolling buffer: `push` every
+  hop, `input()` for the model, `read` the frame 4 from the end).
+- `RecordingAnalyzer(sampleRate, model, range)` holds YIN windows back until
+  their chunk is ready (about 4 s of audio), so each still starts from the
+  previous arbitrated pitch. The old per-window constructor stays,
+  deprecated, until both apps switch.
+- `NeuralArbitrator(interval, octaveOnly)` and `PitchPipeline(rate,
+  interval, octaveOnly)` for live listening.
+- **A bug found on the way:** the platforms reported "no pitch" (silence, a
+  breath) as a model failure, and the arbitrator switches SwiftF0 off for
+  good after 15 failures in a row. In Recordings, with SwiftF0 on every
+  window, any pause of 0.16 s turned it off for the rest of the recording;
+  live, about 0.8 s. `onNoPitch()` / `PitchPipeline.onNeuralNoPitch()` now
+  keep "no pitch" apart from failure.
+- **A second bug:** `Recording.analysisVersion` defaulted to the current
+  version, and the index leaves out values equal to the default, so after a
+  bump every old recording would have read as up to date. The default is now
+  `FIRST_ANALYSIS_VERSION` (1), new recordings pass the current version, and
+  `needsAnalysis` / `RecordingLibrary.analysed(id)` support the automatic
+  re-analysis. `ANALYSIS_VERSION` becomes 2 in step 5, when both apps run the
+  new model.
 
 ## Design
 

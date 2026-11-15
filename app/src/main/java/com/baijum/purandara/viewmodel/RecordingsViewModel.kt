@@ -201,7 +201,7 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
                 _state.update { it.copy(recorder = it.recorder.copy(analysing = null, failed = true)) }
                 return@launch
             }
-            val recording = Recording(id, created, seconds, ui.saMidi, ui.saCents)
+            val recording = Recording(id, created, seconds, ui.saMidi, ui.saCents, analysisVersion = RecordingLibrary.ANALYSIS_VERSION)
             updateLibrary { it.add(recording) }
             _state.update { it.copy(recorder = it.recorder.copy(analysing = null)) }
             // Still on the record screen (not closed or backed out meanwhile): show the result.

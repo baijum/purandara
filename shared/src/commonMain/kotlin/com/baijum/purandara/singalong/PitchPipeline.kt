@@ -25,12 +25,15 @@ data class PitchFrame(val timeSeconds: Double, val frequencyHz: Double?, val rms
  * Offline analysis (recordings) passes a smaller `neuralInterval` to consult
  * SwiftF0 more often. Not thread-safe: one instance per stream, used from one thread.
  */
-class PitchPipeline(private val sampleRate: Int, neuralInterval: Int) {
+class PitchPipeline(private val sampleRate: Int, neuralInterval: Int, octaveOnly: Boolean) {
+    /** SwiftF0 every [neuralInterval] windows, with every arbitration rule. */
+    constructor(sampleRate: Int, neuralInterval: Int) : this(sampleRate, neuralInterval, octaveOnly = false)
+
     /** Live use: SwiftF0 every [NeuralArbitrator.SUPERVISOR_INTERVAL] windows. */
     constructor(sampleRate: Int) : this(sampleRate, NeuralArbitrator.SUPERVISOR_INTERVAL)
 
     private val detector = PitchDetector()
-    private val arbitrator = NeuralArbitrator(neuralInterval)
+    private val arbitrator = NeuralArbitrator(neuralInterval, octaveOnly)
     private var previous: Double? = null
     private val recent = ArrayDeque<Double>(SMOOTHING_FRAMES)
 
@@ -44,6 +47,9 @@ class PitchPipeline(private val sampleRate: Int, neuralInterval: Int) {
     fun onNeuralResult(result: NeuralPitchResult?) {
         if (result != null) arbitrator.onInferenceResult(result) else arbitrator.onInferenceFailure()
     }
+
+    /** The SwiftF0 run requested by [beginFrame] worked but found no pitch. */
+    fun onNeuralNoPitch() = arbitrator.onNoPitch()
 
     fun process(window: FloatArray, timeSeconds: Double): PitchFrame {
         val rms = detector.rms(window)

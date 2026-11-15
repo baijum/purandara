@@ -116,7 +116,7 @@ features speculatively.
 | `shared/.../recording/` | Recordings (docs/plan-recordings.md): `RecordingAnalyzer` (decoded audio → `PitchTrack`, SwiftF0 on every window), `PitchTrack` (the saved `.pitch` format), `SwaraTranscriber` (steady stretches → `HeardNote`s in phrases, approximate by design), `RecordingLibrary` + `Recording` (index JSON, auto title); iOS `ByteBridge` for `.pitch` bytes |
 | `shared/.../domain/schedule/` | `Schedule`: timed note/beat/cursor events, `cursorAt`/`beatAt`; `ofSection` plays one section (`Varisai.sections`) with the piece's avarta numbers |
 | `shared/.../audio/` | `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output) |
-| `shared/.../pitch/` | `PitchDetector` (YIN), `AudioResampler`, `NeuralArbitrator`: ported from ukulele-companion with the interpolation sign fix |
+| `shared/.../pitch/` | `PitchDetector` (YIN), `AudioResampler`, `NeuralArbitrator`: ported from ukulele-companion with the interpolation sign fix; `SwiftF0.kt` (the v0.3 model's contract: range, silence gate, `StreamResampler`, `SwiftF0Chunker` for recordings, `SwiftF0Live` for live listening; docs/plan-swiftf0-upgrade.md) |
 | `shared/.../singalong/` | `PitchPipeline`, `SwaraMapper` (+ `Zone`, `Strictness`), `SingAlongClock`, `BleedModel` (room noise + leakage), `NoteScorer`, `SingAlongSession`: sing-along scoring |
 | `app/.../audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (`AudioTrack` on a worker thread) |
 | `app/.../audio/` (sing-along) | `MicSource` (`AudioRecordMicSource` with echo cancellation; debug-only `SyntheticSingerMicSource`), `SingAlongEngine`, `PitchListener` (Shruti practice, Find my Sa), `NeuralPitchSupervisor` |

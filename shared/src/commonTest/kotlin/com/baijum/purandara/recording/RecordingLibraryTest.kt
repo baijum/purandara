@@ -78,4 +78,28 @@ class RecordingLibraryTest {
         assertEquals(listOf("a"), lib.withFiles(files).recordings.map { it.id })
         assertEquals(listOf("c.m4a", "c.pitch"), lib.strayFiles(files))
     }
+
+    @Test
+    fun anIndexWithoutAnalysisVersionsIsTheFirstVersion() {
+        // As written by the first release: values equal to the default are left out.
+        val lib = RecordingLibrary.decode("""[{"id":"a","createdMillis":1,"durationSeconds":14.4,"saMidi":46}]""")
+        assertEquals(RecordingLibrary.FIRST_ANALYSIS_VERSION, lib["a"]!!.analysisVersion)
+        assertEquals(RecordingLibrary.ANALYSIS_VERSION > RecordingLibrary.FIRST_ANALYSIS_VERSION, lib["a"]!!.needsAnalysis)
+    }
+
+    @Test
+    fun theCurrentVersionSurvivesARoundTrip() {
+        val lib = RecordingLibrary(listOf(recording("a", 1).copy(analysisVersion = RecordingLibrary.ANALYSIS_VERSION + 1)))
+        assertEquals(RecordingLibrary.ANALYSIS_VERSION + 1, RecordingLibrary.decode(lib.encode())["a"]!!.analysisVersion)
+    }
+
+    @Test
+    fun analysedMarksTheCurrentVersion() {
+        val old = RecordingLibrary(listOf(recording("a", 1).copy(analysisVersion = 0), recording("b", 2).copy(analysisVersion = 0)))
+        assertTrue(old["a"]!!.needsAnalysis)
+        val done = old.analysed("a")
+        assertEquals(RecordingLibrary.ANALYSIS_VERSION, done["a"]!!.analysisVersion)
+        assertTrue(!done["a"]!!.needsAnalysis)
+        assertTrue(done["b"]!!.needsAnalysis, "only the one analysed")
+    }
 }
