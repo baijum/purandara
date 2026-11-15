@@ -9,7 +9,10 @@ Not part of the build. Set up once, from this directory:
 
 then `.venv/bin/python -I compare_swiftf0.py` (synthetic tracks with exact pitch)
 or `... compare_swiftf0.py --audio a.wav --sa 146.83` for a real recording
-(convert .m4a with `afconvert -f WAVE -d LEI16 in.m4a out.wav`).
+(convert .m4a with `afconvert -f WAVE -d LEI16 in.m4a out.wav`). Real
+recordings have no ground truth: each method is compared with new-offline
+(the reference way to run the model) and with old-live, and the spans where
+they differ by an octave are listed so they can be listened to.
 
 Every method is scored at the app's pitch-frame times: a 2048-sample window
 every 512 samples at the capture rate (48 kHz), the frame being the window's
@@ -17,10 +20,12 @@ centre, as PitchPipeline does. Methods:
 
   old-live      bundled model on each capture window resampled to 16 kHz, its
                 middle frame (today's sing-along and Recordings path)
-  new-live      v0.3.0 on a short rolling buffer at 16 kHz: 3 frames before,
-                the frame, 2 after (96 ms; the frame is 32 ms behind the newest
-                audio). The model gives low confidence on the first and last
-                frame of any input, so the newest frame alone is never voiced.
+  new-live      v0.3.0 on a short rolling buffer at 16 kHz: 6 frames before,
+                the frame, 4 after (176 ms; the frame is 64-80 ms behind the
+                newest audio). The model gives low confidence on the first and
+                last frame of any input, so the newest frame is never voiced,
+                and on real voices fewer than 4 frames after reads junk (about
+                2 kHz) on many frames.
   new-live-exact  the reference context, 11 before and 10 after (352 ms; the
                 frame is 176 ms behind)
   new-offline   v0.3.0 over the whole track in 30 s chunks with overlap (the
@@ -57,7 +62,7 @@ MODEL_RATE = 16_000
 MODEL_HOP = 256
 FMIN, FMAX = 46.875, 2093.75
 LEFT_FRAMES, LOOKAHEAD_FRAMES, CHUNK_FRAMES = 11, 10, 1875
-LIVE_LEFT, LIVE_AHEAD = 3, 2
+LIVE_LEFT, LIVE_AHEAD = 6, 4
 SILENCE_PEAK = 1e-3
 VOICED_CONFIDENCE = 0.5
 SEMITONE = 2 ** (1 / 12)
@@ -389,6 +394,32 @@ def to_capture_rate(x, rate):
     return np.interp(np.arange(n) * rate / CAPTURE_RATE, np.arange(len(x)), x).astype(np.float32)
 
 
+def agreement(est, ref):
+    """Of the frames voiced in either, the share voiced in both within 50 cents."""
+    either = (est > 0) | (ref > 0)
+    both = (est > 0) & (ref > 0)
+    cents = np.abs(1200 * np.log2(est[both] / ref[both]))
+    return {"agree": float((cents <= 50).sum() / max(1, either.sum())),
+            "octave": int((np.abs(cents - 1200) <= 100).sum())}
+
+
+def octave_spans(times, a, b, x):
+    both = (a > 0) & (b > 0)
+    cents = np.zeros(len(a))
+    cents[both] = np.abs(1200 * np.log2(b[both] / a[both]))
+    bad = np.where(both & (np.abs(cents - 1200) <= 100))[0]
+    if not len(bad):
+        return []
+    out = []
+    for run in np.split(bad, np.where(np.diff(bad) > 3)[0] + 1):
+        i0, i1 = run[0], run[-1]
+        s0 = int((times[i0] - WINDOW / 2 / CAPTURE_RATE) * CAPTURE_RATE)
+        s1 = int((times[i1] + WINDOW / 2 / CAPTURE_RATE) * CAPTURE_RATE)
+        out.append((times[i0], times[i1], float(np.median(a[run])), float(np.median(b[run])),
+                    float(np.sqrt(np.mean(x[s0:s1] ** 2)))))
+    return out
+
+
 def octave_jumps(est):
     """Voiced-to-voiced steps of about an octave between adjacent frames."""
     a, b = est[:-1], est[1:]
@@ -423,17 +454,20 @@ def main():
             x, rate = read_wav(path)
             x = to_capture_rate(x, rate)
             times, results = run_methods(x, args.sa, old_s, new_s)
-            base = results["old-live"][0]
             print(f"\n{path.name} ({len(x) / CAPTURE_RATE:.1f} s)")
-            print(f"  {'method':20} {'voiced':>7} {'octave jumps':>13} {'octave apart from old':>22}")
+            print(f"  {'method':20} {'voiced':>7} {'agrees with new-offline':>24} {'with old-live':>14} {'octave from old':>16}")
+            report[path.name] = {}
             for name in METHOD_ORDER:
                 if name not in results:
                     continue
                 est = results[name][0]
-                both = (est > 0) & (base > 0)
-                apart = np.abs(np.abs(1200 * np.log2(est[both] / base[both])) - 1200) <= 100
-                print(f"  {name:20} {np.mean(est > 0):7.0%} {octave_jumps(est):13d} {int(apart.sum()):22d}")
-            report[path.name] = {n: {"octave_jumps": octave_jumps(r[0])} for n, r in results.items()}
+                ref = agreement(est, results["new-offline"][0])
+                old = agreement(est, results["old-live"][0])
+                report[path.name][name] = {"voiced": float(np.mean(est > 0)), "vs_offline": ref, "vs_old": old}
+                print(f"  {name:20} {np.mean(est > 0):7.0%} {ref['agree']:24.1%} {old['agree']:14.1%} {old['octave']:16d}")
+            spans = octave_spans(times, results["old-live"][0], results["new-offline"][0], x)
+            for t0, t1, a, b, rms in spans:
+                print(f"    octave apart {t0:6.2f}-{t1:5.2f} s: old {a:4.0f} Hz, new-offline {b:4.0f} Hz, rms {rms:.4f}")
     else:
         tracks = synthetic_tracks()
         totals: dict[str, dict] = {}

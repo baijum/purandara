@@ -1,14 +1,9 @@
 # Plan: upgrade SwiftF0 and ONNX Runtime
 
 Status: **planned** (2026-11-15); the maintainer agreed the decisions
-below as recommended. Step 1 (the comparison tool) is built; the synthetic
-results (below, *Results so far*) changed decisions 3 and 4, pending a check
-on real voices.
-
-The app's neural pitch checker is the SwiftF0 model run by ONNX Runtime (the
-approved exception in AGENTS.md). Both are out of date, and the two apps use
-different ONNX Runtime versions. This plan moves both to the latest releases
-and checks that pitch reading gets better, not just different.
+below as recommended. Step 1 (the comparison tool and evaluation) is done on
+synthetic tracks and 10 of the student's recordings; decisions 3 and 4 were
+settled by the results (*Results*).
 
 ## Where things stand
 
@@ -56,26 +51,22 @@ Our callers would break as they are:
    the octave errors we bring SwiftF0 in to catch, because a pitch outside the
    range gets confidence 0 instead of a wrong octave. *Find my Sa* has no Sa
    yet, so it keeps the full range.
-3. **Live listening: how to give the model context.** The supervisor keeps a
-   rolling 16 kHz buffer of the last 352 ms: 22 frames, which are the frame
-   itself, 11 before and 10 after. Each time SwiftF0 runs (every 5th window, as
-   now), it reads either:
-   - (a) the frame 10 from the end. That frame is exact, but 176 ms old.
-   - (b) the newest frame, which is current but has no audio after it.
+3. **Live listening (settled by the results):** a rolling buffer of the last
+   176 ms at 16 kHz, 6 frames before the frame read and 4 after, so the
+   reading is about 64–80 ms behind the newest audio. Because it lags, live
+   listening uses SwiftF0 **only for octave correction**. The arbitrator's
+   non-octave "strong disagreement" override is turned off live, because a
+   reading that old disagrees with YIN at every note change and gamaka.
+   SwiftF0 still runs every 5th window.
+4. **Recordings (settled by the results):** the whole recording in 30 s
+   chunks with overlap, as the reference does. This is the most accurate way
+   to run the model and the fastest: about 0.4 s of model time per minute of
+   audio on a Mac, against 6.6 s today. Each YIN frame takes the nearest
+   SwiftF0 frame, and the arbitration is unchanged.
 
-   The arbitrator only uses SwiftF0 to overrule YIN, and only when SwiftF0
-   gives the same answer twice in a row. So either option could work. We
-   **measure both** (see Evaluation) and keep whichever has fewer octave errors
-   on the test tracks. If neither beats the old model live, live listening
-   keeps the old model and only Recordings uses the new one. That would mean
-   two model files, so it's a last resort.
-4. **Recordings: run the model over the whole recording.** Instead of one call
-   per 512-sample window (about 56 000 calls for 10 minutes), run 30 s chunks
-   with overlap, as the reference does (about 20 calls). Each YIN frame then
-   takes the nearest SwiftF0 frame. This should be much faster than today and
-   exactly as accurate as the reference.
+## Results (2026-11-15)
 
-## Results so far (synthetic tracks, 2026-11-15)
+### Synthetic tracks
 
 From `tools/pitch/compare_swiftf0.py`. The tracks are Sarali 1 at Sa A♯2, D3,
 F♯3, G♯3, A♯3 and C4 on three vowels (aa, oo, ee), plus a breathy soft voice,
@@ -85,7 +76,7 @@ counted at the app's pitch-frame times:
 | Method | Octave errors | Gross errors (> 50¢ on held notes) | Model time per minute of audio (Mac, 1 thread) |
 |---|---|---|---|
 | Old model, today's window | 6, all on the weak-fundamental track | 5 | 1.3 s live, 6.6 s on every window |
-| **New, short buffer** (3 frames before, 2 after) | **0** | **0** | **1.2 s live, 5.9 s on every window** |
+| New, short buffer (3 frames before, 2 after) | 0 | 0 | 1.2 s live, 5.9 s on every window |
 | New, reference context (11 before, 10 after) | 163 | 2851 (the reading is 176 ms old, so it lags every note change) | 3.3 s live |
 | New, whole recording in chunks | 178 | 156 | 0.4 s |
 | New, whole recording with the Sa range | 0, but 1% of voiced frames are lost | 0 | 0.4 s |
@@ -105,25 +96,59 @@ What this showed:
 - **The new model is more precise:** median error 1–2¢ against the old model's
   4–5¢. It also fixes the old model's octave errors on a weak fundamental.
 
-These are synthetic voices, so the high-voice finding may be an artefact of
-the simple vowel model. The student's recordings decide it (Evaluation step 3).
+These are synthetic voices, and the student's recordings below overturned
+the short-buffer result.
 
-**Revised decisions 3 and 4 (pending the real-voice check):** use the **short
-buffer for both live listening and Recordings**, with the Sa range. Live, the
-frame read is about 32–48 ms behind the newest audio, close to the YIN frame
-(21 ms). Recordings keep today's design, SwiftF0 on every window, at the same
-cost as today. This means no chunker and no whole-recording track: callers
-pass the last 96 ms of capture audio (4608 samples at 48 kHz) instead of the
-2048-sample window, and the supervisor reads the frame 2 from the end. The
-design below still describes the chunked version and will be rewritten once
-the real-voice check settles it.
+### The student's recordings (10, Sa A♯2, iPad mini, 11–36 s)
+
+There's no ground truth, so each method was compared with the full-context
+reading (new-offline) and with the old model:
+
+- **The 3-before / 2-after buffer reads junk on a real voice.** On many frames
+  it reported about 2 kHz, the top of the model's range: 62% agreement with
+  the full context. The synthetic voices hid this. How the buffer size
+  compares with the full context, on the same frames:
+
+  | Frames before / after | Agrees within 50¢ | Model time per call |
+  |---|---|---|
+  | 3 / 2 | 61.8% | 1.0 ms |
+  | 11 / 2 | 96.1% | 2.0 ms |
+  | **6 / 4** | **99.0%** | **1.7 ms** |
+  | 11 / 4 | 99.4% | 2.2 ms |
+  | 11 / 6 | 99.8% | 2.5 ms |
+  | 11 / 10 | 100% | 2.9 ms |
+
+  The audio *after* the frame matters most, and more audio before it adds
+  little.
+- **Full context against the old model:** they agree within 50¢ on about 97%
+  of voiced frames. They are an octave apart on **7 short spots (0.4% of
+  frames)**, all in soft passages (RMS about 0.007–0.01, a voice fading or
+  between notes). In every spot the new model reads the lower octave:
+  - 9:57:45 recording: 19.3 s and 21.0–21.3 s
+  - 9:58:32 recording: 15.4–15.6 s
+  - 9:59:05 recording: 4.2–4.3 s and 7.9–8.0 s
+
+  In all but the last spot the app's saved pitch (YIN plus the old model) has
+  no pitch at all. In the last, it also reads the lower octave (88 Hz),
+  which suggests the voice itself drops there, like a creak at a phrase
+  end. **To check by ear.**
+- **Live, the lag is the cost, not the octave.** Compared with the full
+  context at the moment it's used, the 6 / 4 buffer is in the same octave on
+  99.7% of frames with the Sa range (the old model: 99.4%). It's within 50¢
+  on only 92%, because it is about 70 ms old. Hence octave correction only
+  (decision 3).
+- **The Sa range** halves the octave disagreements in the 9:59:05 recording,
+  because 71–73 Hz is below mandra Pa. Elsewhere it changes nothing on this
+  voice. On the synthetic high voices it is what removes the octave-up
+  errors.
 
 ## Design
 
 ### Shared (`shared/`, pure Kotlin)
 
 - `pitch/SwiftF0.kt` holds the model's constants (rate, hop, frequency range,
-  left and lookahead frames, chunk size, silence peak), and:
+  left and lookahead frames for chunks and for the live buffer (6 / 4), chunk
+  size, silence peak), and:
   - `fun silenceGate(audio16k, confidence)`: confidence 0 for hops below the peak.
   - `fun range(saHz: Double?): ClosedRange<Double>`: the pitch range for
     decision 2.
@@ -133,8 +158,8 @@ the real-voice check settles it.
   - `class SwiftF0Track(hz, confidence)` with `at(seconds)`, so RecordingAnalyzer
     can look up the nearest frame.
 - `RecordingAnalyzer` takes a `SwiftF0Track` (built from the whole recording)
-  instead of a per-window callback. `PitchPipeline` and `NeuralArbitrator` keep
-  their arbitration rules. Their thresholds (1.5 / 2.5 semitones, confidence
+  instead of a per-window callback. `NeuralArbitrator` gets a live mode that
+  allows only the octave correction (decision 3); Recordings keep every rule. Their thresholds (1.5 / 2.5 semitones, confidence
   fractions, 2 matching readings) are re-checked in Evaluation, not changed up
   front.
 - `AudioResampler` stays unless Evaluation shows it costs accuracy. It's a
@@ -152,8 +177,9 @@ the real-voice check settles it.
   - Feeds the `audio`, `fmin` and `fmax` inputs by name.
   - Reads `pitch` as double and `confidence`.
   - Applies the silence gate.
-  - Two entry points: `estimateLive(window, range)` (the rolling buffer,
-    decision 3) and `analyse(audio16k, range): SwiftF0Track` (chunked,
+  - Two entry points: `estimateLive(range)` reads the frame 4 from the end
+    of a rolling 176 ms 16 kHz buffer that the capture code fills on every
+    hop, not only when SwiftF0 runs (decision 3), and `analyse(audio16k, range): SwiftF0Track` (chunked,
     decision 4).
   - Threads stay at 1 for live listening. Offline analysis may use 2; measure
     first.
