@@ -224,8 +224,6 @@
 
     <!-- Recordings (docs/plan-recordings.md) -->
     <string name="recordings_title">Recordings</string>
-    <string name="recordings_row_detail">Record yourself and see the swaras you sang</string>
-    <string name="recordings_row_count">Record yourself and see the swaras · %1$d saved</string>
     <string name="recordings_empty">Record yourself singing and the app shows the swaras it heard, with your pitch on the swara lines. Recordings stay on this device.</string>
     <string name="recordings_new">New recording</string>
     <string name="recording_row_desc">%1$s, %2$s</string>

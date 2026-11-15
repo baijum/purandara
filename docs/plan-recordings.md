@@ -17,6 +17,9 @@ Changes from the plan while building:
 - Deleting from the list by swiping is iOS only; on both apps a recording
   can be deleted from its own screen.
 - `-resetSettings YES` (iOS) also clears recordings, for the UI tests.
+- Recordings opens from a button in the *Your Sa* card, beside Practise Sa
+  and Find my Sa, not a card of its own: a separate landing-page row failed
+  the iOS Dynamic Type audit on CI (larger text pushed it out of view).
 
 The student records themselves singing, and the app shows the swaras it
 heard (approximately) and the pitch trace on the swara lines. Recordings are

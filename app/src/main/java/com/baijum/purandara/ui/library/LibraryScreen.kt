@@ -117,7 +117,6 @@ private fun LazyListScope.libraryItems(
     val history = state.history
     item(key = "continue") { ContinueCard(catalog, history, nowMillis, compact, actions.onSelect) }
     item(key = "sa") { SaCard(state, actions) }
-    item(key = "recordings") { RecordingsCard(state.recordingCount, actions.onOpenRecordings) }
     catalog.groupBy { it.set }.forEach { (set, exercises) ->
         stickyHeader(key = set.name) {
             SetHeader(set, history.practisedCount(set, catalog), exercises.size)
@@ -245,40 +244,17 @@ private fun SaCard(state: LibraryState, actions: LibraryActions) {
                     Text(stringResource(R.string.practise_sa))
                 }
                 OutlinedButton(onClick = actions.onFindSa) { Text(stringResource(R.string.find_my_sa)) }
+                // Recordings (docs/plan-recordings.md), in this row as on iOS.
+                OutlinedButton(onClick = actions.onOpenRecordings) {
+                    Icon(painterResource(R.drawable.ic_mic), contentDescription = null)
+                    Text(stringResource(R.string.recordings_title), modifier = Modifier.padding(start = 8.dp))
+                }
             }
             Text(
                 stringResource(R.string.tanpura_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        }
-    }
-}
-
-/** Opens the recordings (docs/plan-recordings.md). */
-@Composable
-private fun RecordingsCard(count: Int, onClick: () -> Unit) {
-    val title = stringResource(R.string.recordings_title)
-    val detail = if (count == 0) stringResource(R.string.recordings_row_detail) else stringResource(R.string.recordings_row_count, count)
-    Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .clickable(onClick = onClick)
-                .padding(16.dp)
-                .clearAndSetSemantics {
-                    contentDescription = "$title, $detail"
-                    role = Role.Button
-                },
-        ) {
-            Icon(painterResource(R.drawable.ic_mic), contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Column(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null)
         }
     }
 }

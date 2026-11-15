@@ -80,7 +80,7 @@ fun PurandaraApp(viewModel: PracticeViewModel, recordings: RecordingsViewModel) 
         state.findSa.open -> FindSaRoute(viewModel, state, allowMic)
         state.run?.phase == RunPhase.PLAYING -> PlayerRoute(viewModel, state, micDenied, runMode = true) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
         state.run != null -> RunRoute(viewModel, state)
-        state.selected == null -> LibraryRoute(viewModel, state, recordingsState.library.recordings.size) {
+        state.selected == null -> LibraryRoute(viewModel, state) {
             viewModel.stop()
             recordings.open(state.settings.tuning, state.settings.saMidi, state.settings.saCents)
         }
@@ -132,7 +132,7 @@ private fun FindSaRoute(viewModel: PracticeViewModel, state: PracticeUiState, al
 }
 
 @Composable
-private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState, recordingCount: Int, openRecordings: () -> Unit) {
+private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState, openRecordings: () -> Unit) {
     LibraryScreen(
         catalog = viewModel.catalog,
         state = LibraryState(
@@ -143,7 +143,6 @@ private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState, r
             samplesLoaded = state.samplesLoaded,
             loadError = state.loadError,
             runPlans = state.runPlans,
-            recordingCount = recordingCount,
         ),
         actions = LibraryActions(
             onSelect = { varisai -> viewModel.select(varisai) },

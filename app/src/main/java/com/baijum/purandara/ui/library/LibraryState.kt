@@ -15,8 +15,6 @@ data class LibraryState(
     val loadError: Boolean = false,
     /** Saved run plans, for each set's continue point. */
     val runPlans: RunPlans = RunPlans(),
-    /** How many recordings are saved (docs/plan-recordings.md). */
-    val recordingCount: Int = 0,
 )
 
 /** What the landing page can do. */

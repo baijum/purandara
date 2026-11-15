@@ -29,7 +29,6 @@ struct LibraryView: View {
             }
             continueSection
             saSection
-            recordingsSection
             ForEach(sections, id: \.set.name) { section in
                 Section {
                     Text(section.set.description_)
@@ -169,35 +168,11 @@ struct LibraryView: View {
         return text.prefix(1).capitalized + text.dropFirst()
     }
 
-    // MARK: - Recordings (docs/plan-recordings.md)
-
-    private var recordingsSection: some View {
-        let count = recordings.library.recordings.count
-        let detail = count == 0
-            ? String(localized: "Record yourself and see the swaras you sang")
-            : String(localized: "Record yourself and see the swaras · \(count) saved")
-        return Section {
-            Button {
-                viewModel.stopTanpura()
-                recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents)
-                path.append("recordings")
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: "mic.fill").foregroundStyle(Color.accentColor).accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Recordings").foregroundStyle(.primary)
-                        Text(detail).font(.subheadline).foregroundStyle(Color.subdued).fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 8)
-                    Image(systemName: "chevron.right").foregroundStyle(Color.subdued).accessibilityHidden(true)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text("Recordings, \(detail)"))
-            .accessibilityAddTraits(.isButton)
-        }
+    /// Opens Recordings (docs/plan-recordings.md) with the current Sa and tuning.
+    private func openRecordings() {
+        viewModel.stopTanpura()
+        recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents)
+        path.append("recordings")
     }
 
     // MARK: - Your Sa
@@ -235,6 +210,10 @@ struct LibraryView: View {
                 Button { path.append("find-sa") } label: { iconText("Find my Sa", systemImage: "person.wave.2") }
                     .buttonStyle(.bordered)
                     .disabled(!viewModel.samplesLoaded)
+                // Here, not a row of its own, for the same reason (the Dynamic Type audit on CI).
+                Button(action: openRecordings) { iconText("Recordings", systemImage: "mic") }
+                    .buttonStyle(.bordered)
+                    .accessibilityHint(Text("Record yourself and see the swaras you sang"))
                 Text("Settle your voice on Sa before you practise.")
                     .font(.footnote)
                     .foregroundStyle(Color.subdued)
