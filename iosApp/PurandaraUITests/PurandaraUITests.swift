@@ -37,6 +37,37 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Start from Sarali Varisai 2"].waitForExistence(timeout: 5))
     }
 
+    /// "Your own raga": added from the raga list, chosen, its arohana shown; the editor passes the audit.
+    @MainActor func testYourOwnRagaPassesAuditAndIsChosen() throws {
+        let app = launch(["-singer", "0", "-open", "record"])
+        let raga = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Raga'")).firstMatch
+        XCTAssertTrue(raga.waitForExistence(timeout: 5))
+        raga.tap()
+        let add = app.buttons["Add your own raga…"]
+        scrollTo(add, in: app)
+        add.tap()
+        XCTAssertTrue(app.navigationBars["Your own raga"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Save"].isEnabled, "Save waits for a name and swaras")
+        let name = app.textFields["Name"]
+        name.tap()
+        name.typeText("Hindolam")
+        for (letter, swara) in [("Ga", "Ga 2"), ("Ma", "Ma 1"), ("Dha", "Dha 1"), ("Ni", "Ni 2")] {
+            let row = app.buttons[letter]
+            scrollTo(row, in: app)
+            row.tap()
+            let choice = app.buttons[swara]
+            XCTAssertTrue(choice.waitForExistence(timeout: 5))
+            choice.tap()
+        }
+        XCTAssertTrue(app.descendants(matching: .any)["Up: Sa, Ga 2, Ma 1, Dha 1, Ni 2, high Sa"].waitForExistence(timeout: 2))
+        try audit(app)
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.buttons["Edit Hindolam"].waitForExistence(timeout: 5), "the new raga is chosen")
+        app.buttons["Arohana"].tap()
+        XCTAssertTrue(app.staticTexts["Sing: Sa, Ga, Ma, Dha, Ni, high Sa"].waitForExistence(timeout: 2))
+        try audit(app)
+    }
+
     @MainActor func testWhatYouAreSingingAndHowItWentPassAudit() throws {
         let app = launch(["-singer", "0", "-open", "record"])
         let raga = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Raga'")).firstMatch

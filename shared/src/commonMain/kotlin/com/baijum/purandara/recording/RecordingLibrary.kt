@@ -91,6 +91,10 @@ class RecordingLibrary(recordings: Collection<Recording> = emptyList()) {
         it.copy(ragaKey = raga, scale = scale?.takeIf { raga != null })
     }
 
+    /** The student deleted their raga [ragaKey]: its recordings go back to default names and singing freely. */
+    fun forgetRaga(ragaKey: String): RecordingLibrary =
+        RecordingLibrary(recordings.map { if (it.ragaKey == ragaKey) it.copy(ragaKey = null, scale = null) else it })
+
     /**
      * Whether the student's own tanpura played. The pitch is read differently
      * with a tanpura, so a change marks the recording for analysis again

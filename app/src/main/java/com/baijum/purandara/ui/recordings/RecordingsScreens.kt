@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.sp
 import com.baijum.purandara.R
 import com.baijum.purandara.domain.Note
 import com.baijum.purandara.domain.Pitch
+import com.baijum.purandara.domain.CustomRagas
 import com.baijum.purandara.domain.Ragas
 import com.baijum.purandara.recording.HeardNote
 import com.baijum.purandara.recording.PitchTrack
@@ -194,7 +195,13 @@ private fun spokenDuration(res: Resources, seconds: Double): String {
 // --- Recording ---
 
 @Composable
-fun RecordScreen(recorder: RecorderUi, micAllowed: Boolean, actions: RecordingsActions, recentRagas: List<String> = emptyList()) {
+fun RecordScreen(
+    recorder: RecorderUi,
+    micAllowed: Boolean,
+    actions: RecordingsActions,
+    recentRagas: List<String> = emptyList(),
+    own: CustomRagas = CustomRagas(),
+) {
     RecordingsScaffold(stringResource(R.string.record_title), actions.onBack) { modifier ->
         Column(
             modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -218,7 +225,7 @@ fun RecordScreen(recorder: RecorderUi, micAllowed: Boolean, actions: RecordingsA
                 }
                 else -> {
                     if (!recorder.recording) {
-                        IntentPicker(recorder.ragaKey, recorder.scale, recentRagas, actions.onIntent)
+                        IntentPicker(recorder.ragaKey, recorder.scale, recentRagas, actions.onIntent, own, actions.onEditRaga)
                         TanpuraSwitch(recorder.tanpura, actions.onTanpura, help = true)
                     }
                     val raga = recorder.ragaKey?.let { Ragas.byKey(it) }
@@ -329,7 +336,12 @@ private fun TanpuraSwitch(on: Boolean, onChange: (Boolean) -> Unit, help: Boolea
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun RecordingDetailScreen(detail: RecordingDetailUi, actions: RecordingsActions, recentRagas: List<String> = emptyList()) {
+fun RecordingDetailScreen(
+    detail: RecordingDetailUi,
+    actions: RecordingsActions,
+    recentRagas: List<String> = emptyList(),
+    own: CustomRagas = CustomRagas(),
+) {
     val recording = detail.recording
     val title = titleOf(recording)
     var renaming by rememberSaveable { mutableStateOf(false) }
@@ -361,7 +373,7 @@ fun RecordingDetailScreen(detail: RecordingDetailUi, actions: RecordingsActions,
             RecordingTrace(detail, actions.onSeek)
             SaPicker(recording.saMidi, recording.saCents) { midi -> actions.onChangeSa(recording.id, midi, recording.saCents) }
             FineTuneControl(recording.saCents) { cents -> actions.onChangeSa(recording.id, recording.saMidi, cents) }
-            IntentPicker(recording.ragaKey, recording.scale, recentRagas) { key, scale -> actions.onChangeIntent(recording.id, key, scale) }
+            IntentPicker(recording.ragaKey, recording.scale, recentRagas, { key, scale -> actions.onChangeIntent(recording.id, key, scale) }, own, actions.onEditRaga)
             TanpuraSwitch(recording.externalTanpura, { actions.onChangeTanpura(recording.id, it) }, help = false)
             detail.tanpuraSa?.let { (midi, cents) -> TanpuraOffer(midi, cents) { actions.onChangeSa(recording.id, midi, cents) } }
         }

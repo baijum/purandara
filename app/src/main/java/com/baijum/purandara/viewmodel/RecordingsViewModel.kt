@@ -32,6 +32,7 @@ import com.baijum.purandara.recording.TanpuraProfile
 import com.baijum.purandara.recording.Insights
 import com.baijum.purandara.recording.RecordingInsights
 import com.baijum.purandara.recording.Scale
+import com.baijum.purandara.domain.CustomRagas
 import com.baijum.purandara.domain.Ragas
 import com.baijum.purandara.singalong.Strictness
 import com.baijum.purandara.recording.Transcription
@@ -99,7 +100,14 @@ data class RecordingsUiState(
     val detail: RecordingDetailUi? = null,
     /** Ragas chosen lately, most recent first. */
     val recentRagas: List<String> = emptyList(),
+    /** The student's own ragas (docs/plan-recording-insights.md, step 3). */
+    val customRagas: CustomRagas = CustomRagas(),
+    /** The raga editor, open over the screen; null when closed. */
+    val ragaEditor: RagaEditor? = null,
 )
+
+/** The raga editor: a new raga ([key] null) or one of the student's. */
+data class RagaEditor(val key: String?)
 
 /**
  * Recordings with approximate swaras (docs/plan-recordings.md): record,
@@ -112,7 +120,9 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
     private val audioManager = application.getSystemService(AudioManager::class.java)
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val _state = MutableStateFlow(RecordingsUiState(library = store.load()))
+    private val _state = MutableStateFlow(
+        RecordingsUiState(library = store.load(), customRagas = store.loadRagas().also { Ragas.useOwn(it) }),
+    )
     val state: StateFlow<RecordingsUiState> = _state.asStateFlow()
 
     private var tuning: Tuning = Tuning.JUST
@@ -162,8 +172,40 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         _state.update { it.copy(recentRagas = recent) }
     }
 
+    /** "Your own raga": the editor, over whichever screen opened it. */
+    val ragas = RagaEditing(
+        store, _state,
+        reread = {
+            _state.update { s ->
+                s.copy(detail = s.detail?.let { read(it.recording, it.track).copy(playing = it.playing, positionSeconds = it.positionSeconds, updating = it.updating) })
+            }
+        },
+        choose = { key ->
+            val s = _state.value
+            when (s.screen) {
+                RecordingsScreen.RECORD -> setIntent(key, s.recorder.scale)
+                RecordingsScreen.DETAIL -> s.detail?.recording?.let { changeIntent(it.id, key, it.scale) }
+                RecordingsScreen.LIST -> Unit
+            }
+        },
+        forget = { key ->
+            updateLibrary { it.forgetRaga(key) }
+            if (store.intentRaga == key) {
+                store.intentRaga = null
+                store.intentScale = null
+                _state.update { it.copy(recorder = it.recorder.copy(ragaKey = null, scale = null)) }
+            }
+            store.recentRagas = store.recentRagas.filter { it != key }
+            _state.update { it.copy(recentRagas = store.recentRagas) }
+        },
+    )
+
     /** Back: from a recording or the record screen to the list, from the list out. */
     fun back() {
+        if (_state.value.ragaEditor != null) {
+            ragas.close()
+            return
+        }
         when (_state.value.screen) {
             RecordingsScreen.DETAIL -> {
                 releasePlayer()
@@ -179,7 +221,7 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
     fun close() {
         recorder?.stop()
         releasePlayer()
-        _state.update { it.copy(open = false, detail = null, screen = RecordingsScreen.LIST) }
+        _state.update { it.copy(open = false, detail = null, screen = RecordingsScreen.LIST, ragaEditor = null) }
     }
 
     /** The app left the screen: recording stops and keeps what it has; playback pauses. */

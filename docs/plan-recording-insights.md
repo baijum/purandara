@@ -1,6 +1,10 @@
 # Plan: "How it went" for recordings
 
-Status: **in progress** (2026-11-15). Steps 1 and 2 are built (step 2:
+Status: **in progress** (2026-11-15). Steps 1–3 are built. Step 3, *Your
+own raga*: `domain/CustomRaga.kt` (`CustomRaga`, `CustomRagas`, the checks),
+`Ragas.useOwn` / `Ragas.builtIn`, `RecordingLibrary.forgetRaga`; the editor
+on both apps (Android `RagaEditor.kt` + `RagaEditing`, iOS
+`RagaEditorView.swift`) and the guide. Step 2:
 *What are you singing?*, the swaras on screen while recording and *How it
 went* on both apps, the guide). Step 1 (shared analysis):
 `recording/RecordingInsights.kt` (`Scale`, `Insights`, `SwaraInsight`,
@@ -105,11 +109,34 @@ recorded, and changing the choice, Sa or Strictness updates at once.
 - **Words**: a small builder from the matched notes and the Strictness;
   the same text drives VoiceOver and TalkBack.
 
-**Your own raga** (`CustomRaga`): name, arohana and avarohana as swara
-positions; validated (starts on S, rises / falls, no position twice in a
-row); stored on the device beside the recordings index; usable wherever a
-recording's raga is chosen. It names the swaras and marks out-of-raga ones
-like a built-in raga.
+**Your own raga** (`CustomRaga`, step 3): a name, and for the arohana
+and the avarohana one choice per swara letter: Ri *none / R₁ / R₂ / R₃*,
+Ga *none / G₁ / G₂ / G₃*, Ma *none / M₁ / M₂*, Pa *none / P*, Dha
+*none / D₁ / D₂ / D₃*, Ni *none / N₁ / N₂ / N₃* (Sa is always there). The
+avarohana is *the same coming down* unless the student turns that off. So a
+custom raga goes straight up and straight down: vakra (zigzag) scales such
+as Khamas wait for typed swaras (step 5).
+
+- **Checks** (one plain sentence shown under the choices, Save waits for
+  them): a name, not one of the app's ragas or the student's others; the
+  arohana and avarohana each rise in pitch letter by letter (R₃ then G₂ is
+  the same note, G₁ below R₂); a letter uses the same swara both ways; no two
+  letters on one note (R₂ up, G₁ down); at least five swaras counting Sa, as
+  for the app's ragas.
+- **Stored** on the device as `ragas.json` beside the recordings index, keys
+  `own-<time created>` so a deleted raga's key is never reused. The shared
+  `Ragas.byKey` finds the student's ragas too (notation still names only the
+  app's), so recordings, the recent list and *What are you singing?* need no
+  change.
+- **Where**: the raga list gains *Your ragas* (after the app's) and *Add your
+  own raga…*; with one of yours chosen, *Edit raga* opens it again. The
+  editor is a full screen: name, Arohana, *Same coming down*, Avarohana
+  (when different), the two read back as swaras, Save, and *Delete* (asked
+  first; recordings that used it go back to default names and singing
+  freely).
+- Editing a raga changes how its recordings are read, at once (nothing is
+  analysed again: the swara names and *How it went* come from the saved
+  pitch).
 
 `Recording` gains `intent` (serialised; default *Free singing*). The Record
 screen's choice is remembered like the tanpura switch.
@@ -121,8 +148,11 @@ screen's choice is remembered like the tanpura switch.
 - The offer's button reads "Use your Sa, A♯2 minus 25 cents".
 - The reference line on the Record screen is one element: "Sing: Sa, Ri,
   Ga, Ma, Pa, Dha, Ni, high Sa".
-- The custom raga editor uses labelled toggles per swara position, with the
-  arohana and avarohana read back as a sentence.
+- The custom raga editor: on Android each letter's choices are radio chips
+  read "Ri 2" (selected or not) and "Ri: None"; on iOS each letter is a row
+  ("Ri, Ri 2") opening a checkmarked list. The arohana and avarohana are read
+  back as a sentence ("Up: Sa, Ga 2, Ma 1, Dha 1, Ni 2, high Sa"). The iOS
+  sheet's Cancel and Save are symbols (text bar buttons cap Dynamic Type).
 - Audits and `AccessibilityTest` cover the new pieces on both apps.
 
 ## Tests

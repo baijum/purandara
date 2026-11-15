@@ -161,7 +161,8 @@ struct RecordView: View {
                     Button("Allow microphone") { recordings.allowMic() }.buttonStyle(.borderedProminent)
                 } else {
                     if !r.recording {
-                        IntentSection(raga: r.ragaKey, scale: r.scale, recent: recordings.recentRagas) { raga, scale in
+                        IntentSection(raga: r.ragaKey, scale: r.scale, recent: recordings.recentRagas, own: recordings.customRagas,
+                                      onEditRaga: { recordings.editRaga($0) }) { raga, scale in
                             recordings.setIntent(raga: raga, scale: scale)
                         }
                         Toggle(isOn: Binding(get: { recordings.recorder.tanpura }, set: { recordings.setTanpura($0) })) {
@@ -198,6 +199,9 @@ struct RecordView: View {
         }
         .navigationTitle("New recording")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $recordings.ragaEditor) { target in
+            RagaEditorView(target: target, onRecording: nil).environmentObject(recordings)
+        }
         .onDisappear { if recordings.recorder.recording { recordings.stopRecording() } }
         .onAppear(perform: autoRecord)
         .onChange(of: recordings.justRecorded) { id in
@@ -274,6 +278,9 @@ struct RecordingDetailView: View {
         }
         .navigationTitle("Recording")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $recordings.ragaEditor) { target in
+            RagaEditorView(target: target, onRecording: id).environmentObject(recordings)
+        }
         .onAppear { recordings.open(id) }
         .onDisappear {
             // Leaving for the Sa or raga list keeps it open; leaving the recording closes it.
@@ -343,7 +350,8 @@ struct RecordingDetailView: View {
                 } label: {
                     LabeledRow(title: "Sa", value: PracticeSettingsView.saLabel(Int(recording.saMidi), cents: Int(recording.saCents)))
                 }
-                IntentSection(raga: recording.ragaKey, scale: recording.scale, recent: recordings.recentRagas) { raga, scale in
+                IntentSection(raga: recording.ragaKey, scale: recording.scale, recent: recordings.recentRagas, own: recordings.customRagas,
+                              onEditRaga: { recordings.editRaga($0) }) { raga, scale in
                     recordings.changeIntent(id, raga: raga, scale: scale)
                 }
                 Toggle("External tanpura playing", isOn: Binding(
@@ -456,15 +464,22 @@ private struct IntentSection: View {
     let raga: String?
     let scale: Scale?
     let recent: [String]
+    var own = CustomRagas(ragas: [])
+    var onEditRaga: (String?) -> Void = { _ in }
     let onChange: (String?, Scale?) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("What are you singing?").font(.headline).accessibilityAddTraits(.isHeader)
             NavigationLink {
-                RagaChoiceList(selected: raga, recent: recent) { onChange($0, $0 == nil ? nil : scale) }
+                RagaChoiceList(selected: raga, recent: recent, own: own, onAdd: { onEditRaga(nil) }) { onChange($0, $0 == nil ? nil : scale) }
             } label: {
                 LabeledRow(title: "Raga", value: raga.flatMap { Ragas.shared.byKey(key: $0)?.name } ?? String(localized: "None (default names)"))
+            }
+            if let key = raga, let mine = own.get(key: key) {
+                Button("Edit raga") { onEditRaga(key) }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(Text("Edit \(mine.name)"))
             }
             if raga != nil {
                 choice(nil, "Free singing")
@@ -548,11 +563,15 @@ private struct HowItWentView: View {
 private struct RagaChoiceList: View {
     let selected: String?
     var recent: [String] = []
+    var own = CustomRagas(ragas: [])
+    /// "Add your own raga…": closes the list and opens the editor; nil hides it.
+    var onAdd: (() -> Void)?
     let onSelect: (String?) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         let recentRagas = recent.compactMap { Ragas.shared.byKey(key: $0) }
+        let mine = own.toRagas().filter { r in !recentRagas.contains { $0.key == r.key } }
         List {
             row(nil, String(localized: "None (default names)"))
             if !recentRagas.isEmpty {
@@ -563,6 +582,20 @@ private struct RagaChoiceList: View {
             Section(recentRagas.isEmpty ? "" : "All ragas") {
                 ForEach(Ragas.shared.all.filter { r in !recentRagas.contains { $0.key == r.key } }.sorted { $0.name < $1.name }, id: \.key) { raga in
                     row(raga.key, raga.name)
+                }
+            }
+            Section("Your ragas") {
+                ForEach(mine, id: \.key) { raga in row(raga.key, raga.name) }
+                if let onAdd {
+                    Button {
+                        dismiss()
+                        onAdd()
+                    } label: {
+                        HStack {
+                            Image(systemName: "plus").accessibilityHidden(true)
+                            Text("Add your own raga…")
+                        }
+                    }
                 }
             }
         }

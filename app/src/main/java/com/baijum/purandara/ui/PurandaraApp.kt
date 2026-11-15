@@ -10,6 +10,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -27,6 +28,7 @@ import com.baijum.purandara.ui.library.LibraryScreen
 import com.baijum.purandara.ui.library.LibraryState
 import com.baijum.purandara.ui.player.PlayerActions
 import com.baijum.purandara.ui.player.PlayerScreen
+import com.baijum.purandara.ui.recordings.RagaEditorScreen
 import com.baijum.purandara.ui.recordings.RecordScreen
 import com.baijum.purandara.ui.recordings.RecordingDetailScreen
 import com.baijum.purandara.ui.recordings.RecordingsActions
@@ -179,11 +181,22 @@ private fun RecordingsRoute(recordings: RecordingsViewModel, state: RecordingsUi
         onChangeIntent = recordings::changeIntent,
         onChangeTanpura = recordings::changeTanpura,
         onReanalyse = if (BuildConfig.DEBUG) recordings::reanalyse else null,
+        onEditRaga = recordings.ragas::edit,
     )
     val detail = state.detail
+    val editor = state.ragaEditor
     when {
-        state.screen == RecordingsScreen.RECORD -> RecordScreen(state.recorder, micAllowed, actions, state.recentRagas)
-        state.screen == RecordingsScreen.DETAIL && detail != null -> RecordingDetailScreen(detail, actions, state.recentRagas)
+        editor != null -> key(editor.key) {
+            RagaEditorScreen(
+                editing = editor.key?.let { state.customRagas[it] },
+                ragas = state.customRagas,
+                onSave = recordings.ragas::save,
+                onDelete = recordings.ragas::delete,
+                onClose = recordings.ragas::close,
+            )
+        }
+        state.screen == RecordingsScreen.RECORD -> RecordScreen(state.recorder, micAllowed, actions, state.recentRagas, state.customRagas)
+        state.screen == RecordingsScreen.DETAIL && detail != null -> RecordingDetailScreen(detail, actions, state.recentRagas, state.customRagas)
         else -> RecordingsListScreen(state.library, actions)
     }
 }

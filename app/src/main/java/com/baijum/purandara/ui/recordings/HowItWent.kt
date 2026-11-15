@@ -22,6 +22,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +37,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.baijum.purandara.R
+import com.baijum.purandara.domain.CustomRagas
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Ragas
 import com.baijum.purandara.recording.Closeness
@@ -51,10 +53,24 @@ import com.baijum.purandara.ui.saLabel
  * raga, so the scale row only shows once one is chosen.
  */
 @Composable
-internal fun IntentPicker(ragaKey: String?, scale: Scale?, recent: List<String>, onChange: (String?, Scale?) -> Unit) {
+internal fun IntentPicker(
+    ragaKey: String?,
+    scale: Scale?,
+    recent: List<String>,
+    onChange: (String?, Scale?) -> Unit,
+    own: CustomRagas = CustomRagas(),
+    onEditRaga: (String?) -> Unit = {},
+) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(stringResource(R.string.intent_title), style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
-        RagaPicker(ragaKey, recent) { key -> onChange(key, if (key == null) null else scale) }
+        RagaPicker(ragaKey, recent, own, onAdd = { onEditRaga(null) }) { key -> onChange(key, if (key == null) null else scale) }
+        val mine = ragaKey?.let { own[it] }
+        if (mine != null) {
+            val label = stringResource(R.string.raga_edit_named, mine.name)
+            TextButton(onClick = { onEditRaga(mine.key) }, modifier = Modifier.semantics { contentDescription = label }) {
+                Text(stringResource(R.string.raga_edit))
+            }
+        }
         if (ragaKey != null) {
             val choices = listOf(null) + Scale.entries
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -81,17 +97,25 @@ private fun scaleName(scale: Scale?): String = stringResource(
     },
 )
 
-/** The raga choice: none, the recent ragas, then the rest by name. */
+/** The raga choice: none, the recent ragas, the app's by name, the student's own, then "Add your own raga…". */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun RagaPicker(ragaKey: String?, recent: List<String>, onSelect: (String?) -> Unit) {
+internal fun RagaPicker(
+    ragaKey: String?,
+    recent: List<String>,
+    own: CustomRagas = CustomRagas(),
+    onAdd: (() -> Unit)? = null,
+    onSelect: (String?) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     val none = stringResource(R.string.recording_raga_none)
-    val recentRagas = recent.mapNotNull { Ragas.byKey(it) }
+    val ownRagas = own.toRagas()
+    val recentRagas = recent.mapNotNull { key -> Ragas.builtIn(key) ?: ownRagas.firstOrNull { it.key == key } }
     val others = Ragas.all.filter { it !in recentRagas }.sortedBy { it.name }
+    val mine = ownRagas.filter { r -> recentRagas.none { it.key == r.key } }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
         OutlinedTextField(
-            value = ragaKey?.let { Ragas.byKey(it)?.name } ?: none,
+            value = ragaKey?.let { key -> Ragas.builtIn(key)?.name ?: ownRagas.firstOrNull { it.key == key }?.name } ?: none,
             onValueChange = {},
             readOnly = true,
             label = { Text(stringResource(R.string.recording_raga)) },
@@ -107,6 +131,17 @@ internal fun RagaPicker(ragaKey: String?, recent: List<String>, onSelect: (Strin
             recentRagas.forEach { raga -> DropdownMenuItem(text = { Text(raga.name) }, onClick = { choose(raga.key) }) }
             if (recentRagas.isNotEmpty()) HorizontalDivider()
             others.forEach { raga -> DropdownMenuItem(text = { Text(raga.name) }, onClick = { choose(raga.key) }) }
+            if (mine.isNotEmpty() || onAdd != null) HorizontalDivider()
+            mine.forEach { raga -> DropdownMenuItem(text = { Text(raga.name) }, onClick = { choose(raga.key) }) }
+            onAdd?.let { add ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.raga_add)) },
+                    onClick = {
+                        expanded = false
+                        add()
+                    },
+                )
+            }
         }
     }
 }

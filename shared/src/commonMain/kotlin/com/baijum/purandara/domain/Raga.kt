@@ -1,5 +1,7 @@
 package com.baijum.purandara.domain
 
+import kotlin.concurrent.Volatile
+
 /** The seven swara letters used in notation. The raga decides each one's variant. */
 enum class SwaraLetter(val symbol: Char) {
     S('S'),
@@ -300,7 +302,11 @@ class Raga(
     }
 }
 
-/** The ragas notation can name (`raga: malahari`). */
+/**
+ * The app's ragas ([all], the ones notation can name: `raga: malahari`) and
+ * the student's own ([own], docs/plan-recording-insights.md), which the apps
+ * set with [useOwn] when they load or change them.
+ */
 object Ragas {
     val all: List<Raga> = listOf(
         Raga.MAYAMALAVAGOWLA, Raga.MALAHARI, Raga.SUDDHA_SAVERI, Raga.MOHANAM,
@@ -308,5 +314,18 @@ object Ragas {
         Raga.ANANDABHAIRAVI, Raga.ABHOGI, Raga.SHANKARABHARANAM, Raga.HAMSADHWANI,
     )
 
-    fun byKey(key: String): Raga? = all.firstOrNull { it.key == key }
+    /** The student's own ragas, by name. Replaced whole (read from analysis threads too). */
+    @Volatile
+    var own: List<Raga> = emptyList()
+        private set
+
+    fun useOwn(ragas: CustomRagas) {
+        own = ragas.toRagas()
+    }
+
+    /** One of the app's ragas or the student's own. */
+    fun byKey(key: String): Raga? = builtIn(key) ?: own.firstOrNull { it.key == key }
+
+    /** One of the app's ragas only (what notation may name). */
+    fun builtIn(key: String): Raga? = all.firstOrNull { it.key == key }
 }

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0296579E3B2E308DB06B5A52 /* HarmoniumSamples.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0309E4FAE375AFEC9D0E1B8 /* HarmoniumSamples.swift */; };
+		0C08EE7190997F0013919899 /* RagaEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DC8F2927353BC7ECF21CFBA /* RagaEditorView.swift */; };
 		10224C95DA12A396F0417243 /* PitchListener.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCCDC87BD7D51343B42D8B7F /* PitchListener.swift */; };
 		124C62F16E60978E39AC9E16 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27118B7E3E2165E03506755 /* LibraryView.swift */; };
 		1AF67FF2548AEBD63FC3668E /* NeuralPitchSupervisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95843E0A25CD064D013AF373 /* NeuralPitchSupervisor.swift */; };
@@ -59,6 +60,7 @@
 		483E84CDF43D5F521EB0595D /* Colors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Colors.swift; sourceTree = "<group>"; };
 		49C9FF674A7F91662569737F /* PracticeSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeSettings.swift; sourceTree = "<group>"; };
 		51ADA9130DD6170AD77733F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5DC8F2927353BC7ECF21CFBA /* RagaEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RagaEditorView.swift; sourceTree = "<group>"; };
 		6000DA5B58520EA131F73726 /* VarisaiAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VarisaiAudioPlayer.swift; sourceTree = "<group>"; };
 		69A778C41E7E36D5E7B9836C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		74015C2759451D3EC808AFD0 /* PurandaraApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurandaraApp.swift; sourceTree = "<group>"; };
@@ -148,6 +150,7 @@
 				C27118B7E3E2165E03506755 /* LibraryView.swift */,
 				E08763E5702FC198877A4751 /* NotationView.swift */,
 				9DE6BE56662F27C8F99F8397 /* PlayerView.swift */,
+				5DC8F2927353BC7ECF21CFBA /* RagaEditorView.swift */,
 				B3A9D911905EF1995C38295C /* RecordingsViews.swift */,
 				9D8F4A84590A79425F21395B /* RunView.swift */,
 				C9197E6D30958F4BB3EF8BC1 /* ShrutiView.swift */,
@@ -378,6 +381,7 @@
 				7C44EFFF058E9646F20A701D /* PracticeSettings.swift in Sources */,
 				3993EB30B90365812F311D9D /* PracticeViewModel.swift in Sources */,
 				814E479F470E51F9091B5BB3 /* PurandaraApp.swift in Sources */,
+				0C08EE7190997F0013919899 /* RagaEditorView.swift in Sources */,
 				FFB640FF50C2BF3CDD9B09C8 /* Recorder.swift in Sources */,
 				34D35436357FCA6B0825B7CC /* RecordingsViewModel.swift in Sources */,
 				6E0971212388D03C08303FAD /* RecordingsViews.swift in Sources */,

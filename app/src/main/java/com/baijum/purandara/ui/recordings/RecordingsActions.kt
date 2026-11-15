@@ -24,6 +24,8 @@ data class RecordingsActions(
     val onTanpura: (Boolean) -> Unit = {},
     /** A recording's tanpura switch (the swaras are read again). */
     val onChangeTanpura: (String, Boolean) -> Unit = { _, _ -> },
+    /** Opens the raga editor: one of the student's ragas by key, or a new one with null. */
+    val onEditRaga: (String?) -> Unit = {},
     /** Debug builds only: read the swaras again (for tuning the analysis); null hides the button. */
     val onReanalyse: ((String) -> Unit)? = null,
 )

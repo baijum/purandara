@@ -2,6 +2,7 @@ package com.baijum.purandara.data
 
 import android.content.Context
 import android.util.Log
+import com.baijum.purandara.domain.CustomRagas
 import com.baijum.purandara.recording.PitchTrack
 import com.baijum.purandara.recording.Recording
 import com.baijum.purandara.recording.RecordingLibrary
@@ -41,6 +42,7 @@ class RecordingStore(context: Context) {
         get() = preferences.getBoolean(KEY_TANPURA, false)
         set(value) = preferences.edit().putBoolean(KEY_TANPURA, value).apply()
     private val index = File(folder, RecordingLibrary.INDEX_FILE_NAME)
+    private val ragasFile = File(folder, CustomRagas.FILE_NAME)
 
     /** The saved library, without entries whose files are gone; stray files are removed. */
     fun load(): RecordingLibrary {
@@ -66,6 +68,27 @@ class RecordingStore(context: Context) {
             if (!tmp.renameTo(index)) throw IOException("rename failed")
         } catch (e: IOException) {
             Log.e(TAG, "could not save the recordings index", e)
+        }
+    }
+
+    /** The student's own ragas (`ragas.json` beside the index); none if missing or damaged. */
+    fun loadRagas(): CustomRagas = CustomRagas.decode(
+        try {
+            ragasFile.takeIf { it.isFile }?.readText()
+        } catch (e: IOException) {
+            Log.w(TAG, "could not read the ragas", e)
+            null
+        },
+    )
+
+    fun saveRagas(ragas: CustomRagas) {
+        try {
+            folder.mkdirs()
+            val tmp = File(folder, "${CustomRagas.FILE_NAME}.tmp")
+            tmp.writeText(ragas.encode())
+            if (!tmp.renameTo(ragasFile)) throw IOException("rename failed")
+        } catch (e: IOException) {
+            Log.e(TAG, "could not save the ragas", e)
         }
     }
 

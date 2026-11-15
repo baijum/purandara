@@ -44,7 +44,7 @@ features speculatively.
   [`docs/plan-swiftf0-upgrade.md`](docs/plan-swiftf0-upgrade.md) (planned: SwiftF0
   v0.3 and ONNX Runtime upgrade) and [`docs/plan-recordings-tanpura.md`](docs/plan-recordings-tanpura.md)
   (recordings with an external tanpura) and [`docs/plan-recording-insights.md`](docs/plan-recording-insights.md)
-  (planned: "How it went", what you meant to sing, your own raga) (and, for the website,
+  ("How it went", what you meant to sing, your own raga; steps 1–3 built) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
@@ -110,7 +110,7 @@ features speculatively.
 
 | Where | What |
 |---|---|
-| `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
+| `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`: the app's ragas, which notation may name (`builtIn`), and the student's own set by `useOwn`), `CustomRaga` + `CustomRagas` (Your own raga: the checks, `ragas.json`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
 | `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt`, `Swarajati.kt`, `Varnam.kt`, each with its sources and fixes in the header); `WordsDisplay` |
 | `shared/.../domain/varisai/NotationLayout.kt` | The notation by tala cycle at the chosen speed (`forPractice`): cycles → rows → beat groups of `CellRef`s, `locate` for the highlight, speech with commas at the angas. Both apps draw the notation and the mirrored tala strip from it (`BeatRow`; iOS `ColumnsLayout`) |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
@@ -124,11 +124,11 @@ features speculatively.
 | `app/.../audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (`AudioTrack` on a worker thread) |
 | `app/.../audio/` (sing-along) | `MicSource` (`AudioRecordMicSource` with echo cancellation; debug-only `SyntheticSingerMicSource`), `SingAlongEngine`, `PitchListener` (Shruti practice, Find my Sa), `NeuralPitchSupervisor` (the SwiftF0 v0.3 ONNX session, a shared `SwiftF0Model`) |
 | `app/.../audio/` (recordings) | `Recorder` (`AudioRecord` unprocessed → AAC .m4a; debug `SyntheticSingerInput`), `RecordingDecoder` (.m4a → shared analyser); `data/RecordingStore` (files in `filesDir/recordings`) |
-| `app/.../viewmodel/` | `RecordingsViewModel` (record, analyse, list, play, rename, Sa/raga, delete; kept apart from `PracticeViewModel`), `PracticeViewModel`, `RunController` + `RunState` (a run sequences the normal player through its kalas and repeats), `SingAlongState`, `ShrutiState` |
-| `app/.../ui/` | `PurandaraApp` (routes: landing, player, Shruti practice, Find my Sa, practice run), `library/` (landing page, including each set’s run row), `player/`, `run/` (setup and complete; playing uses the player with a run banner), `recordings/` (list, record, recording), `shruti/`, `SaControls.kt` (Sa picker, fine-tune, strictness) |
+| `app/.../viewmodel/` | `RecordingsViewModel` (record, analyse, list, play, rename, Sa/raga, delete; kept apart from `PracticeViewModel`; `RagaEditing` for Your own raga), `PracticeViewModel`, `RunController` + `RunState` (a run sequences the normal player through its kalas and repeats), `SingAlongState`, `ShrutiState` |
+| `app/.../ui/` | `PurandaraApp` (routes: landing, player, Shruti practice, Find my Sa, practice run), `library/` (landing page, including each set’s run row), `player/`, `run/` (setup and complete; playing uses the player with a run banner), `recordings/` (list, record, recording; `RagaEditor` for Your own raga), `shruti/`, `SaControls.kt` (Sa picker, fine-tune, strictness) |
 | `iosApp/Purandara/Audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (renders ahead on a queue into `AVAudioPlayerNode` buffers; no Kotlin on the real-time thread) |
 | `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel` (including `RunUI`); `LibraryView` (landing page: continue, Sa + tanpura, sets with contours and run rows), `PlayerView` (+ settings sheet, `SaChoiceList`), `RunView` (run plan and complete; playing uses `PlayerView` with a run banner), `NotationView` (+ `TalaStripView`), `SingAlongViews`, `ShrutiView` (Shruti practice, Find my Sa) |
-| `iosApp/Purandara/Audio/Recorder.swift` | Recordings: `Recorder` (own `AVAudioEngine`, `.measurement` mode → AAC .m4a; debug synthetic singer) and `RecordingDecoder`; `RecordingsViewModel` (+ `RecordingStore`, Application Support/recordings) and `RecordingsViews` (list, record, recording with swaras, trace, playback) |
+| `iosApp/Purandara/Audio/Recorder.swift` | Recordings: `Recorder` (own `AVAudioEngine`, `.measurement` mode → AAC .m4a; debug synthetic singer) and `RecordingDecoder`; `RecordingsViewModel` (+ `RecordingStore`, Application Support/recordings) and `RecordingsViews` (list, record, recording with swaras, trace, playback); `RagaEditorView` (Your own raga, a sheet) |
 | `iosApp/Purandara/Audio/PitchListener.swift` | Mic tap buffers (on the player's engine, for echo cancellation) → windows → the shared `LivePitch` → pitch frames; debug synthetic singer. Used by `SingAlongEngine`, Shruti practice and Find my Sa. `NeuralPitchSupervisor.swift` is the SwiftF0 v0.3 ONNX session (a shared `SwiftF0Model`) |
 | `shared/.../singalong/Display.kt` | Swara labels (R₁, S′) and mark glyphs shared by both apps |
 | `shared/.../singalong/PitchLane.kt` | The sing-along pitch lane's swara lines and range, from the piece's own notes |

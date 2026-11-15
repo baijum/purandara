@@ -90,6 +90,23 @@ struct RecordingStore {
         try? FileManager.default.removeItem(at: audioURL(id))
         try? FileManager.default.removeItem(at: pitchURL(id))
     }
+
+    private var ragasURL: URL { folder.appendingPathComponent(CustomRagas.companion.FILE_NAME) }
+
+    /// The student's own ragas (`ragas.json` beside the index); none if missing or damaged.
+    func loadRagas() -> CustomRagas {
+        CustomRagas.companion.decode(text: try? String(contentsOf: ragasURL, encoding: .utf8))
+    }
+
+    func saveRagas(_ ragas: CustomRagas) {
+        try? ragas.encode().write(to: ragasURL, atomically: true, encoding: .utf8)
+    }
+}
+
+/// The raga editor's subject: a new raga (`key` nil) or one of the student's.
+struct RagaEditorTarget: Identifiable {
+    let key: String?
+    var id: String { key ?? "new" }
 }
 
 /// Recordings with approximate swaras (docs/plan-recordings.md): record,
@@ -103,6 +120,10 @@ final class RecordingsViewModel: ObservableObject {
     /// Set when a finished recording should be shown (the record screen replaces itself with it).
     @Published var justRecorded: String?
     @Published private(set) var micAllowed = false
+    /// The student's own ragas (docs/plan-recording-insights.md, step 3).
+    @Published private(set) var customRagas: CustomRagas
+    /// The raga editor, shown as a sheet; nil when closed.
+    @Published var ragaEditor: RagaEditorTarget?
 
     private let store = RecordingStore()
     private var tuning: Tuning = .just
@@ -128,6 +149,8 @@ final class RecordingsViewModel: ObservableObject {
 
     init() {
         library = store.load()
+        customRagas = store.loadRagas()
+        Ragas.shared.useOwn(ragas: customRagas)
         micAllowed = Self.micAuthorized() || syntheticSingerCents != nil
     }
 
@@ -137,6 +160,7 @@ final class RecordingsViewModel: ObservableObject {
         for recording in library.recordings { store.deleteFiles(recording.id) }
         updateLibrary { _ in RecordingLibrary(recordings: []) }
         UserDefaults.standard.removeObject(forKey: Self.tanpuraKey)
+        useRagas(CustomRagas(ragas: []))
     }
     #endif
 
@@ -180,6 +204,58 @@ final class RecordingsViewModel: ObservableObject {
         guard let raga else { return }
         recentRagas = Array(([raga] + recentRagas.filter { $0 != raga }).prefix(3))
         UserDefaults.standard.set(recentRagas, forKey: "recordingRecentRagas")
+    }
+
+    // MARK: - Your own raga
+
+    /// Opens the raga editor for `key`, or for a new raga with nil.
+    func editRaga(_ key: String?) {
+        ragaEditor = RagaEditorTarget(key: key.flatMap { customRagas.get(key: $0) != nil ? $0 : nil })
+    }
+
+    /// Saves the editor's raga when it passes the checks. A new raga becomes the
+    /// choice on the screen it was added from (`onRecording` nil: the Record screen).
+    func saveRaga(name: String, arohana: [Swara], avarohana: [Swara], onRecording: String?) {
+        guard let editor = ragaEditor,
+              customRagas.problem(key: editor.key, name: name, arohana: arohana, avarohana: avarohana) == nil else { return }
+        let key = editor.key ?? CustomRaga.companion.keyAt(millis: Int64(Date().timeIntervalSince1970 * 1000))
+        useRagas(customRagas.save(key: key, name: name, arohana: arohana, avarohana: avarohana))
+        guard editor.key == nil else { return }
+        if let id = onRecording, let recording = library.get(id: id) {
+            changeIntent(id, raga: key, scale: recording.scale)
+        } else if onRecording == nil {
+            setIntent(raga: key, scale: recorder.scale)
+        }
+    }
+
+    /// Deletes the editor's raga: recordings and the Record screen that used it go back to singing freely.
+    func deleteRaga() {
+        guard let key = ragaEditor?.key else { return }
+        useRagas(customRagas.delete(key: key))
+        updateLibrary { $0.forgetRaga(ragaKey: key) }
+        if recorder.ragaKey == key || UserDefaults.standard.string(forKey: Self.intentRagaKey) == key {
+            UserDefaults.standard.removeObject(forKey: Self.intentRagaKey)
+            UserDefaults.standard.removeObject(forKey: Self.intentScaleKey)
+            recorder.ragaKey = nil
+            recorder.scale = nil
+        }
+        recentRagas.removeAll { $0 == key }
+        UserDefaults.standard.set(recentRagas, forKey: "recordingRecentRagas")
+    }
+
+    private func useRagas(_ ragas: CustomRagas) {
+        store.saveRagas(ragas)
+        Ragas.shared.useOwn(ragas: ragas)
+        customRagas = ragas
+        ragaEditor = nil
+        if var d = detail {
+            let (playing, position, updating) = (d.playing, d.position, d.updating)
+            d = read(d.recording, track: d.track)
+            d.playing = playing
+            d.position = position
+            d.updating = updating
+            detail = d
+        }
     }
 
     /// The Record screen's "External tanpura playing" switch, remembered for next time.

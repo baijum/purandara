@@ -11,6 +11,10 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -20,6 +24,7 @@ import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.baijum.purandara.domain.CustomRagas
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.recording.Closeness
@@ -33,6 +38,7 @@ import com.baijum.purandara.recording.RecordingLibrary
 import com.baijum.purandara.recording.SwaraTranscriber
 import com.baijum.purandara.singalong.PitchFrame
 import com.baijum.purandara.singalong.PitchLane
+import com.baijum.purandara.ui.recordings.RagaEditorScreen
 import com.baijum.purandara.ui.recordings.RecordScreen
 import com.baijum.purandara.ui.recordings.RecordingDetailScreen
 import com.baijum.purandara.ui.recordings.RecordingsActions
@@ -161,6 +167,42 @@ class RecordingsAccessibilityTest {
         }
         compose.onNodeWithText("Arohana").performClick()
         assertEquals(Raga.MAYAMALAVAGOWLA.key to Scale.AROHANA, chosen)
+    }
+
+    @Test
+    fun theRagaEditorUsesRadioChipsAndSaveWaitsForTheChecks() {
+        var saved: Triple<String, List<Swara>, List<Swara>>? = null
+        compose.setContent {
+            PurandaraTheme {
+                RagaEditorScreen(null, CustomRagas(), onSave = { n, up, down -> saved = Triple(n, up, down) }, onDelete = {}, onClose = {})
+            }
+        }
+        compose.onNodeWithText("Save").assertIsNotEnabled()
+        compose.onNodeWithText("Give the raga a name.").assertExists()
+        compose.onNodeWithText("Name").performTextInput("Hindolam")
+        listOf("Ga 2", "Ma 1", "Dha 1", "Ni 2").forEach { compose.onNodeWithContentDescription(it).performScrollTo().performClick() }
+        compose.onNodeWithContentDescription("Ga 2")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton))
+            .assertIsSelected()
+        compose.onNodeWithContentDescription("Ri: None").assertIsSelected()
+        compose.onNodeWithContentDescription("Up: Sa, Ga 2, Ma 1, Dha 1, Ni 2, high Sa").performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("Down: high Sa, Ni 2, Dha 1, Ma 1, Ga 2, Sa").assertExists()
+        compose.onNodeWithText("Save").assertIsEnabled().performClick()
+        val hindolam = listOf(Swara.G2, Swara.M1, Swara.D1, Swara.N2)
+        assertEquals(Triple("Hindolam", hindolam, hindolam), saved)
+    }
+
+    @Test
+    fun anOwnRagaIsListedAndCanBeEdited() {
+        val own = CustomRagas().save("own-1", "Hindolam", listOf(Swara.G2, Swara.M1, Swara.D1, Swara.N2), listOf(Swara.G2, Swara.M1, Swara.D1, Swara.N2))
+        var edited: String? = "none"
+        val withEdit = actions.copy(onEditRaga = { edited = it })
+        compose.setContent {
+            PurandaraTheme { RecordScreen(RecorderUi(ragaKey = "own-1"), micAllowed = true, actions = withEdit, own = own) }
+        }
+        compose.onNodeWithText("Hindolam").assertExists()
+        compose.onNodeWithContentDescription("Edit Hindolam").assertHasClickAction().performClick()
+        assertEquals("own-1", edited)
     }
 
     @Test

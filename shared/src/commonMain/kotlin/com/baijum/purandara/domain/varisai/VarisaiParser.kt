@@ -244,7 +244,7 @@ class VarisaiParser(
         val column = field.length + 2
         when (field) {
             "tala" -> d.tala = Talas.byKey(value) ?: throw VarisaiParseException(lineNo, column, "unknown tala \"$value\"")
-            "raga" -> d.raga = Ragas.byKey(value) ?: throw VarisaiParseException(lineNo, column, "unknown raga \"$value\"")
+            "raga" -> d.raga = Ragas.builtIn(value) ?: throw VarisaiParseException(lineNo, column, "unknown raga \"$value\"")
             "title" -> d.name = value
             "short" -> d.shortName = value
             "beat" -> {
