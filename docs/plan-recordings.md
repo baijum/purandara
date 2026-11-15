@@ -92,7 +92,7 @@ an optional raga:
    a gap under **80 ms** (a consonant or a flicker), become one note.
 4. **Name:** the median pitch of each note goes through `SwaraMapper` for
    the swara, octave, cents off and in-raga flag.
-5. **Phrases:** a silence of **0.6 s** or more starts a new line.
+5. **Phrases:** a silence of **1.5 s** or more starts a new line (0.6 s at first; raised 2026-11-15 so a breath between notes of a slow arohana doesn't break the line).
 6. **Length:** a note longer than twice the recording's median note length
    gets a `,` for each further multiple (at most 3), so held notes read as
    held: `S R G , M P , ,`.

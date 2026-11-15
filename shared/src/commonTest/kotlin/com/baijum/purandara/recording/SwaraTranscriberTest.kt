@@ -101,12 +101,19 @@ class SwaraTranscriberTest {
         val t = transcribe(
             steps(
                 0.0 to 0.4, null to 0.05, 0.0 to 0.4, // a consonant: one Sa
-                cents(Swara.R1) to 0.4, null to 0.8,
+                cents(Swara.R1) to 0.4, null to 1.6,
                 cents(Swara.G3) to 0.4,
             ),
         )
         assertEquals(listOf(listOf("S", "R₁"), listOf("G₃")), names(t))
         assertEquals(0.85, t.notes[0].durationSeconds, 0.03)
+    }
+
+    @Test
+    fun aBreathBetweenNotesKeepsThemOnOneLine() {
+        // A slow arohana sung a note per breath: pauses under the phrase gap.
+        val t = transcribe(steps(0.0 to 0.6, null to 0.8, cents(Swara.R1) to 0.6, null to 1.2, cents(Swara.G3) to 0.6))
+        assertEquals(listOf(listOf("S", "R₁", "G₃")), names(t))
     }
 
     @Test

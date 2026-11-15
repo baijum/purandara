@@ -88,7 +88,7 @@ object SwaraTranscriber {
     const val FLICKER_SECONDS = 0.03
     const val MERGE_MOVEMENT_SECONDS = 0.25
     const val MERGE_SILENCE_SECONDS = 0.08
-    const val PHRASE_GAP_SECONDS = 0.6
+    const val PHRASE_GAP_SECONDS = 1.5
     const val MAX_HOLDS = 3
     private const val HOLD_SLACK = 0.2
 
