@@ -24,6 +24,8 @@ struct RecordingDetailUI {
     var lane: shared.PitchLane
     var playing = false
     var position = 0.0
+    /// Progress while the swaras are re-read with an improved analysis, else nil.
+    var updating: Double?
 }
 
 /// Recordings on the device (docs/plan-recordings.md): `recordings/` in
@@ -97,6 +99,7 @@ final class RecordingsViewModel: ObservableObject {
     private var recordingStarted: Int64 = 0
     private var player: AVAudioPlayer?
     private var playerFor: String?
+    private var reanalysing = false
     private var timer: Timer?
 
     /// Debug builds: launch argument `-singer <cents>` records a synthetic singer instead of the mic.
@@ -189,11 +192,12 @@ final class RecordingsViewModel: ObservableObject {
         recorder.analysing = 0
         let created = recordingStarted
         let sa = (recorder.saMidi, recorder.saCents)
+        let saHz = Shruti.shared.saHz(midi: Int32(sa.0), cents: Int32(sa.1))
         let url = store.audioURL(id)
         let store = self.store
         let progress = Self.progressHandler(self)
         Task.detached(priority: .userInitiated) {
-            let track = try? RecordingDecoder.analyse(url: url, onProgress: progress)
+            let track = try? RecordingDecoder.analyse(url: url, saHz: saHz, onProgress: progress)
             let saved: Bool
             if let track { saved = (try? store.writePitch(id, track)) != nil } else { saved = false }
             await MainActor.run { [weak self] in
@@ -250,6 +254,48 @@ final class RecordingsViewModel: ObservableObject {
         if detail?.recording.id == id { return }
         releasePlayer()
         detail = read(recording, track: store.readPitch(id))
+        if recording.needsAnalysis { reanalyse(id) }
+    }
+
+    /// Reads the swaras again from the saved audio: automatically when the
+    /// recording predates the current analysis (docs/plan-swiftf0-upgrade.md),
+    /// and from a debug-only button for tuning. The old pitch stays until the
+    /// new one is ready, and stays if analysis fails.
+    func reanalyse(_ id: String) {
+        guard let recording = library.get(id: id), !reanalysing else { return }
+        reanalysing = true
+        if detail?.recording.id == id { detail?.updating = 0 }
+        let url = store.audioURL(id)
+        let store = self.store
+        let saHz = recording.saHz
+        let progress = Self.updatingHandler(self, id: id)
+        Task.detached(priority: .userInitiated) {
+            let track = try? RecordingDecoder.analyse(url: url, saHz: saHz, onProgress: progress)
+            let saved = track.map { (try? store.writePitch(id, $0)) != nil } ?? false
+            await MainActor.run { [weak self] in self?.onReanalysed(id: id, track: saved ? track : nil) }
+        }
+    }
+
+    private func onReanalysed(id: String, track: PitchTrack?) {
+        reanalysing = false
+        if track != nil { updateLibrary { $0.analysed(id: id) } }
+        guard var d = detail, d.recording.id == id, let current = library.get(id: id) else { return }
+        let playing = d.playing
+        let position = d.position
+        if let track { d = read(current, track: track) }
+        d.playing = playing
+        d.position = position
+        d.updating = nil
+        detail = d
+    }
+
+    nonisolated private static func updatingHandler(_ model: RecordingsViewModel, id: String) -> @Sendable (Double) -> Void {
+        { [weak model] p in
+            Task { @MainActor in
+                guard let model, model.detail?.recording.id == id, model.detail?.updating != nil else { return }
+                model.detail?.updating = p
+            }
+        }
     }
 
     func close(_ id: String) {

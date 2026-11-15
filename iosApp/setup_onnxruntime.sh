@@ -2,9 +2,12 @@
 # Downloads and extracts the ONNX Runtime iOS xcframework (approved exception,
 # see AGENTS.md). Run this once before building the iOS app; CI runs it too.
 #
-# Copied from ukulele-companion (same author, MIT). The primary URL is the
-# author's vendored copy in that repository's releases; the fallbacks are
-# Microsoft's official mirrors. Every download is SHA-256 checked.
+# Copied from ukulele-companion (same author, MIT). Downloads Microsoft's
+# official package (the one CocoaPods' onnxruntime-c podspec points to), with
+# its second mirror as the fallback. Every download is SHA-256 checked.
+# 1.30.0 is the newest iOS package Microsoft has published (2026-11-15);
+# Android is on 1.32.0. Move iOS up when a newer pod-archive appears
+# (docs/plan-swiftf0-upgrade.md).
 #
 # To update ONNX Runtime to a new version:
 #   1. Change ORT_VERSION below to the new version number
@@ -20,12 +23,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRAMEWORKS_DIR="$SCRIPT_DIR/Frameworks"
-ORT_VERSION="1.26.0"
+ORT_VERSION="1.30.0"
 ORT_FILENAME="pod-archive-onnxruntime-c-${ORT_VERSION}.zip"
-ORT_PRIMARY_URL="https://github.com/baijum/ukulele-companion/releases/download/vendor-onnxruntime-c-${ORT_VERSION}/${ORT_FILENAME}"
-ORT_FALLBACK_URL="https://download.onnxruntime.ai/${ORT_FILENAME}"
-ORT_FALLBACK_URL2="https://onnxruntimepackages.z14.web.core.windows.net/${ORT_FILENAME}"
-ORT_SHA256="08502ec252f6f03ebee6e729cbe0525c777b47daa76d3bc8c04bba82201d8a36"
+ORT_PRIMARY_URL="https://download.onnxruntime.ai/${ORT_FILENAME}"
+ORT_FALLBACK_URL="https://onnxruntimepackages.z14.web.core.windows.net/${ORT_FILENAME}"
+ORT_SHA256="e6f1670c14406fd9f082bb400ab197a9b0a9646058ca6366e440642e2b54a2ea"
 
 VERSION_MARKER="$FRAMEWORKS_DIR/.onnxruntime_version"
 if [ -d "$FRAMEWORKS_DIR/onnxruntime.xcframework" ]; then
@@ -42,7 +44,7 @@ TMPFILE=$(mktemp /tmp/onnxruntime-XXXXXX.zip)
 trap 'rm -f "$TMPFILE"' EXIT
 
 DOWNLOADED=false
-for ORT_URL in "$ORT_PRIMARY_URL" "$ORT_FALLBACK_URL" "$ORT_FALLBACK_URL2"; do
+for ORT_URL in "$ORT_PRIMARY_URL" "$ORT_FALLBACK_URL"; do
     echo "Downloading ONNX Runtime ${ORT_VERSION} from ${ORT_URL}..."
     if curl --fail --show-error --location \
             --connect-timeout 15 --max-time 300 \
@@ -59,7 +61,6 @@ if [ "$DOWNLOADED" != "true" ]; then
     echo "ERROR: Failed to download ONNX Runtime from all mirrors."
     echo "Tried: ${ORT_PRIMARY_URL}"
     echo "       ${ORT_FALLBACK_URL}"
-    echo "       ${ORT_FALLBACK_URL2}"
     echo "You can also download manually and place onnxruntime.xcframework in iosApp/Frameworks/"
     exit 1
 fi

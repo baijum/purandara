@@ -249,6 +249,18 @@ struct RecordingDetailView: View {
                     Button("Delete", role: .destructive) { deleting = true }
                         .buttonStyle(.bordered)
                 }
+                #if DEBUG
+                Button("Re-analyse (debug)") { recordings.reanalyse(recording.id) }
+                    .buttonStyle(.bordered)
+                    .disabled(d.updating != nil)
+                #endif
+                if let progress = d.updating {
+                    Text("Updating the swaras: the app reads them better now…")
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    ProgressView(value: progress)
+                        .accessibilityLabel("Updating the swaras")
+                }
                 playback(d)
                 Divider()
                 Text("Swaras heard").font(.headline).accessibilityAddTraits(.isHeader)

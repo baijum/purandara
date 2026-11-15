@@ -4,8 +4,9 @@ Status: **planned** (2026-11-15); the maintainer agreed the decisions
 below as recommended. Step 1 (the comparison tool and evaluation) is done on
 synthetic tracks and 10 of the student's recordings; decisions 3 and 4 were
 settled by the results (*Results*). Step 2 (shared code) is built: see
-*Built in step 2*. Step 3 (Android) is built: *Built in step 3*. Next:
-iOS (step 4).
+*Built in step 2*. Step 3 (Android) is built: *Built in step 3*. Step 4
+(iOS) is built: *Built in step 4*. Next: step 5 (remove the old model, bump
+the analysis version, docs).
 
 ## Where things stand
 
@@ -196,6 +197,29 @@ reading (new-offline) and with the old model:
   time per minute of audio. Practise Sa with the synthetic singer holds Sa.
 - Found while testing: the decoder closed the model before the analyser's
   last chunk ran; fixed (the model is closed after `finish`).
+
+## Built in step 4 (iOS)
+
+- ONNX Runtime **1.30.0** from Microsoft's own package (SHA-256
+  `e6f1670c…`), the newest published for iOS; the ukulele-companion mirror
+  has no 1.30.0, so `setup_onnxruntime.sh` now uses Microsoft's two mirrors.
+- `NeuralPitchSupervisor.swift` is an `NSObject` conforming to the shared
+  `SwiftF0Model`: three inputs (`fmin`/`fmax` as 0-dimension tensors),
+  outputs by name with the element type checked (float64 pitch converted by
+  `FloatBridge.doublesToFloatArray`), and `init?` fails if the bundled model
+  lacks those inputs and outputs.
+- `PitchListener` runs the shared `LivePitch` (every window feeds the
+  buffer, even unscored ones) with the Sa range; sing-along, practice
+  attempts, Shruti practice and Find my Sa (full range) all pass it. The
+  model loads once per listener.
+- `RecordingDecoder.analyse(url:saHz:onProgress:)` runs the shared analyser
+  with the model (2 threads). Opening an out-of-date recording re-reads it
+  with a progress bar; debug builds have **Re-analyse (debug)** on its own
+  line (three buttons in a row would clip at large text in the audited UI
+  tests).
+- Unit tests run the real bundled model: accuracy across 98–659 Hz, the Sa
+  range ruling out pitches above tara Pa, and silence giving no pitch
+  through the chunker.
 
 ## Design
 

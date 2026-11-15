@@ -735,7 +735,7 @@ final class PitchListenerDrainTests: XCTestCase {
     func testAdmittedMicWindowsDrainAfterOutputClockStops() throws {
         let clock = Clock()
         let listener = PitchListener(timeOf: { _ in clock.time() }, synthetic: nil,
-                                     supervisorFactory: { _ in nil }) { _ in clock.record() }
+                                     range: PitchRange.companion.FULL, modelFactory: { nil }) { _ in clock.record() }
         let request = try XCTUnwrap(listener.micRequest(echoCancellation: false))
         let format = try XCTUnwrap(AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1))
         let buffer = try XCTUnwrap(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 8192))
@@ -755,7 +755,9 @@ final class PitchListenerDrainTests: XCTestCase {
 }
 
 final class NeuralPitchSupervisorTests: XCTestCase {
-    private func voice(_ f0: Double, rate: Double, count: Int = 4096) -> KotlinFloatArray {
+    /// A sung-like tone at the model's 16 kHz rate.
+    private func voice(_ f0: Double, count: Int = 8000) -> KotlinFloatArray {
+        let rate = Double(SwiftF0.shared.SAMPLE_RATE)
         var samples = [Float](repeating: 0, count: count)
         for i in 0..<count {
             var v = 0.0
@@ -767,20 +769,38 @@ final class NeuralPitchSupervisorTests: XCTestCase {
         }
     }
 
+    /// The middle frame of a run on half a second of `f0`.
+    private func middle(_ model: NeuralPitchSupervisor, _ f0: Double, range: PitchRange) throws -> (hz: Float, confidence: Float) {
+        let output = try XCTUnwrap(model.run(audio16k: voice(f0), range: range), "\(f0) Hz")
+        XCTAssertEqual(output.hz.size, output.confidence.size)
+        XCTAssertEqual(Int(output.hz.size), 8000 / Int(SwiftF0.shared.HOP), "one frame per 256 samples")
+        let k = output.hz.size / 2
+        return (output.hz.get(index: k), output.confidence.get(index: k))
+    }
+
     func testRunsTheBundledModelAcrossTheRange() throws {
-        for rate in [44_100.0, 48_000.0] {
-            let supervisor = try XCTUnwrap(NeuralPitchSupervisor(captureSampleRate: Int32(rate)), "model failed to load")
-            for f0 in [98.0, 146.83, 220.0, 392.0, 659.26] {
-                let result = try XCTUnwrap(supervisor.estimate(voice(f0, rate: rate)), "\(f0) Hz at \(rate)")
-                let cents = 1200 * log2(result.frequencyHz / f0)
-                XCTAssertLessThan(abs(cents), 100, "\(f0) Hz read \(result.frequencyHz)")
-                XCTAssertGreaterThanOrEqual(result.confidence, NeuralPitchSupervisor.minConfidence)
-            }
+        let model = try XCTUnwrap(NeuralPitchSupervisor(), "model failed to load (or its inputs and outputs changed)")
+        for f0 in [98.0, 146.83, 220.0, 392.0, 659.26] {
+            let r = try middle(model, f0, range: PitchRange.companion.FULL)
+            XCTAssertLessThan(abs(1200 * log2(Double(r.hz) / f0)), 50, "\(f0) Hz read \(r.hz)")
+            XCTAssertGreaterThanOrEqual(r.confidence, SwiftF0.shared.VOICED_CONFIDENCE)
         }
     }
 
-    func testSilenceGivesNoEstimate() throws {
-        let supervisor = try XCTUnwrap(NeuralPitchSupervisor(captureSampleRate: 44_100))
-        XCTAssertNil(supervisor.estimate(KotlinFloatArray(size: 4096)))
+    func testThePitchRangeRulesOutPitchesOutsideIt() throws {
+        let model = try XCTUnwrap(NeuralPitchSupervisor())
+        let range = SwiftF0.shared.range(saHz: KotlinDouble(value: 146.83))
+        let inside = try middle(model, 220, range: range)
+        XCTAssertGreaterThanOrEqual(inside.confidence, SwiftF0.shared.VOICED_CONFIDENCE)
+        let outside = try middle(model, 659.26, range: range)
+        XCTAssertLessThan(outside.confidence, SwiftF0.shared.VOICED_CONFIDENCE, "above tara Pa of D3")
+    }
+
+    func testSilenceHasNoPitchThroughTheChunker() throws {
+        let model = try XCTUnwrap(NeuralPitchSupervisor())
+        let chunker = SwiftF0Chunker(model: model, range: PitchRange.companion.FULL, chunkFrames: SwiftF0.shared.CHUNK_FRAMES)
+        chunker.feed(samples: KotlinFloatArray(size: 16_000), offset: 0, count: 16_000)
+        let track = chunker.finish()
+        for i in 0..<track.size { XCTAssertEqual(track.hz.get(index: i), 0, "frame \(i)") }
     }
 }

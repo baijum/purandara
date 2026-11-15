@@ -314,7 +314,7 @@ final class PracticeViewModel: ObservableObject {
         let newEngine = listening ? SingAlongEngine(
             player: player, renderer: renderer, schedule: schedule, strictness: settings.strictness.kotlin,
             syntheticCents: syntheticSingerCents,
-            supervisorFactory: { NeuralPitchSupervisor(captureSampleRate: $0) },
+            modelFactory: { NeuralPitchSupervisor() },
             onOutcome: { [weak self] outcome in
                 DispatchQueue.main.async { self?.apply(outcome, from: renderer, saHz: sa) }
             }) : nil
@@ -940,7 +940,8 @@ final class PracticeViewModel: ObservableObject {
                 return Double(frame) / rate
             },
             synthetic: synthetic,
-            supervisorFactory: { NeuralPitchSupervisor(captureSampleRate: $0) }
+            range: SwiftF0.shared.range(saHz: KotlinDouble(value: saHz)),
+            modelFactory: { NeuralPitchSupervisor() }
         ) { frame in deliver(session.onFrame(frame: frame), frame.timeSeconds) }
     }
 
@@ -959,7 +960,8 @@ final class PracticeViewModel: ObservableObject {
         return PitchListener(
             timeOf: { host in AVAudioTime.seconds(forHostTime: host) - start },
             synthetic: synthetic,
-            supervisorFactory: { NeuralPitchSupervisor(captureSampleRate: $0) }
+            range: SwiftF0.shared.range(saHz: nil), // no Sa yet: the whole range
+            modelFactory: { NeuralPitchSupervisor() }
         ) { frame in
             let hz = frame.rms >= minVoice ? frame.frequencyHz : nil
             deliver(guide.onFrame(timeSeconds: frame.timeSeconds, frequencyHz: hz))

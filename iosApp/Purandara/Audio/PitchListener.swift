@@ -1,9 +1,10 @@
 import AVFoundation
 import shared
 
-/// Mic buffers → windows → (SwiftF0 every few windows) → YIN pipeline →
-/// `onFrame`, for sing-along, Shruti practice and Find my Sa. Mirrors
-/// Android's `PitchListener`.
+/// Mic buffers → windows → the shared `LivePitch` (YIN, with SwiftF0 v0.3 on
+/// a rolling buffer for octave correction) → `onFrame`, for sing-along,
+/// Shruti practice and Find my Sa. Mirrors Android's `PitchListener`.
+/// SwiftF0 searches `range` around the Sa (the full range for Find my Sa).
 ///
 /// Mic buffers arrive on an AVFoundation thread and are copied straight to a
 /// serial queue, where all Kotlin work happens; `onFrame` runs on that queue.
@@ -21,12 +22,14 @@ final class PitchListener: @unchecked Sendable {
     let queue = DispatchQueue(label: "purandara.pitch", qos: .userInitiated)
     private let timeOf: (UInt64) -> Double?
     private let synthetic: SyntheticSinger?
-    private let supervisorFactory: (Int32) -> NeuralPitchSupervisor?
+    private let modelFactory: () -> NeuralPitchSupervisor?
+    private let range: PitchRange
     private let onFrame: (PitchFrame) -> Void
 
     // Queue-confined.
-    private var pipeline: PitchPipeline?
-    private var supervisor: NeuralPitchSupervisor?
+    private var live: LivePitch?
+    private var model: NeuralPitchSupervisor?
+    private var modelRequested = false
     private var ring: [Float] = []
     private var ringStartHost: UInt64 = 0
     private var ringStartSeconds = 0.0
@@ -57,12 +60,14 @@ final class PitchListener: @unchecked Sendable {
     init(
         timeOf: @escaping (UInt64) -> Double?,
         synthetic: SyntheticSinger?,
-        supervisorFactory: @escaping (Int32) -> NeuralPitchSupervisor?,
+        range: PitchRange,
+        modelFactory: @escaping () -> NeuralPitchSupervisor?,
         onFrame: @escaping (PitchFrame) -> Void
     ) {
         self.timeOf = timeOf
         self.synthetic = synthetic
-        self.supervisorFactory = supervisorFactory
+        self.range = range
+        self.modelFactory = modelFactory
         self.onFrame = onFrame
     }
 
@@ -108,10 +113,9 @@ final class PitchListener: @unchecked Sendable {
         diag.buffers += 1
         logDiagnostics()
         #endif
-        if pipeline == nil || rate != micRate {
+        if live == nil || rate != micRate {
             micRate = rate
-            pipeline = PitchPipeline(sampleRate: Int32(rate))
-            supervisor = supervisorFactory(Int32(rate))
+            live = makeLive(Int32(rate))
             ring.removeAll()
             sinceLastWindow = 0
         }
@@ -145,25 +149,34 @@ final class PitchListener: @unchecked Sendable {
         #if DEBUG
         diag.windows += 1
         #endif
-        guard let pipeline, let time = mappedTime ?? timeOf(captureHost) else {
+        guard let live else { return }
+        let window = samples.withUnsafeBufferPointer {
+            FloatBridge.shared.toFloatArray(source: UnsafeMutableRawPointer(mutating: $0.baseAddress!), count: Int32(samples.count))
+        }
+        live.listen(window: window) // every window feeds SwiftF0's buffer, even unscored ones
+        guard let time = mappedTime ?? timeOf(captureHost) else {
             #if DEBUG
             diag.noTime += 1
             #endif
             return
         }
-        let window = samples.withUnsafeBufferPointer {
-            FloatBridge.shared.toFloatArray(source: UnsafeMutableRawPointer(mutating: $0.baseAddress!), count: Int32(samples.count))
+        onFrame(live.process(window: window, timeSeconds: time))
+    }
+
+    /// The live pipeline at `rate`; the model loads once per listener, on this queue.
+    private func makeLive(_ rate: Int32) -> LivePitch {
+        if !modelRequested {
+            modelRequested = true
+            model = modelFactory()
         }
-        if pipeline.beginFrame() { pipeline.onNeuralResult(result: supervisor?.estimate(window)) }
-        onFrame(pipeline.process(window: window, timeSeconds: time))
+        return LivePitch(sampleRate: rate, model: { [weak self] in self?.model }, range: range)
     }
 
     // MARK: - Debug synthetic singer
 
     private func startSynthetic(_ singer: SyntheticSinger) {
         micRate = 44_100
-        pipeline = PitchPipeline(sampleRate: 44_100)
-        supervisor = supervisorFactory(44_100)
+        live = makeLive(44_100)
         let timer = DispatchSource.makeTimerSource(queue: queue)
         timer.schedule(deadline: .now(), repeating: Double(Self.hop) / micRate)
         var window = [Float](repeating: 0, count: Self.window)

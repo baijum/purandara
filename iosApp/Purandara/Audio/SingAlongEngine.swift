@@ -19,7 +19,7 @@ final class SingAlongEngine: @unchecked Sendable {
         schedule: Schedule,
         strictness: Strictness,
         syntheticCents: Double?,
-        supervisorFactory: @escaping (Int32) -> NeuralPitchSupervisor?,
+        modelFactory: @escaping () -> NeuralPitchSupervisor?,
         onOutcome: @escaping (FrameOutcome) -> Void
     ) {
         self.player = player
@@ -49,7 +49,8 @@ final class SingAlongEngine: @unchecked Sendable {
         listener = PitchListener(
             timeOf: { [weak player] host in player?.outputFrame(atHostTime: host).map { Double($0) / rate } },
             synthetic: synthetic,
-            supervisorFactory: supervisorFactory
+            range: SwiftF0.shared.range(saHz: KotlinDouble(value: schedule.settings.saHz)),
+            modelFactory: modelFactory
         ) { frame in onOutcome(session.onFrame(frame: frame)) }
         #if DEBUG
         listener.diagnostics = { [weak player] in
@@ -167,7 +168,8 @@ final class TransportSingAlongEngine: @unchecked Sendable {
                       frame >= segment.startFrame, frame < segment.performanceEndFrame else { return nil }
                 return Double(frame) / rate
             }, synthetic: synthetic,
-            supervisorFactory: { NeuralPitchSupervisor(captureSampleRate: $0) }
+            range: SwiftF0.shared.range(saHz: KotlinDouble(value: schedule.settings.saHz)),
+            modelFactory: { NeuralPitchSupervisor() }
         ) { [onOutcome] frame in onOutcome(segment, session.onFrame(frame: frame)) }
         let attempt = Attempt(segment: segment, listener: listener, session: session,
                               request: listener.micRequest(echoCancellation: false))

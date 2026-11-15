@@ -144,16 +144,29 @@ final class Recorder: @unchecked Sendable {
 }
 
 /// Decodes a saved recording and analyses its pitch with the shared
-/// `RecordingAnalyzer` (docs/plan-recordings.md). Blocking: call off the main thread.
+/// `RecordingAnalyzer` (docs/plan-recordings.md), with SwiftF0 v0.3 over the
+/// whole recording searching around `saHz` (docs/plan-swiftf0-upgrade.md).
+/// Blocking: call off the main thread.
 enum RecordingDecoder {
-    static func analyse(url: URL, onProgress: (Double) -> Void) throws -> PitchTrack {
+    /// ONNX Runtime threads for analysing a recording (live listening uses 1).
+    static let analysisThreads = 2
+
+    static func analyse(url: URL, saHz: Double, onProgress: (Double) -> Void) throws -> PitchTrack {
+        #if DEBUG
+        let started = CACurrentMediaTime()
+        defer {
+            print("[recording] analysed \(url.lastPathComponent) in \(String(format: "%.2f", CACurrentMediaTime() - started)) s")
+        }
+        #endif
         let file = try AVAudioFile(forReading: url)
         let format = file.processingFormat
         let rate = format.sampleRate
-        let supervisor = NeuralPitchSupervisor(captureSampleRate: Int32(rate))
-        let neural: ((KotlinFloatArray) -> NeuralPitchResult?)? = supervisor.map { s in { window in s.estimate(window) } }
+        let model = NeuralPitchSupervisor(threads: analysisThreads)
+        #if DEBUG
+        print("[recording] \(String(format: "%.1f", Double(file.length) / rate)) s of audio, SwiftF0 \(model == nil ? "unavailable" : "loaded")")
+        #endif
         let analyzer = RecordingAnalyzer(
-            sampleRate: Int32(rate), neuralInterval: RecordingAnalyzer.companion.NEURAL_EVERY_WINDOW, neural: neural
+            sampleRate: Int32(rate), model: model, range: SwiftF0.shared.range(saHz: KotlinDouble(value: saHz))
         )
         let chunk = AVAudioFrameCount(16_384)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunk) else { throw Recorder.RecorderError.noInput }
