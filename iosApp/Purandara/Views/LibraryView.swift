@@ -171,7 +171,8 @@ struct LibraryView: View {
     /// Opens Recordings (docs/plan-recordings.md) with the current Sa and tuning.
     private func openRecordings() {
         viewModel.stopTanpura()
-        recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents)
+        recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents,
+                               strictness: viewModel.settings.strictness.kotlin)
         path.append("recordings")
     }
 

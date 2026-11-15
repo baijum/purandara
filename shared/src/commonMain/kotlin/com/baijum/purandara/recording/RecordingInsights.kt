@@ -50,6 +50,18 @@ data class SwaraInsight(
 ) {
     val label: String get() = Display.swaraLabel(swara, octave)
 
+    /** What a screen reader says: "Ma, 17 cents flat", "Ga, in tune", "Pa, not heard". */
+    fun spoken(): String {
+        val name = RecordingInsights.spokenName(swara, octave)
+        val c = cents?.let { abs(it).roundToInt() }
+        return when (closeness) {
+            Closeness.IN_TUNE -> "$name, in tune"
+            Closeness.MISSED -> "$name, not heard"
+            Closeness.A_LITTLE_FLAT, Closeness.FLAT -> "$name, $c cents flat"
+            Closeness.A_LITTLE_SHARP, Closeness.SHARP -> "$name, $c cents sharp"
+        }
+    }
+
     /**
      * Held steadily: its held middle stayed within the Strictness's close
      * band (the in-tune band called every real held note "wavered").
@@ -75,7 +87,25 @@ class Insights(
     val extras: List<HeardNote>,
     val tanpuraNotHeard: Boolean,
     val summary: String,
-)
+    val strictness: Strictness = Strictness.PRECISE,
+) {
+    /**
+     * The held swaras' steadiness in a line or two: "Held steadily: Sa, Ga,
+     * Pa." then "Ri wavered (±33¢)." for each that didn't.
+     */
+    val steadiness: List<String>
+        get() {
+            val held = swaras.filter { it.spreadCents != null }
+            val steady = held.filter { it.steady(strictness) == true }
+            val lines = mutableListOf<String>()
+            if (steady.isNotEmpty()) lines += "Held steadily: " + steady.joinToString(", ") { RecordingInsights.spokenName(it.swara, it.octave) } + "."
+            held.filter { it.steady(strictness) != true }.forEach { s ->
+                val name = RecordingInsights.spokenName(s.swara, s.octave).replaceFirstChar { it.uppercase() }
+                lines += "$name wavered (±${s.spreadCents!!.roundToInt()}¢)."
+            }
+            return lines
+        }
+}
 
 /**
  * Builds [Insights] from a recording's transcription (docs/plan-recording-insights.md).
@@ -97,6 +127,9 @@ object RecordingInsights {
     private const val EXTRA_COST = 1.0
     private const val MOVEMENT_COST = 0.3
     private const val ABSORB_COST = 0.05
+
+    /** A piece within this of a swara can be more of it (a flat Ma read partly as a sharp Ga), not a neighbour 112¢ away. */
+    private const val ABSORB_CENTS = 100.0
     private const val ABSORB_AFTER_BREATH_COST = 0.6
     private const val BREATH_SECONDS = 0.15
     private const val EDGE_SECONDS = 0.1
@@ -128,6 +161,7 @@ object RecordingInsights {
             extras = groups.extras,
             tanpuraNotHeard = tanpuraNotHeard,
             summary = summary(swaras, groups.extras, strictness, expected != null),
+            strictness = strictness,
         )
     }
 
@@ -219,7 +253,8 @@ object RecordingInsights {
             if (i < m && j < n && near(i, j)) relax(1, i + 1, j + 1, MATCH_WEIGHT * abs(pitches[j] - targets[i]) / MATCH_CENTS, MATCH)
             // More of the previous swara only if it's no nearer the next one (a Ri sung straight after Sa is Ri).
             val nearerPrevious = i == m || i == 0 || j == n || abs(pitches[j] - targets[i - 1]) <= abs(pitches[j] - targets[i])
-            if (taken == 1 && i > 0 && j < n && near(i - 1, j) && nearerPrevious) relax(1, i, j + 1, absorbCost(j), ABSORB)
+            val sameSwara = i > 0 && j < n && abs(pitches[j] - targets[i - 1]) <= ABSORB_CENTS
+            if (taken == 1 && sameSwara && nearerPrevious) relax(1, i, j + 1, absorbCost(j), ABSORB)
         }
         val owner = IntArray(n) { -1 }
         var i = m
@@ -276,6 +311,14 @@ object RecordingInsights {
         abs(cents) <= strictness.closeCents -> if (cents < 0) Closeness.A_LITTLE_FLAT else Closeness.A_LITTLE_SHARP
         else -> if (cents < 0) Closeness.FLAT else Closeness.SHARP
     }
+
+    /** The swaras to sing for [scale] of [raga], as labels ("S", "R₁", … "S′"). */
+    fun referenceLabels(raga: Raga, scale: Scale): List<String> =
+        scale.expected(raga).map { Display.swaraLabel(it.swara, it.octave.offset) }
+
+    /** The reference line for a screen reader: "Sing: Sa, Ri, Ga, Ma, Pa, Dha, Ni, high Sa". */
+    fun referenceSpoken(raga: Raga, scale: Scale): String =
+        "Sing: " + scale.expected(raga).joinToString(", ") { spokenName(it.swara, it.octave.offset) }
 
     /** "Sa", "Ri", … for the words (with "high" / "low" outside the middle octave). */
     fun spokenName(swara: Swara, octave: Int): String {

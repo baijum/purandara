@@ -183,4 +183,32 @@ class RecordingInsightsTest {
         assertNull(unknown.ragaKey)
         assertNull(unknown.scale, "no raga, so singing freely")
     }
+
+    @Test
+    fun steadinessIsALineForTheSteadyAndOneForEachWavering() {
+        val i = insights(steps(null to 0.3, cents(Swara.S) to 1.0, null to 0.2, cents(Swara.R1) to 1.0, null to 0.3), recording(scale = null))
+        assertEquals(listOf("Held steadily: Sa, Ri."), i.steadiness)
+    }
+
+    @Test
+    fun theSpokenFormsAndTheReferenceLine() {
+        val i = insights(sung(mapOf(Swara.M1 to -45.0)))
+        assertEquals("Ma, 45 cents flat", i.swaras.single { it.swara == Swara.M1 }.spoken())
+        assertEquals("Ga, in tune", i.swaras.single { it.swara == Swara.G3 }.spoken())
+        assertEquals("Sing: Sa, Ri, Ga, Ma, Pa, Dha, Ni, high Sa", RecordingInsights.referenceSpoken(Raga.MAYAMALAVAGOWLA, Scale.AROHANA))
+        assertEquals(listOf("S′", "N₃", "D₁", "P", "M₁", "G₃", "R₁", "S"), RecordingInsights.referenceLabels(Raga.MAYAMALAVAGOWLA, Scale.AVAROHANA))
+    }
+
+    @Test
+    fun aNeighbourSungStraightOnIsNotMoreOfTheTopSa() {
+        // The arohana, then straight on down to Ni without a breath.
+        val segments = mutableListOf<Pair<Double?, Double>>(null to 0.3)
+        arohana.forEach { segments += cents(it) to 0.5 }
+        segments += cents(Swara.S, 1) to 0.5
+        segments += cents(Swara.N3) to 0.5
+        segments += null to 0.3
+        val i = insights(steps(*segments.toTypedArray()))
+        assertEquals(listOf("N₃"), i.extras.map { it.label })
+        assertEquals(0.5, i.swaras.last().heldSeconds, 0.05)
+    }
 }

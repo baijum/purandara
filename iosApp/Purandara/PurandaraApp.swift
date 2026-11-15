@@ -67,7 +67,8 @@ struct PurandaraApp: App {
         if PracticeSettings.saRange.contains(sa) { viewModel.settings.saMidi = sa }
         guard let id = defaults.string(forKey: "open") else { return }
         if id == "recordings" || id == "record" {
-            recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents)
+            recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents,
+                               strictness: viewModel.settings.strictness.kotlin)
             path = id == "record" ? ["recordings", "record"] : ["recordings"]
             return
         }

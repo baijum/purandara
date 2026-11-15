@@ -1,6 +1,8 @@
 # Plan: "How it went" for recordings
 
-Status: **in progress** (2026-11-15). Step 1 (shared analysis) is built:
+Status: **in progress** (2026-11-15). Steps 1 and 2 are built (step 2:
+*What are you singing?*, the swaras on screen while recording and *How it
+went* on both apps, the guide). Step 1 (shared analysis):
 `recording/RecordingInsights.kt` (`Scale`, `Insights`, `SwaraInsight`,
 `Closeness`), `Recording.scale` and `RecordingLibrary.changeIntent`,
 `Shruti.choiceNear`, and `TanpuraProfile.heard` (a tanpura switch with no
@@ -58,8 +60,9 @@ large line, for example `S R₁ G₃ M₁ P D₁ N₃ S′`, as a reference only
 2. **Swara by swara.** With a choice: the swaras meant, each matched to what
    was sung, as a row of chips:
    `S ✓ · R₁ ✓ · G₃ +10¢ · M₁ −20¢ · P ✓ · D₁ +13¢ · N₃ ✓ · S′ ✓`
-   (a tick within the in-tune band; cents otherwise; *missed* for a swara
-   not heard, and *extra* notes listed after). With *Free singing*: each
+   (cents for every swara, coloured by closeness: an inline tick measured as
+   clipped text in the iOS audit; *not heard* for a swara missed, and
+   *extra* notes listed after). With *Free singing*: each
    swara heard, with its median cents. Measured against the fitted Sa when
    one is offered, so the numbers are about intervals, not the starting
    pitch ("against your Sa" is said so).

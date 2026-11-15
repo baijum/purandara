@@ -22,7 +22,12 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Tuning
+import com.baijum.purandara.recording.Closeness
+import com.baijum.purandara.recording.Insights
 import com.baijum.purandara.recording.PitchTrack
+import com.baijum.purandara.recording.Scale
+import com.baijum.purandara.recording.SwaraInsight
+import com.baijum.purandara.domain.Swara
 import com.baijum.purandara.recording.Recording
 import com.baijum.purandara.recording.RecordingLibrary
 import com.baijum.purandara.recording.SwaraTranscriber
@@ -127,6 +132,35 @@ class RecordingsAccessibilityTest {
         }
         compose.onNodeWithContentDescription("Use the tanpura's Sa", substring = true).performScrollTo().performClick()
         assertEquals(49 to 12, usedSa)
+    }
+
+    @Test
+    fun howItWentReadsEachSwaraAndOffersYourSa() {
+        val insights = Insights(
+            saOffsetCents = -25.0, suggestedSa = 48 to -25,
+            swaras = listOf(
+                SwaraInsight(Swara.S, 0, Closeness.IN_TUNE, -3.0, 0.6, null),
+                SwaraInsight(Swara.M1, 0, Closeness.A_LITTLE_FLAT, -17.0, 0.6, null),
+                SwaraInsight(Swara.P, 0, Closeness.MISSED, null, 0.0, null),
+            ),
+            extras = emptyList(), tanpuraNotHeard = false, summary = "Ma was a little flat (−17¢); the rest were in tune.",
+        )
+        compose.setContent { PurandaraTheme { RecordingDetailScreen(detail().copy(insights = insights), actions) } }
+        compose.onNodeWithContentDescription("Ma, 17 cents flat").performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("Pa, not heard").assertExists()
+        compose.onNodeWithContentDescription("Use your Sa", substring = true).performScrollTo().performClick()
+        assertEquals(48 to -25, usedSa)
+    }
+
+    @Test
+    fun theScaleChoiceAppearsOnceARagaIsChosen() {
+        var chosen: Pair<String?, Scale?>? = null
+        val withIntent = actions.copy(onIntent = { raga, scale -> chosen = raga to scale })
+        compose.setContent {
+            PurandaraTheme { RecordScreen(RecorderUi(ragaKey = Raga.MAYAMALAVAGOWLA.key), micAllowed = true, actions = withIntent) }
+        }
+        compose.onNodeWithText("Arohana").performClick()
+        assertEquals(Raga.MAYAMALAVAGOWLA.key to Scale.AROHANA, chosen)
     }
 
     @Test

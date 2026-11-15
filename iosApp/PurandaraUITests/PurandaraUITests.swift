@@ -37,6 +37,28 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Start from Sarali Varisai 2"].waitForExistence(timeout: 5))
     }
 
+    @MainActor func testWhatYouAreSingingAndHowItWentPassAudit() throws {
+        let app = launch(["-singer", "0", "-open", "record"])
+        let raga = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Raga'")).firstMatch
+        XCTAssertTrue(raga.waitForExistence(timeout: 5))
+        raga.tap()
+        app.buttons["Mayamalavagowla"].tap()
+        let arohana = app.buttons["Arohana"]
+        XCTAssertTrue(arohana.waitForExistence(timeout: 5))
+        arohana.tap()
+        XCTAssertTrue(app.staticTexts["Sing: Sa, Ri, Ga, Ma, Pa, Dha, Ni, high Sa"].waitForExistence(timeout: 2))
+        try audit(app)
+        app.buttons["Start recording"].tap()
+        Thread.sleep(forTimeInterval: 4.5) // the synthetic singer's way up
+        app.buttons["Stop recording"].tap()
+        XCTAssertTrue(app.navigationBars["Recording"].waitForExistence(timeout: 20))
+        let chips = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Sa, in tune; Ri, in tune'")).firstMatch
+        XCTAssertTrue(chips.waitForExistence(timeout: 5))
+        scrollTo(chips, in: app)
+        XCTAssertTrue(chips.isHittable, "How it went reads each swara")
+        try audit(app)
+    }
+
     @MainActor func testRecordingWithATanpuraListensFirstAndPassesAudit() throws {
         let app = launch(["-singer", "0", "-open", "record"])
         // Its label includes the help text below it.

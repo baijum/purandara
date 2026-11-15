@@ -83,7 +83,7 @@ fun PurandaraApp(viewModel: PracticeViewModel, recordings: RecordingsViewModel) 
         state.run != null -> RunRoute(viewModel, state)
         state.selected == null -> LibraryRoute(viewModel, state) {
             viewModel.stop()
-            recordings.open(state.settings.tuning, state.settings.saMidi, state.settings.saCents)
+            recordings.open(state.settings.tuning, state.settings.saMidi, state.settings.saCents, state.settings.strictness)
         }
         else -> PlayerRoute(viewModel, state, micDenied) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
     }
@@ -175,13 +175,15 @@ private fun RecordingsRoute(recordings: RecordingsViewModel, state: RecordingsUi
         onChangeRaga = recordings::changeRaga,
         onDelete = recordings::delete,
         onTanpura = recordings::setTanpura,
+        onIntent = recordings::setIntent,
+        onChangeIntent = recordings::changeIntent,
         onChangeTanpura = recordings::changeTanpura,
         onReanalyse = if (BuildConfig.DEBUG) recordings::reanalyse else null,
     )
     val detail = state.detail
     when {
-        state.screen == RecordingsScreen.RECORD -> RecordScreen(state.recorder, micAllowed, actions)
-        state.screen == RecordingsScreen.DETAIL && detail != null -> RecordingDetailScreen(detail, actions)
+        state.screen == RecordingsScreen.RECORD -> RecordScreen(state.recorder, micAllowed, actions, state.recentRagas)
+        state.screen == RecordingsScreen.DETAIL && detail != null -> RecordingDetailScreen(detail, actions, state.recentRagas)
         else -> RecordingsListScreen(state.library, actions)
     }
 }

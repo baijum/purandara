@@ -161,6 +161,9 @@ struct RecordView: View {
                     Button("Allow microphone") { recordings.allowMic() }.buttonStyle(.borderedProminent)
                 } else {
                     if !r.recording {
+                        IntentSection(raga: r.ragaKey, scale: r.scale, recent: recordings.recentRagas) { raga, scale in
+                            recordings.setIntent(raga: raga, scale: scale)
+                        }
                         Toggle(isOn: Binding(get: { recordings.recorder.tanpura }, set: { recordings.setTanpura($0) })) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("External tanpura playing")
@@ -170,6 +173,13 @@ struct RecordView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                         }
+                    }
+                    if let key = r.ragaKey, let raga = Ragas.shared.byKey(key: key), let scale = r.scale {
+                        Text(RecordingInsights.shared.referenceLabels(raga: raga, scale: scale).joined(separator: "  "))
+                            .font(.title2.weight(.semibold))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityLabel(RecordingInsights.shared.referenceSpoken(raga: raga, scale: scale))
                     }
                     controls(r)
                 }
@@ -313,6 +323,10 @@ struct RecordingDetailView: View {
                     Text("No steady swaras were heard.")
                 }
                 phrases(d)
+                if let insights = d.insights {
+                    Divider()
+                    HowItWentView(insights: insights) { midi, cents in recordings.changeSa(id, midi: midi, cents: cents) }
+                }
                 if d.track != nil {
                     Divider()
                     Text("Your pitch").font(.headline).accessibilityAddTraits(.isHeader)
@@ -329,10 +343,8 @@ struct RecordingDetailView: View {
                 } label: {
                     LabeledRow(title: "Sa", value: PracticeSettingsView.saLabel(Int(recording.saMidi), cents: Int(recording.saCents)))
                 }
-                NavigationLink {
-                    RagaChoiceList(selected: recording.ragaKey) { recordings.changeRaga(id, $0) }
-                } label: {
-                    LabeledRow(title: "Raga", value: recording.raga?.name ?? String(localized: "None (default names)"))
+                IntentSection(raga: recording.ragaKey, scale: recording.scale, recent: recordings.recentRagas) { raga, scale in
+                    recordings.changeIntent(id, raga: raga, scale: scale)
                 }
                 Toggle("External tanpura playing", isOn: Binding(
                     get: { recording.externalTanpura }, set: { recordings.changeTanpura(id, $0) }))
@@ -436,15 +448,123 @@ private struct LabeledRow: View {
 }
 
 /// None, or one of the app's ragas; the current one checked.
+/// "What are you singing?" (docs/plan-recording-insights.md): the raga (a
+/// pushed list, recent first) and, once one is chosen, Free singing /
+/// Arohana / Avarohana / Arohana and avarohana as buttons with a checkmark
+/// (menu and segmented pickers cap Dynamic Type).
+private struct IntentSection: View {
+    let raga: String?
+    let scale: Scale?
+    let recent: [String]
+    let onChange: (String?, Scale?) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("What are you singing?").font(.headline).accessibilityAddTraits(.isHeader)
+            NavigationLink {
+                RagaChoiceList(selected: raga, recent: recent) { onChange($0, $0 == nil ? nil : scale) }
+            } label: {
+                LabeledRow(title: "Raga", value: raga.flatMap { Ragas.shared.byKey(key: $0)?.name } ?? String(localized: "None (default names)"))
+            }
+            if raga != nil {
+                choice(nil, "Free singing")
+                choice(.arohana, "Arohana")
+                choice(.avarohana, "Avarohana")
+                choice(.both, "Arohana and avarohana")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func choice(_ value: Scale?, _ title: LocalizedStringKey) -> some View {
+        Button { onChange(raga, value) } label: {
+            HStack {
+                Text(title).foregroundStyle(Color.primary)
+                Spacer()
+                if value == scale { Image(systemName: "checkmark").accessibilityHidden(true) }
+            }
+            .contentShape(Rectangle())
+            .frame(minHeight: 44)
+        }
+        .accessibilityAddTraits(value == scale ? .isSelected : [])
+    }
+}
+
+/// "How it went": the Sa the notes fit (with a button), the swaras with their
+/// cents as one wrapping line (one element, read as "Sa, in tune; Ma, 17
+/// cents flat; …"), a sentence, steadiness.
+private struct HowItWentView: View {
+    let insights: Insights
+    let onUseSa: (Int, Int) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("How it went").font(.headline).accessibilityAddTraits(.isHeader)
+            if insights.tanpuraNotHeard {
+                Text("No tanpura was heard in the first 3 seconds, so the recording was read without it.")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let offer = insights.suggestedSa, let midi = offer.first?.intValue, let cents = offer.second?.intValue {
+                let sa = PracticeSettingsView.saLabel(midi, cents: cents)
+                Text("Your notes fit a Sa of \(sa).").fixedSize(horizontal: false, vertical: true)
+                Button("Use this Sa") { onUseSa(midi, cents) }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel(Text("Use your Sa, \(sa)"))
+            }
+            if !insights.swaras.isEmpty {
+                chips
+                    .font(.title3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(insights.swaras.map { $0.spoken() }.joined(separator: "; "))
+            }
+            Text(insights.summary).fixedSize(horizontal: false, vertical: true)
+            ForEach(insights.steadiness, id: \.self) { line in
+                Text(line).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// "S −4¢  R₁ −3¢  G₃ +24¢ …" as one Text, coloured by closeness.
+    private var chips: Text {
+        insights.swaras.enumerated().reduce(Text("")) { line, item in
+            let (index, s) = item
+            let gap = index == 0 ? Text("") : Text("   ")
+            let mark: Text
+            // Cents for every swara (an inline image here measures as clipped text in the audit).
+            let cents = Text(RecordingInsights.shared.centsText(cents: s.cents?.doubleValue ?? 0))
+            switch s.closeness {
+            case .inTune: mark = cents.foregroundColor(.accentColor)
+            case .missed: mark = Text("not heard").foregroundColor(.red)
+            case .aLittleFlat, .aLittleSharp: mark = cents.foregroundColor(.orange)
+            default: mark = cents.foregroundColor(.red)
+            }
+            return line + gap + Text(s.label).bold() + Text(" ") + mark
+        }
+    }
+}
+
 private struct RagaChoiceList: View {
     let selected: String?
+    var recent: [String] = []
     let onSelect: (String?) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        let recentRagas = recent.compactMap { Ragas.shared.byKey(key: $0) }
         List {
             row(nil, String(localized: "None (default names)"))
-            ForEach(Ragas.shared.all.sorted { $0.name < $1.name }, id: \.key) { raga in row(raga.key, raga.name) }
+            if !recentRagas.isEmpty {
+                Section("Recent") {
+                    ForEach(recentRagas, id: \.key) { raga in row(raga.key, raga.name) }
+                }
+            }
+            Section(recentRagas.isEmpty ? "" : "All ragas") {
+                ForEach(Ragas.shared.all.filter { r in !recentRagas.contains { $0.key == r.key } }.sorted { $0.name < $1.name }, id: \.key) { raga in
+                    row(raga.key, raga.name)
+                }
+            }
         }
         .navigationTitle("Raga")
         .navigationBarTitleDisplayMode(.inline)

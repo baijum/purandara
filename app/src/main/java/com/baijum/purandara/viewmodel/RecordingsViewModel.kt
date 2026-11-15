@@ -29,6 +29,11 @@ import com.baijum.purandara.recording.Recording
 import com.baijum.purandara.recording.RecordingLibrary
 import com.baijum.purandara.recording.SwaraTranscriber
 import com.baijum.purandara.recording.TanpuraProfile
+import com.baijum.purandara.recording.Insights
+import com.baijum.purandara.recording.RecordingInsights
+import com.baijum.purandara.recording.Scale
+import com.baijum.purandara.domain.Ragas
+import com.baijum.purandara.singalong.Strictness
 import com.baijum.purandara.recording.Transcription
 import com.baijum.purandara.singalong.PitchLane
 import kotlinx.coroutines.Dispatchers
@@ -62,6 +67,9 @@ data class RecorderUi(
     val saCents: Int = 0,
     /** The student's own tanpura is playing (docs/plan-recordings-tanpura.md). */
     val tanpura: Boolean = false,
+    /** What the student means to sing: [scale] of this raga, or singing freely (docs/plan-recording-insights.md). */
+    val ragaKey: String? = null,
+    val scale: Scale? = null,
 ) {
     /** Recording, in the first seconds with a tanpura: the app is learning it, the student waits. */
     val listening: Boolean get() = recording && tanpura && seconds < TanpuraProfile.LISTEN_SECONDS
@@ -79,6 +87,8 @@ data class RecordingDetailUi(
     val updating: Float? = null,
     /** The student's tanpura's Sa (MIDI, cents) when it differs from the recording's, to offer. */
     val tanpuraSa: Pair<Int, Int>? = null,
+    /** "How it went" (docs/plan-recording-insights.md); null without a pitch track. */
+    val insights: Insights? = null,
 )
 
 data class RecordingsUiState(
@@ -87,6 +97,8 @@ data class RecordingsUiState(
     val library: RecordingLibrary = RecordingLibrary(),
     val recorder: RecorderUi = RecorderUi(),
     val detail: RecordingDetailUi? = null,
+    /** Ragas chosen lately, most recent first. */
+    val recentRagas: List<String> = emptyList(),
 )
 
 /**
@@ -106,6 +118,7 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
     private var tuning: Tuning = Tuning.JUST
     private var saMidi: Int = Shruti.DEFAULT_SA_MIDI
     private var saCents: Int = 0
+    private var strictness: Strictness = Strictness.PRECISE
     private var recorder: Recorder? = null
     private var recordingId: String? = null
     private var reanalysing: Job? = null
@@ -118,11 +131,35 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
     var debugSyntheticSingerCents: Double? = null
 
     /** Opens the list; new recordings use [saMidi] / [saCents] and swaras are read in [tuning]. */
-    fun open(tuning: Tuning, saMidi: Int, saCents: Int) {
+    fun open(tuning: Tuning, saMidi: Int, saCents: Int, strictness: Strictness) {
         this.tuning = tuning
         this.saMidi = saMidi
         this.saCents = saCents
-        _state.update { it.copy(open = true, screen = RecordingsScreen.LIST, detail = null) }
+        this.strictness = strictness
+        _state.update { it.copy(open = true, screen = RecordingsScreen.LIST, detail = null, recentRagas = store.recentRagas) }
+    }
+
+    /** The Record screen's "What are you singing?" (remembered); a scale needs a raga. */
+    fun setIntent(ragaKey: String?, scale: Scale?) {
+        if (_state.value.recorder.recording) return
+        val raga = ragaKey?.takeIf { Ragas.byKey(it) != null }
+        val chosen = scale?.takeIf { raga != null }
+        store.intentRaga = raga
+        store.intentScale = chosen
+        noteRecent(raga)
+        _state.update { it.copy(recorder = it.recorder.copy(ragaKey = raga, scale = chosen)) }
+    }
+
+    /** On a recording: what the student meant to sing (read again at once). */
+    fun changeIntent(id: String, ragaKey: String?, scale: Scale?) {
+        noteRecent(ragaKey)
+        updateLibrary { it.changeIntent(id, ragaKey, scale) }
+    }
+
+    private fun noteRecent(ragaKey: String?) {
+        if (ragaKey == null) return
+        val recent = store.noteRecentRaga(ragaKey)
+        _state.update { it.copy(recentRagas = recent) }
     }
 
     /** Back: from a recording or the record screen to the list, from the list out. */
@@ -158,7 +195,10 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         _state.update {
             it.copy(
                 screen = RecordingsScreen.RECORD, detail = null,
-                recorder = RecorderUi(saMidi = saMidi, saCents = saCents, tanpura = store.externalTanpura),
+                recorder = RecorderUi(
+                    saMidi = saMidi, saCents = saCents, tanpura = store.externalTanpura,
+                    ragaKey = store.intentRaga, scale = store.intentScale.takeIf { store.intentRaga != null },
+                ),
             )
         }
     }
@@ -229,6 +269,7 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
             val recording = Recording(
                 id, created, seconds, ui.saMidi, ui.saCents,
                 analysisVersion = RecordingLibrary.ANALYSIS_VERSION, externalTanpura = ui.tanpura,
+                ragaKey = ui.ragaKey, scale = ui.scale,
             )
             updateLibrary { it.add(recording) }
             _state.update { it.copy(recorder = it.recorder.copy(analysing = null)) }
@@ -248,21 +289,6 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
     } catch (e: IOException) {
         Log.w(TAG, "SwiftF0 model missing; analysing with YIN alone", e)
         null
-    }
-
-    /** Debug builds log the model time per run, to check the analysis cost on devices. */
-    private fun timed(model: SwiftF0Model): SwiftF0Model = if (!BuildConfig.DEBUG) model else object : SwiftF0Model, AutoCloseable {
-        override fun run(audio16k: FloatArray, range: PitchRange): SwiftF0Output? {
-            val start = System.nanoTime()
-            return model.run(audio16k, range).also {
-                Log.d(TAG, "SwiftF0: %.2f s of audio in %d ms%s".format(
-                    audio16k.size / SwiftF0.SAMPLE_RATE.toDouble(), (System.nanoTime() - start) / NANOS_PER_MILLI,
-                    if (it == null) " (failed)" else "",
-                ))
-            }
-        }
-
-        override fun close() = (model as? AutoCloseable)?.close() ?: Unit
     }
 
     // --- One recording ---
@@ -316,7 +342,11 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
     private fun read(recording: Recording, track: PitchTrack?): RecordingDetailUi {
         val transcription = track?.let { SwaraTranscriber.transcribe(it, recording, tuning) } ?: Transcription(emptyList())
         val tanpuraSa = track?.takeIf { recording.externalTanpura }?.let { TanpuraProfile.from(it) }?.suggestedSa(recording.saHz)
-        return RecordingDetailUi(recording, track, transcription, PitchLane.forRecording(transcription, recording.raga), tanpuraSa = tanpuraSa)
+        val insights = track?.let { RecordingInsights.of(recording, it, transcription, tuning, strictness) }
+        return RecordingDetailUi(
+            recording, track, transcription, PitchLane.forRecording(transcription, recording.raga),
+            tanpuraSa = tanpuraSa, insights = insights,
+        )
     }
 
     fun rename(id: String, title: String) = updateLibrary { it.rename(id, title) }
@@ -349,7 +379,7 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
                 detail = when {
                     detail == null || updated == null -> detail
                     updated.saHz != detail.recording.saHz || updated.ragaKey != detail.recording.ragaKey ||
-                        updated.externalTanpura != detail.recording.externalTanpura ->
+                        updated.externalTanpura != detail.recording.externalTanpura || updated.scale != detail.recording.scale ->
                         read(updated, detail.track).copy(
                             playing = detail.playing, positionSeconds = detail.positionSeconds, updating = detail.updating,
                         )
@@ -440,6 +470,22 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         const val TICK_MS = 50L
         const val MILLIS = 1000.0
         const val END_SLACK_SECONDS = 0.1
-        const val NANOS_PER_MILLI = 1_000_000L
     }
 }
+
+/** Debug builds log the model time per run, to check the analysis cost on devices. */
+private fun timed(model: SwiftF0Model): SwiftF0Model = if (!BuildConfig.DEBUG) model else object : SwiftF0Model, AutoCloseable {
+    override fun run(audio16k: FloatArray, range: PitchRange): SwiftF0Output? {
+        val start = System.nanoTime()
+        return model.run(audio16k, range).also {
+            Log.d("RecordingsViewModel", "SwiftF0: %.2f s of audio in %d ms%s".format(
+                audio16k.size / SwiftF0.SAMPLE_RATE.toDouble(), (System.nanoTime() - start) / NANOS_PER_MILLI,
+                if (it == null) " (failed)" else "",
+            ))
+        }
+    }
+
+    override fun close() = (model as? AutoCloseable)?.close() ?: Unit
+}
+
+private const val NANOS_PER_MILLI = 1_000_000L

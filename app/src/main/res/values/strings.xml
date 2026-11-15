@@ -235,6 +235,16 @@
     <string name="record_elapsed">Recording, %1$s</string>
     <string name="record_limit_near">Recording stops at 10 minutes.</string>
     <string name="record_analysing">Finding the swaras…</string>
+    <string name="intent_title">What are you singing?</string>
+    <string name="scale_free">Free</string>
+    <string name="scale_arohana">Arohana</string>
+    <string name="scale_avarohana">Avarohana</string>
+    <string name="scale_both">Both</string>
+    <string name="how_it_went">How it went</string>
+    <string name="recording_fitted_sa">Your notes fit a Sa of %1$s.</string>
+    <string name="recording_fitted_sa_use">Use your Sa, %1$s</string>
+    <string name="no_tanpura_heard">No tanpura was heard in the first 3 seconds, so the recording was read without it.</string>
+    <string name="swara_missed">not heard</string>
     <string name="record_tanpura">External tanpura playing</string>
     <string name="record_tanpura_help">Start your tanpura first, and let it play for 3 seconds before you sing. Keep it a little quieter than your voice.</string>
     <string name="record_listening">Listening to your tanpura…</string>

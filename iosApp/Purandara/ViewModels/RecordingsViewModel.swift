@@ -16,6 +16,9 @@ struct RecorderUI {
     var saCents = 0
     /// The student's own tanpura is playing (docs/plan-recordings-tanpura.md).
     var tanpura = false
+    /// What the student means to sing: `scale` of this raga, or singing freely (docs/plan-recording-insights.md).
+    var ragaKey: String?
+    var scale: Scale?
 
     /// Recording, in the first seconds with a tanpura: the app is learning it, the student waits.
     var listening: Bool { recording && tanpura && seconds < TanpuraProfile.companion.LISTEN_SECONDS }
@@ -33,6 +36,8 @@ struct RecordingDetailUI {
     var updating: Double?
     /// The student's tanpura's Sa (MIDI, cents) when it differs from the recording's, to offer.
     var tanpuraSa: (midi: Int, cents: Int)?
+    /// "How it went"; nil without a pitch track.
+    var insights: Insights?
 }
 
 /// Recordings on the device (docs/plan-recordings.md): `recordings/` in
@@ -101,6 +106,9 @@ final class RecordingsViewModel: ObservableObject {
 
     private let store = RecordingStore()
     private var tuning: Tuning = .just
+    private var strictness: Strictness = .precise
+    /// Ragas chosen lately, most recent first.
+    @Published private(set) var recentRagas: [String] = UserDefaults.standard.stringArray(forKey: "recordingRecentRagas") ?? []
     private var active: Recorder?
     private var recordingId: String?
     private var recordingStarted: Int64 = 0
@@ -133,11 +141,45 @@ final class RecordingsViewModel: ObservableObject {
     #endif
 
     /// New recordings use this Sa; swaras are read in [tuning].
-    func prepare(tuning: Tuning, saMidi: Int, saCents: Int) {
+    func prepare(tuning: Tuning, saMidi: Int, saCents: Int, strictness: Strictness) {
         self.tuning = tuning
+        self.strictness = strictness
         if !recorder.recording && recorder.analysing == nil {
-            recorder = RecorderUI(saMidi: saMidi, saCents: saCents, tanpura: UserDefaults.standard.bool(forKey: Self.tanpuraKey))
+            let raga = UserDefaults.standard.string(forKey: Self.intentRagaKey).flatMap { Ragas.shared.byKey(key: $0) != nil ? $0 : nil }
+            let scale = raga == nil ? nil : UserDefaults.standard.string(forKey: Self.intentScaleKey).flatMap(Self.scale(named:))
+            recorder = RecorderUI(saMidi: saMidi, saCents: saCents, tanpura: UserDefaults.standard.bool(forKey: Self.tanpuraKey),
+                                  ragaKey: raga, scale: scale)
         }
+    }
+
+    private static let intentRagaKey = "recordingIntentRaga"
+    private static let intentScaleKey = "recordingIntentScale"
+
+    static func scale(named name: String) -> Scale? {
+        [Scale.arohana, Scale.avarohana, Scale.both].first { $0.name == name }
+    }
+
+    /// The Record screen's "What are you singing?" (remembered); a scale needs a raga.
+    func setIntent(raga: String?, scale: Scale?) {
+        guard !recorder.recording else { return }
+        let chosen = raga == nil ? nil : scale
+        UserDefaults.standard.set(raga, forKey: Self.intentRagaKey)
+        UserDefaults.standard.set(chosen?.name, forKey: Self.intentScaleKey)
+        noteRecent(raga)
+        recorder.ragaKey = raga
+        recorder.scale = chosen
+    }
+
+    /// On a recording: what the student meant to sing (read again at once).
+    func changeIntent(_ id: String, raga: String?, scale: Scale?) {
+        noteRecent(raga)
+        updateLibrary { $0.changeIntent(id: id, ragaKey: raga, scale: scale) }
+    }
+
+    private func noteRecent(_ raga: String?) {
+        guard let raga else { return }
+        recentRagas = Array(([raga] + recentRagas.filter { $0 != raga }).prefix(3))
+        UserDefaults.standard.set(recentRagas, forKey: "recordingRecentRagas")
     }
 
     /// The Record screen's "External tanpura playing" switch, remembered for next time.
@@ -235,7 +277,8 @@ final class RecordingsViewModel: ObservableObject {
         }
         let recording = Recording(
             id: id, createdMillis: created, durationSeconds: seconds, saMidi: Int32(sa.0), saCents: Int32(sa.1),
-            ragaKey: nil, customTitle: nil, analysisVersion: RecordingLibrary.companion.ANALYSIS_VERSION, externalTanpura: tanpura, scale: nil
+            ragaKey: recorder.ragaKey, customTitle: nil, analysisVersion: RecordingLibrary.companion.ANALYSIS_VERSION,
+            externalTanpura: tanpura, scale: recorder.scale
         )
         updateLibrary { $0.add(recording: recording) }
         justRecorded = id
@@ -331,6 +374,9 @@ final class RecordingsViewModel: ObservableObject {
         } ?? Transcription(phrases: [])
         var ui = RecordingDetailUI(recording: recording, track: track, transcription: transcription,
                                    lane: shared.PitchLane.companion.forRecording(transcription: transcription, raga: recording.raga))
+        if let track {
+            ui.insights = RecordingInsights.shared.of(recording: recording, track: track, transcription: transcription, tuning: tuning, strictness: strictness)
+        }
         if recording.externalTanpura, let track, let offer = TanpuraProfile.companion.from(track: track, listenSeconds: TanpuraProfile.companion.LISTEN_SECONDS)?.suggestedSa(currentSaHz: recording.saHz) {
             ui.tanpuraSa = (Int(truncating: offer.first ?? 0), Int(truncating: offer.second ?? 0))
         }
@@ -363,7 +409,8 @@ final class RecordingsViewModel: ObservableObject {
         store.save(next)
         library = next
         guard var d = detail, let updated = next.get(id: d.recording.id) else { return }
-        if updated.saHz != d.recording.saHz || updated.ragaKey != d.recording.ragaKey || updated.externalTanpura != d.recording.externalTanpura {
+        if updated.saHz != d.recording.saHz || updated.ragaKey != d.recording.ragaKey || updated.externalTanpura != d.recording.externalTanpura
+            || updated.scale != d.recording.scale {
             let playing = d.playing
             let position = d.position
             let updating = d.updating

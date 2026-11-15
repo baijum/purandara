@@ -194,7 +194,7 @@ private fun spokenDuration(res: Resources, seconds: Double): String {
 // --- Recording ---
 
 @Composable
-fun RecordScreen(recorder: RecorderUi, micAllowed: Boolean, actions: RecordingsActions) {
+fun RecordScreen(recorder: RecorderUi, micAllowed: Boolean, actions: RecordingsActions, recentRagas: List<String> = emptyList()) {
     RecordingsScaffold(stringResource(R.string.record_title), actions.onBack) { modifier ->
         Column(
             modifier.verticalScroll(rememberScrollState()).padding(16.dp),
@@ -217,7 +217,12 @@ fun RecordScreen(recorder: RecorderUi, micAllowed: Boolean, actions: RecordingsA
                     Button(onClick = actions.onAllowMic) { Text(stringResource(R.string.allow_mic)) }
                 }
                 else -> {
-                    if (!recorder.recording) TanpuraSwitch(recorder.tanpura, actions.onTanpura, help = true)
+                    if (!recorder.recording) {
+                        IntentPicker(recorder.ragaKey, recorder.scale, recentRagas, actions.onIntent)
+                        TanpuraSwitch(recorder.tanpura, actions.onTanpura, help = true)
+                    }
+                    val raga = recorder.ragaKey?.let { Ragas.byKey(it) }
+                    if (raga != null && recorder.scale != null) ReferenceLine(raga, recorder.scale)
                     RecordControls(recorder, actions)
                 }
             }
@@ -324,7 +329,7 @@ private fun TanpuraSwitch(on: Boolean, onChange: (Boolean) -> Unit, help: Boolea
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun RecordingDetailScreen(detail: RecordingDetailUi, actions: RecordingsActions) {
+fun RecordingDetailScreen(detail: RecordingDetailUi, actions: RecordingsActions, recentRagas: List<String> = emptyList()) {
     val recording = detail.recording
     val title = titleOf(recording)
     var renaming by rememberSaveable { mutableStateOf(false) }
@@ -347,6 +352,7 @@ fun RecordingDetailScreen(detail: RecordingDetailUi, actions: RecordingsActions)
             }
             PlaybackControls(detail, actions)
             SwaraSection(detail, actions)
+            detail.insights?.let { HowItWent(it) { midi, cents -> actions.onChangeSa(recording.id, midi, cents) } }
             Text(
                 stringResource(R.string.recording_trace),
                 style = MaterialTheme.typography.titleMedium,
@@ -355,7 +361,7 @@ fun RecordingDetailScreen(detail: RecordingDetailUi, actions: RecordingsActions)
             RecordingTrace(detail, actions.onSeek)
             SaPicker(recording.saMidi, recording.saCents) { midi -> actions.onChangeSa(recording.id, midi, recording.saCents) }
             FineTuneControl(recording.saCents) { cents -> actions.onChangeSa(recording.id, recording.saMidi, cents) }
-            RagaPicker(recording.ragaKey) { key -> actions.onChangeRaga(recording.id, key) }
+            IntentPicker(recording.ragaKey, recording.scale, recentRagas) { key, scale -> actions.onChangeIntent(recording.id, key, scale) }
             TanpuraSwitch(recording.externalTanpura, { actions.onChangeTanpura(recording.id, it) }, help = false)
             detail.tanpuraSa?.let { (midi, cents) -> TanpuraOffer(midi, cents) { actions.onChangeSa(recording.id, midi, cents) } }
         }
@@ -601,35 +607,6 @@ private fun DrawScope.drawNotes(view: TraceView, notes: List<HeardNote>, color: 
     notes.filter { it.endSeconds >= view.start && it.startSeconds <= view.end }.forEach { note ->
         val y = view.y(PitchLane.centsOf(Note(note.swara)) + note.octave * CENTS_PER_OCTAVE)
         drawLine(color, Offset(maxOf(view.left, view.x(note.startSeconds)), y), Offset(view.x(note.endSeconds), y), strokeWidth = NOTE_STROKE)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RagaPicker(ragaKey: String?, onSelect: (String?) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    val none = stringResource(R.string.recording_raga_none)
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
-            value = ragaKey?.let { Ragas.byKey(it)?.name } ?: none,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.recording_raga)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text(none) }, onClick = {
-                expanded = false
-                onSelect(null)
-            })
-            Ragas.all.sortedBy { it.name }.forEach { raga ->
-                DropdownMenuItem(text = { Text(raga.name) }, onClick = {
-                    expanded = false
-                    onSelect(raga.key)
-                })
-            }
-        }
     }
 }
 
