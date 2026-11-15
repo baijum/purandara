@@ -236,7 +236,17 @@ private struct AppDestination: View {
     let id: String
     @Binding var path: [String]
 
+    /// The player, a run, the recorder and a recording use the whole screen:
+    /// no tab bar (as Android shows no menu on them).
+    private var fullScreen: Bool {
+        id == "run" || id == "record" || id.hasPrefix("recording:") || VarisaiCatalog.shared.byId(id: id) != nil
+    }
+
     var body: some View {
+        screen.toolbar(fullScreen ? .hidden : .automatic, for: .tabBar)
+    }
+
+    @ViewBuilder private var screen: some View {
         if id == "shruti" {
             ShrutiView().outputChangeTestControl()
         } else if id == "find-sa" {

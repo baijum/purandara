@@ -1,7 +1,7 @@
 # Plan: a navigation menu (drawer, tabs, sidebar)
 
 Status: **approved** (2026-11-15), with the recommended defaults for the open
-questions. N1–N3 done.
+questions. N1–N4 done.
 
 Today everything starts from one long landing page (`docs/plan-landing.md`):
 Continue, the Sa card (tanpura, Practise Sa, Find my Sa, Recordings), then all
@@ -154,9 +154,15 @@ with the detail column holding the chosen destination's `NavigationStack`.
   Dynamic Type warnings on sidebar rows are ignored, as the menu is taller
   than the screen; checked by screenshot at the largest size); the tests that
   reached screens from the landing page now use `-open set-SARALI` or the tabs.
-- **N4 Docs and site.** Guide (`site/pages/guide/index.html`, `settings.html`)
-  and its screenshots, store screenshots, README feature summary, the AGENTS.md
-  code map and status line; mark `docs/plan-landing.md` as superseded in part.
+- **N4 Docs and site.** Done. The guide's Getting started page has *Finding
+  your way* (the Android menu, iPhone tabs, iPad sidebar) and *Home and the
+  set pages*, with a new set-page screenshot; the pages that said "on the home
+  screen, tap …" (Shruti practice, Find my Sa, Recordings, a set run, choosing
+  Sa) now say where it is on each device; accessibility describes the menu.
+  New guide screenshots of Home, Shruti practice and Find my Sa; the store
+  screenshots retaken. README and `docs/plan-landing.md` updated. On iPhone
+  the tab bar is hidden on the player, a run, the recorder and a recording,
+  as Android shows no menu there.
 
 Each step lands with its tests passing (`:shared:jvmTest`, `testDebugUnitTest`,
 `assembleDebug lintDebug detekt`, the iOS test scheme) and keeps both apps in

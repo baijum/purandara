@@ -46,9 +46,11 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
   note is marked in tune, close, high, low, an octave off or a different
   swara, with a summary after every pass. Echo cancellation lets you use the
   speaker; headphones work best. Strictness can be Gentle, Steady or Precise.
-- **Landing page:** continue where you left off and see what's next, your Sa
-  with a tanpura to tune to, and every set with what it trains, a picture of
-  each exercise's melodic shape, and your progress.
+- **Home and set pages:** continue where you left off and see what's next,
+  your Sa with a tanpura to tune to, and every set; each set's page says what
+  it trains and shows each exercise's melodic shape and your progress.
+- **Navigation:** a menu on Android (a drawer, kept open on wide screens),
+  tabs on iPhone (Practise, Sa, Recordings) and a sidebar on iPad.
 - **Shruti practice:** sing over the tanpura and watch your pitch against the
   swara lines; hold Sa, Pa or upper Sa for 10, 20 or 30 seconds.
 - **Find my Sa:** sing your lowest and highest comfortable notes and get a
@@ -107,7 +109,8 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [AGENTS.md](AGENTS.md) | Rules, code map, build and test, accessibility lessons |
 | [docs/plan.md](docs/plan.md) | Varisai player |
 | [docs/plan-pitch-monitor.md](docs/plan-pitch-monitor.md) | Sing-along with pitch feedback |
-| [docs/plan-landing.md](docs/plan-landing.md) | Landing page |
+| [docs/plan-landing.md](docs/plan-landing.md) | Landing page (its layout is now Home and the set pages) |
+| [docs/plan-navigation.md](docs/plan-navigation.md) | Navigation: Android drawer, iOS tabs and iPad sidebar, Home and set pages (built) |
 | [docs/plan-shruti.md](docs/plan-shruti.md) | Shruti practice, strictness, choosing Sa |
 | [docs/plan-articulation-breathing.md](docs/plan-articulation-breathing.md) | Optional note separation, recovery, reviewed phrases and listen–repeat (staged) |
 | [docs/plan-alankaram-gitam.md](docs/plan-alankaram-gitam.md) | Alankarams and the Malahari gitams (done) |

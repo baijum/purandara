@@ -1,6 +1,10 @@
 # Plan: a more useful landing page
 
 Status: **approved** (2026-11-06) with the defaults under "Decisions". L1–L3 done.
+Superseded in part (2026-11-16) by `docs/plan-navigation.md`: the one long
+page became Home (continue, Your Sa, the sets) and a page per set; Practise
+Sa, Find my Sa and Recordings moved into the menu (Android, iPad) or the tabs
+(iPhone).
 
 The landing page today is a plain list titled "Exercises", grouped by set,
 with "Mayamalavagowla · Adi tala" above it. Each row shows the title and the
