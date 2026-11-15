@@ -14,6 +14,11 @@ struct RecorderUI {
     var failed = false
     var saMidi = Int(Shruti.shared.DEFAULT_SA_MIDI)
     var saCents = 0
+    /// The student's own tanpura is playing (docs/plan-recordings-tanpura.md).
+    var tanpura = false
+
+    /// Recording, in the first seconds with a tanpura: the app is learning it, the student waits.
+    var listening: Bool { recording && tanpura && seconds < TanpuraProfile.companion.LISTEN_SECONDS }
 }
 
 /// One recording opened: its swaras, trace and playback. Mirrors Android's `RecordingDetailUi`.
@@ -26,6 +31,8 @@ struct RecordingDetailUI {
     var position = 0.0
     /// Progress while the swaras are re-read with an improved analysis, else nil.
     var updating: Double?
+    /// The student's tanpura's Sa (MIDI, cents) when it differs from the recording's, to offer.
+    var tanpuraSa: (midi: Int, cents: Int)?
 }
 
 /// Recordings on the device (docs/plan-recordings.md): `recordings/` in
@@ -121,6 +128,7 @@ final class RecordingsViewModel: ObservableObject {
     func resetAll() {
         for recording in library.recordings { store.deleteFiles(recording.id) }
         updateLibrary { _ in RecordingLibrary(recordings: []) }
+        UserDefaults.standard.removeObject(forKey: Self.tanpuraKey)
     }
     #endif
 
@@ -128,8 +136,17 @@ final class RecordingsViewModel: ObservableObject {
     func prepare(tuning: Tuning, saMidi: Int, saCents: Int) {
         self.tuning = tuning
         if !recorder.recording && recorder.analysing == nil {
-            recorder = RecorderUI(saMidi: saMidi, saCents: saCents)
+            recorder = RecorderUI(saMidi: saMidi, saCents: saCents, tanpura: UserDefaults.standard.bool(forKey: Self.tanpuraKey))
         }
+    }
+
+    /// The Record screen's "External tanpura playing" switch, remembered for next time.
+    private static let tanpuraKey = "recordingExternalTanpura"
+
+    func setTanpura(_ playing: Bool) {
+        guard !recorder.recording else { return }
+        UserDefaults.standard.set(playing, forKey: Self.tanpuraKey)
+        recorder.tanpura = playing
     }
 
     /// The app left the screen: recording stops and keeps what it has; playback pauses.
@@ -153,7 +170,9 @@ final class RecordingsViewModel: ObservableObject {
         do {
             #if DEBUG
             if let cents = syntheticSingerCents {
-                try r.startSynthetic(url: store.audioURL(id), saHz: Shruti.shared.saHz(midi: Int32(recorder.saMidi), cents: Int32(recorder.saCents)), cents: cents)
+                try r.startSynthetic(
+                    url: store.audioURL(id), saHz: Shruti.shared.saHz(midi: Int32(recorder.saMidi), cents: Int32(recorder.saCents)),
+                    cents: cents, silentSeconds: recorder.tanpura ? TanpuraProfile.companion.LISTEN_SECONDS : 0)
             } else {
                 try r.start(url: store.audioURL(id))
             }
@@ -193,20 +212,21 @@ final class RecordingsViewModel: ObservableObject {
         let created = recordingStarted
         let sa = (recorder.saMidi, recorder.saCents)
         let saHz = Shruti.shared.saHz(midi: Int32(sa.0), cents: Int32(sa.1))
+        let tanpura = recorder.tanpura
         let url = store.audioURL(id)
         let store = self.store
         let progress = Self.progressHandler(self)
         Task.detached(priority: .userInitiated) {
-            let track = try? RecordingDecoder.analyse(url: url, saHz: saHz, onProgress: progress)
+            let track = try? RecordingDecoder.analyse(url: url, saHz: saHz, tanpura: tanpura, onProgress: progress)
             let saved: Bool
             if let track { saved = (try? store.writePitch(id, track)) != nil } else { saved = false }
             await MainActor.run { [weak self] in
-                self?.onAnalysed(id: id, saved: saved, created: created, seconds: seconds, sa: sa)
+                self?.onAnalysed(id: id, saved: saved, created: created, seconds: seconds, sa: sa, tanpura: tanpura)
             }
         }
     }
 
-    private func onAnalysed(id: String, saved: Bool, created: Int64, seconds: Double, sa: (Int, Int)) {
+    private func onAnalysed(id: String, saved: Bool, created: Int64, seconds: Double, sa: (Int, Int), tanpura: Bool) {
         recorder.analysing = nil
         guard saved else {
             store.deleteFiles(id)
@@ -215,7 +235,7 @@ final class RecordingsViewModel: ObservableObject {
         }
         let recording = Recording(
             id: id, createdMillis: created, durationSeconds: seconds, saMidi: Int32(sa.0), saCents: Int32(sa.1),
-            ragaKey: nil, customTitle: nil, analysisVersion: RecordingLibrary.companion.ANALYSIS_VERSION
+            ragaKey: nil, customTitle: nil, analysisVersion: RecordingLibrary.companion.ANALYSIS_VERSION, externalTanpura: tanpura
         )
         updateLibrary { $0.add(recording: recording) }
         justRecorded = id
@@ -268,9 +288,10 @@ final class RecordingsViewModel: ObservableObject {
         let url = store.audioURL(id)
         let store = self.store
         let saHz = recording.saHz
+        let tanpura = recording.externalTanpura
         let progress = Self.updatingHandler(self, id: id)
         Task.detached(priority: .userInitiated) {
-            let track = try? RecordingDecoder.analyse(url: url, saHz: saHz, onProgress: progress)
+            let track = try? RecordingDecoder.analyse(url: url, saHz: saHz, tanpura: tanpura, onProgress: progress)
             let saved = track.map { (try? store.writePitch(id, $0)) != nil } ?? false
             await MainActor.run { [weak self] in self?.onReanalysed(id: id, track: saved ? track : nil) }
         }
@@ -306,10 +327,14 @@ final class RecordingsViewModel: ObservableObject {
 
     private func read(_ recording: Recording, track: PitchTrack?) -> RecordingDetailUI {
         let transcription = track.map {
-            SwaraTranscriber.shared.transcribe(track: $0, saHz: recording.saHz, raga: recording.raga, tuning: tuning)
+            SwaraTranscriber.shared.transcribe(track: $0, recording: recording, tuning: tuning)
         } ?? Transcription(phrases: [])
-        return RecordingDetailUI(recording: recording, track: track, transcription: transcription,
-                                 lane: shared.PitchLane.companion.forRecording(transcription: transcription, raga: recording.raga))
+        var ui = RecordingDetailUI(recording: recording, track: track, transcription: transcription,
+                                   lane: shared.PitchLane.companion.forRecording(transcription: transcription, raga: recording.raga))
+        if recording.externalTanpura, let track, let offer = TanpuraProfile.companion.from(track: track, listenSeconds: TanpuraProfile.companion.LISTEN_SECONDS)?.suggestedSa(currentSaHz: recording.saHz) {
+            ui.tanpuraSa = (Int(truncating: offer.first ?? 0), Int(truncating: offer.second ?? 0))
+        }
+        return ui
     }
 
     func rename(_ id: String, _ title: String) { updateLibrary { $0.rename(id: id, title: title) } }
@@ -319,6 +344,12 @@ final class RecordingsViewModel: ObservableObject {
     }
 
     func changeRaga(_ id: String, _ key: String?) { updateLibrary { $0.changeRaga(id: id, ragaKey: key) } }
+
+    /// The recording's tanpura switch: the pitch is read differently, so the audio is analysed again.
+    func changeTanpura(_ id: String, _ playing: Bool) {
+        updateLibrary { $0.changeTanpura(id: id, playing: playing) }
+        reanalyse(id)
+    }
 
     func delete(_ id: String) {
         if playerFor == id { releasePlayer() }
@@ -332,12 +363,14 @@ final class RecordingsViewModel: ObservableObject {
         store.save(next)
         library = next
         guard var d = detail, let updated = next.get(id: d.recording.id) else { return }
-        if updated.saHz != d.recording.saHz || updated.ragaKey != d.recording.ragaKey {
+        if updated.saHz != d.recording.saHz || updated.ragaKey != d.recording.ragaKey || updated.externalTanpura != d.recording.externalTanpura {
             let playing = d.playing
             let position = d.position
+            let updating = d.updating
             d = read(updated, track: d.track)
             d.playing = playing
             d.position = position
+            d.updating = updating
         } else {
             d.recording = updated
         }

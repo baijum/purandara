@@ -37,6 +37,27 @@ final class PurandaraUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Start from Sarali Varisai 2"].waitForExistence(timeout: 5))
     }
 
+    @MainActor func testRecordingWithATanpuraListensFirstAndPassesAudit() throws {
+        let app = launch(["-singer", "0", "-open", "record"])
+        // Its label includes the help text below it.
+        let toggle = app.switches.matching(NSPredicate(format: "label BEGINSWITH 'External tanpura playing'")).firstMatch
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(toggle.value as? String, "0")
+        toggle.switches.firstMatch.tap()
+        XCTAssertEqual(toggle.value as? String, "1")
+        try audit(app)
+        app.buttons["Start recording"].tap()
+        XCTAssertTrue(app.staticTexts["Listening to your tanpura…"].waitForExistence(timeout: 2))
+        try audit(app)
+        XCTAssertTrue(app.staticTexts["Now sing"].waitForExistence(timeout: 5))
+        Thread.sleep(forTimeInterval: 9) // the synthetic singer waits out the listening seconds, then sings
+        app.buttons["Stop recording"].tap()
+        XCTAssertTrue(app.navigationBars["Recording"].waitForExistence(timeout: 20))
+        let phrase = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Phrase 1: S, R1, G3, M1, P'")).firstMatch
+        XCTAssertTrue(phrase.waitForExistence(timeout: 5), "read after the listening seconds")
+        try audit(app)
+    }
+
     // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
     // are: mark each test (not the class, which would break the nonisolated
     // setUp override) and every helper they call.

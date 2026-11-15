@@ -117,6 +117,31 @@ struct RecordingsListView: View {
 // MARK: - Recording
 
 /// Record / Stop, the elapsed time and a level meter; then the analysis progress.
+/// "Listening to your tanpura…" with a countdown for the first seconds, then
+/// "Now sing", announced to VoiceOver with a haptic tap
+/// (docs/plan-recordings-tanpura.md). The countdown digit is visual only.
+private struct TanpuraCue: View {
+    let listening: Bool
+    let secondsLeft: Int
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(listening ? "Listening to your tanpura…" : "Now sing")
+                .font(.title2.bold())
+                .foregroundStyle(listening ? Color.subdued : Color.accentColor)
+                .fixedSize(horizontal: false, vertical: true)
+            if listening {
+                Text("\(max(1, secondsLeft))").font(.largeTitle.monospacedDigit()).fixedSize().accessibilityHidden(true)
+            }
+        }
+        .onChange(of: listening) { now in
+            guard !now else { return }
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            UIAccessibility.post(notification: .announcement, argument: String(localized: "Now sing"))
+        }
+    }
+}
+
 struct RecordView: View {
     @EnvironmentObject private var recordings: RecordingsViewModel
     @Binding var path: [String]
@@ -135,6 +160,17 @@ struct RecordView: View {
                     Text("Allow the microphone to record yourself.").fixedSize(horizontal: false, vertical: true)
                     Button("Allow microphone") { recordings.allowMic() }.buttonStyle(.borderedProminent)
                 } else {
+                    if !r.recording {
+                        Toggle(isOn: Binding(get: { recordings.recorder.tanpura }, set: { recordings.setTanpura($0) })) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("External tanpura playing")
+                                Text("Start your tanpura first, and let it play for 3 seconds before you sing. Keep it a little quieter than your voice.")
+                                    .font(.footnote)
+                                    .foregroundStyle(Color.subdued)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
                     controls(r)
                 }
                 if r.failed {
@@ -142,7 +178,7 @@ struct RecordView: View {
                         .foregroundStyle(.red)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text("No tanpura plays while recording. Use your own tanpura if you like; set Sa to match it.")
+                Text("The app plays no tanpura while recording. To sing with your own, turn on External tanpura playing above.")
                     .font(.footnote)
                     .foregroundStyle(Color.subdued)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -189,6 +225,9 @@ struct RecordView: View {
             }
         }
         .accessibilityLabel(Text(r.recording ? "Stop recording" : "Start recording"))
+        if r.recording && r.tanpura {
+            TanpuraCue(listening: r.listening, secondsLeft: Int((TanpuraProfile.companion.LISTEN_SECONDS - r.seconds).rounded(.up)))
+        }
         if r.recording {
             Text(RecordingText.clock(r.seconds))
                 .font(.largeTitle.monospacedDigit())
@@ -294,6 +333,15 @@ struct RecordingDetailView: View {
                     RagaChoiceList(selected: recording.ragaKey) { recordings.changeRaga(id, $0) }
                 } label: {
                     LabeledRow(title: "Raga", value: recording.raga?.name ?? String(localized: "None (default names)"))
+                }
+                Toggle("External tanpura playing", isOn: Binding(
+                    get: { recording.externalTanpura }, set: { recordings.changeTanpura(id, $0) }))
+                if let offer = d.tanpuraSa {
+                    let sa = PracticeSettingsView.saLabel(offer.midi, cents: offer.cents)
+                    Text("Your tanpura is at \(sa).").fixedSize(horizontal: false, vertical: true)
+                    Button("Use this Sa") { recordings.changeSa(id, midi: offer.midi, cents: offer.cents) }
+                        .buttonStyle(.bordered)
+                        .accessibilityLabel(Text("Use the tanpura's Sa, \(sa)"))
                 }
             }
             .padding()
@@ -443,11 +491,19 @@ struct RecordingTraceView: View {
         let notes = detail.transcription.notes
         let saHz = detail.recording.saHz
         let position = detail.position
+        let tanpura = detail.recording.externalTanpura
         GeometryReader { geo in
             Canvas { context, size in
                 let left = Self.labelWidth
                 func x(_ s: Double) -> CGFloat { left + CGFloat((s - start) / Self.window) * (size.width - left) }
                 func y(_ cents: Double) -> CGFloat { size.height * CGFloat(1 - lane.fraction(cents: cents)) }
+                if tanpura {
+                    // The listening seconds (the tanpura alone), which the swaras ignore.
+                    let end = x(TanpuraProfile.companion.LISTEN_SECONDS)
+                    if end > left {
+                        context.fill(Path(CGRect(x: left, y: 0, width: end - left, height: size.height)), with: .color(.secondary.opacity(0.15)))
+                    }
+                }
                 for line in lane.lines {
                     let yy = y(shared.PitchLane.companion.centsOf(note: line))
                     var path = Path()

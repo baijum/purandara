@@ -17,8 +17,22 @@ description: Record yourself singing and see the swaras the app heard, with your
   <li>Tap <em>Start recording</em>, sing, then tap <em>Stop recording</em>. A recording can be up to 10 minutes long.</li>
   <li>The app finds the swaras (a few seconds) and opens the recording.</li>
 </ol>
-<p>No tanpura plays while you record: it would be heard in the recording and confuse the swaras. If you want a drone, play your own tanpura or shruti box and set your Sa in the app to match it. Headphones aren’t needed.</p>
+<p>The app plays no tanpura while you record. To sing with your own tanpura or shruti box, see <a href="#tanpura">Singing with your own tanpura</a>. Headphones aren’t needed.</p>
 <p>If you leave the app, take a call or the screen locks while recording, the recording stops and keeps what it has.</p>
+
+<h2 id="tanpura">Singing with your own tanpura</h2>
+<p>An electronic tanpura, a tanpura app on another phone or a real tanpura is heard under your voice, and without help the app would read its Sa and Pa as notes you sang. So tell the app it is playing:</p>
+<ol>
+  <li>Start your tanpura.</li>
+  <li>On the <em>New recording</em> screen, turn on <em>External tanpura playing</em>. The app remembers this for your next recording.</li>
+  <li>Tap <em>Start recording</em> and wait: for the first 3 seconds the screen shows “Listening to your tanpura…” while the app learns its sound. Then it says “Now sing” (VoiceOver and TalkBack announce it, and the phone gives a light tap).</li>
+</ol>
+<p>The app then counts as your voice only what is clearly louder than the tanpura, and reads your pitch with its voice-trained pitch model, which follows your voice rather than the tanpura’s strings. Those first 3 seconds are shaded on your pitch and left out of the swaras.</p>
+<div class="note">
+  <p><strong>Keep the tanpura a little quieter than your voice</strong> at the phone, for example a little further away than you are. With the tanpura as loud as your voice some notes are lost, and louder than your voice most are.</p>
+</div>
+<p>The app also hears which Sa your tanpura is tuned to. If it differs from the recording’s Sa, the recording shows “Your tanpura is at C♯3 +12¢” with a <em>Use this Sa</em> button. Nothing changes unless you tap it.</p>
+<p>You can turn <em>External tanpura playing</em> on or off for a recording afterwards, on its own screen. The app then reads the recording again from its audio, which takes a few seconds.</p>
 
 <h2 id="swaras">The swaras heard</h2>
 <p>The swaras are shown a line per phrase: a pause of a second and a half or more starts a new line, so a breath between notes keeps them on one line. A comma after a swara means it was held, one for each extra length, as in the app’s notation. Swaras outside the raga you chose are shown in red.</p>

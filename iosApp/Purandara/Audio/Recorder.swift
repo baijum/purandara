@@ -55,7 +55,8 @@ final class Recorder: @unchecked Sendable {
     #if DEBUG
     /// Debug only: sings Sarali Varisai 1 up and down at [saHz], [cents] off,
     /// half a second a note, in real time, instead of the microphone.
-    func startSynthetic(url: URL, saHz: Double, cents: Double) throws {
+    /// `silentSeconds`: silent this long first (the listening seconds of a recording with a tanpura).
+    func startSynthetic(url: URL, saHz: Double, cents: Double, silentSeconds: Double = 0) throws {
         let rate = 44_100.0
         guard let mono = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false) else {
             throw RecorderError.noInput
@@ -65,12 +66,12 @@ final class Recorder: @unchecked Sendable {
             file = out
             sampleRate = rate
         }
-        let thread = Thread { [weak self] in self?.sing(mono: mono, saHz: saHz, cents: cents) }
+        let thread = Thread { [weak self] in self?.sing(mono: mono, saHz: saHz, cents: cents, silentSeconds: silentSeconds) }
         synthetic = thread
         thread.start()
     }
 
-    private func sing(mono: AVAudioFormat, saHz: Double, cents: Double) {
+    private func sing(mono: AVAudioFormat, saHz: Double, cents: Double, silentSeconds: Double) {
         let up: [Double] = [1, 16.0 / 15, 5.0 / 4, 4.0 / 3, 1.5, 8.0 / 5, 15.0 / 8, 2]
         let sarali = up + up.reversed()
         let chunk = AVAudioFrameCount(2048)
@@ -81,7 +82,12 @@ final class Recorder: @unchecked Sendable {
             guard let buffer = AVAudioPCMBuffer(pcmFormat: mono, frameCapacity: chunk), let data = buffer.floatChannelData?[0] else { return }
             buffer.frameLength = chunk
             for i in 0..<Int(chunk) {
-                let t = Double(frame) / mono.sampleRate
+                let t = Double(frame) / mono.sampleRate - silentSeconds
+                if t < 0 {
+                    data[i] = 0
+                    frame += 1
+                    continue
+                }
                 let hz = saHz * sarali[Int(t / 0.5) % sarali.count] * pow(2, cents / 1200)
                 phase += 2 * .pi * hz / mono.sampleRate
                 var v = 0.0
@@ -151,7 +157,8 @@ enum RecordingDecoder {
     /// ONNX Runtime threads for analysing a recording (live listening uses 1).
     static let analysisThreads = 2
 
-    static func analyse(url: URL, saHz: Double, onProgress: (Double) -> Void) throws -> PitchTrack {
+    /// `tanpura`: the student's own tanpura played (SwiftF0's pitch alone; docs/plan-recordings-tanpura.md).
+    static func analyse(url: URL, saHz: Double, tanpura: Bool, onProgress: (Double) -> Void) throws -> PitchTrack {
         #if DEBUG
         let started = CACurrentMediaTime()
         defer {
@@ -166,7 +173,7 @@ enum RecordingDecoder {
         print("[recording] \(String(format: "%.1f", Double(file.length) / rate)) s of audio, SwiftF0 \(model == nil ? "unavailable" : "loaded")")
         #endif
         let analyzer = RecordingAnalyzer(
-            sampleRate: Int32(rate), model: model, range: SwiftF0.shared.range(saHz: KotlinDouble(value: saHz))
+            sampleRate: Int32(rate), model: model, range: SwiftF0.shared.range(saHz: KotlinDouble(value: saHz)), tanpura: tanpura
         )
         let chunk = AVAudioFrameCount(16_384)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: chunk) else { throw Recorder.RecorderError.noInput }

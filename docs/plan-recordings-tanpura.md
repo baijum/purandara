@@ -1,7 +1,15 @@
 # Plan: recordings with an external tanpura
 
-Status: **in progress** (2026-11-15). Step 1 (shared) is built; the first
-real-tanpura test changed the analysis (*Results*).
+Status: **built** (2026-11-15) on both apps; the first real-tanpura test
+changed the analysis (*Results*). Still to do: tune the thresholds on the
+student's recordings with their own tanpura (step 5).
+
+Changes from the plan while building: the switch on a recording's screen
+re-analyses the audio (a few seconds) instead of re-reading at once, since
+the pitch comes from SwiftF0 alone with a tanpura; the countdown digit is
+visual only, and only "Listening to your tanpura…" / "Now sing" are
+announced; the tanpura's Sa isn't drawn on the trace (only the listening
+seconds are shaded), to keep the trace uncluttered.
 
 A follow-on to [`plan-recordings.md`](plan-recordings.md). The app plays no
 drone while recording (decided 2026-11-15), but a student may sing with

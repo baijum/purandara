@@ -15,7 +15,8 @@ all four varnams; they wait on their second-source checks, issue #7), and
 the notation laid out by tala cycle at every speed
 (`docs/plan-speed-layout.md`) and practice runs through a whole varisai set
 (`docs/plan-practice-run.md`) and recordings with approximate swaras
-(`docs/plan-recordings.md`). On the website: search (`docs/plan-site-search.md`)
+(`docs/plan-recordings.md`), with an external tanpura
+(`docs/plan-recordings-tanpura.md`). On the website: search (`docs/plan-site-search.md`)
 and the Learn section, beginner theory for learners (`docs/plan-learn.md`).
 New features are planned and discussed before they are built; do not add
 features speculatively.
@@ -42,7 +43,7 @@ features speculatively.
   (record yourself, see the swaras) and
   [`docs/plan-swiftf0-upgrade.md`](docs/plan-swiftf0-upgrade.md) (planned: SwiftF0
   v0.3 and ONNX Runtime upgrade) and [`docs/plan-recordings-tanpura.md`](docs/plan-recordings-tanpura.md)
-  (planned: recordings with an external tanpura) (and, for the website,
+  (recordings with an external tanpura) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
@@ -114,7 +115,7 @@ features speculatively.
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
 | `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` + `FindSaGuide` (Find my Sa) |
 | `shared/.../practice/` | `PracticeHistory`: practised / best sing-along per exercise, continue and next up (stored on device as JSON); `PracticeRun` and `RunPlans`: a set’s run plan (each varisai climbs from first kala to its speed, repeated per kala), saved continue point and the run’s time model (docs/plan-practice-run.md) |
-| `shared/.../recording/` | Recordings (docs/plan-recordings.md): `RecordingAnalyzer` (decoded audio → `PitchTrack`, SwiftF0 on every window), `PitchTrack` (the saved `.pitch` format), `SwaraTranscriber` (steady stretches → `HeardNote`s in phrases, approximate by design), `RecordingLibrary` + `Recording` (index JSON, auto title); iOS `ByteBridge` for `.pitch` bytes |
+| `shared/.../recording/` | Recordings (docs/plan-recordings.md): `RecordingAnalyzer` (decoded audio → `PitchTrack`, SwiftF0 on every window), `PitchTrack` (the saved `.pitch` format), `SwaraTranscriber` (steady stretches → `HeardNote`s in phrases, approximate by design), `RecordingLibrary` + `Recording` (index JSON, auto title); `TanpuraProfile` (the student's own tanpura, learnt from the first 3 s: level, Sa, the drone-aware voice gate); iOS `ByteBridge` for `.pitch` bytes |
 | `shared/.../domain/schedule/` | `Schedule`: timed note/beat/cursor events, `cursorAt`/`beatAt`; `ofSection` plays one section (`Varisai.sections`) with the piece's avarta numbers |
 | `shared/.../audio/` | `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output) |
 | `shared/.../pitch/` | `PitchDetector` (YIN), `AudioResampler`, `NeuralArbitrator`: ported from ukulele-companion with the interpolation sign fix; `SwiftF0.kt` (the v0.3 model's contract: range, silence gate, `StreamResampler`, `SwiftF0Chunker` for recordings, `SwiftF0Live` for live listening; docs/plan-swiftf0-upgrade.md) |
