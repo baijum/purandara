@@ -32,7 +32,7 @@ highlighted. Nothing is shown live.
 |---|---|
 | Sa and raga | Saved with the **current Sa**. Sa and an optional **raga** can be changed afterwards; the swaras update at once (the pitch frames are saved, so nothing is re-recorded or re-analysed). Without a raga, default names (R2, G3…). |
 | Playback | **Yes**: play, pause and seek, with the current swara highlighted. |
-| Tanpura | **No drone while recording.** A student who wants one uses an external tanpura. |
+| Tanpura | **No drone while recording.** A student who wants one uses an external tanpura (handled in the analysis by the follow-on plan [`plan-recordings-tanpura.md`](plan-recordings-tanpura.md)). |
 | Format | Whatever both platforms handle natively: **AAC in .m4a** (about 1 MB a minute at 96 kbps mono). |
 | Title | **Auto title**: `Mayamalavagowla · Sa D · 15 Nov, 6:42 pm` (no raga: `Sa D · 15 Nov, 6:42 pm`). Can be renamed. |
 | Sharing / export | **None.** Recordings never leave the app. |

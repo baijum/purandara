@@ -41,7 +41,8 @@ features speculatively.
   in one run) and [`docs/plan-recordings.md`](docs/plan-recordings.md)
   (record yourself, see the swaras) and
   [`docs/plan-swiftf0-upgrade.md`](docs/plan-swiftf0-upgrade.md) (planned: SwiftF0
-  v0.3 and ONNX Runtime upgrade) (and, for the website,
+  v0.3 and ONNX Runtime upgrade) and [`docs/plan-recordings-tanpura.md`](docs/plan-recordings-tanpura.md)
+  (planned: recordings with an external tanpura) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
