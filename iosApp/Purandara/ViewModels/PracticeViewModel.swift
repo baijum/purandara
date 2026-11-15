@@ -223,6 +223,7 @@ final class PracticeViewModel: ObservableObject {
         settings = store.load()
         history = store.loadHistory()
         runPlans = store.loadRunPlans()
+        NeuralPitchSupervisor.preloadLive()
         #if DEBUG
         syntheticSingerCents = UserDefaults.standard.object(forKey: "singer") != nil
             ? UserDefaults.standard.double(forKey: "singer") : nil
@@ -314,7 +315,7 @@ final class PracticeViewModel: ObservableObject {
         let newEngine = listening ? SingAlongEngine(
             player: player, renderer: renderer, schedule: schedule, strictness: settings.strictness.kotlin,
             syntheticCents: syntheticSingerCents,
-            modelFactory: { NeuralPitchSupervisor() },
+            modelFactory: { NeuralPitchSupervisor.live },
             onOutcome: { [weak self] outcome in
                 DispatchQueue.main.async { self?.apply(outcome, from: renderer, saHz: sa) }
             }) : nil
@@ -941,7 +942,7 @@ final class PracticeViewModel: ObservableObject {
             },
             synthetic: synthetic,
             range: SwiftF0.shared.range(saHz: KotlinDouble(value: saHz)),
-            modelFactory: { NeuralPitchSupervisor() }
+            modelFactory: { NeuralPitchSupervisor.live }
         ) { frame in deliver(session.onFrame(frame: frame), frame.timeSeconds) }
     }
 
@@ -961,7 +962,7 @@ final class PracticeViewModel: ObservableObject {
             timeOf: { host in AVAudioTime.seconds(forHostTime: host) - start },
             synthetic: synthetic,
             range: SwiftF0.shared.range(saHz: nil), // no Sa yet: the whole range
-            modelFactory: { NeuralPitchSupervisor() }
+            modelFactory: { NeuralPitchSupervisor.live }
         ) { frame in
             let hz = frame.rms >= minVoice ? frame.frequencyHz : nil
             deliver(guide.onFrame(timeSeconds: frame.timeSeconds, frequencyHz: hz))

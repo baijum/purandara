@@ -10,9 +10,22 @@ import shared
 /// Runs the SwiftF0 v0.3.0 pitch model (ONNX Runtime C API) on 16 kHz audio.
 ///
 /// Returns nil whenever anything is unexpected, so callers fall back to YIN
-/// alone. One instance per stream, used from one thread at a time.
+/// alone. Runs are serialised by a lock, so one instance can serve several
+/// listeners.
 final class NeuralPitchSupervisor: NSObject, SwiftF0Model, @unchecked Sendable {
     static let modelName = "swift_f0_v0.3.0"
+
+    /// The one model live listening shares (as Android's `PracticeViewModel`
+    /// does), loaded once. Loading a model per listener blocked the pitch
+    /// queue at the start of every attempt, for seconds on a slow machine.
+    static let live: NeuralPitchSupervisor? = NeuralPitchSupervisor()
+
+    /// Loads [live] in the background, so the first listener doesn't wait for it.
+    static func preloadLive() {
+        DispatchQueue.global(qos: .utility).async { _ = live }
+    }
+
+    private let lock = NSLock()
     private static let inputNames = ["audio", "fmin", "fmax"]
     private static let outputNames = ["pitch", "confidence"]
 
@@ -69,6 +82,8 @@ final class NeuralPitchSupervisor: NSObject, SwiftF0Model, @unchecked Sendable {
 
     /// The model's pitch (Hz) and confidence per 16 ms frame of `audio16k`, or nil.
     func run(audio16k: KotlinFloatArray, range: PitchRange) -> SwiftF0Output? {
+        lock.lock()
+        defer { lock.unlock() }
         let count = Int(audio16k.size)
         guard count > 0 else { return nil }
         if samples16k.count != count { samples16k = [Float](repeating: 0, count: count) }

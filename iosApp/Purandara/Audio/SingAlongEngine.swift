@@ -169,7 +169,7 @@ final class TransportSingAlongEngine: @unchecked Sendable {
                 return Double(frame) / rate
             }, synthetic: synthetic,
             range: SwiftF0.shared.range(saHz: KotlinDouble(value: schedule.settings.saHz)),
-            modelFactory: { NeuralPitchSupervisor() }
+            modelFactory: { NeuralPitchSupervisor.live }
         ) { [onOutcome] frame in onOutcome(segment, session.onFrame(frame: frame)) }
         let attempt = Attempt(segment: segment, listener: listener, session: session,
                               request: listener.micRequest(echoCancellation: false))
