@@ -39,7 +39,9 @@ features speculatively.
   [`docs/plan-speed-layout.md`](docs/plan-speed-layout.md) and
   [`docs/plan-practice-run.md`](docs/plan-practice-run.md) (a whole varisai set
   in one run) and [`docs/plan-recordings.md`](docs/plan-recordings.md)
-  (record yourself, see the swaras) (and, for the website,
+  (record yourself, see the swaras) and
+  [`docs/plan-swiftf0-upgrade.md`](docs/plan-swiftf0-upgrade.md) (planned: SwiftF0
+  v0.3 and ONNX Runtime upgrade) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
