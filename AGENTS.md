@@ -43,7 +43,8 @@ features speculatively.
   (record yourself, see the swaras) and
   [`docs/plan-swiftf0-upgrade.md`](docs/plan-swiftf0-upgrade.md) (planned: SwiftF0
   v0.3 and ONNX Runtime upgrade) and [`docs/plan-recordings-tanpura.md`](docs/plan-recordings-tanpura.md)
-  (recordings with an external tanpura) (and, for the website,
+  (recordings with an external tanpura) and [`docs/plan-recording-insights.md`](docs/plan-recording-insights.md)
+  (planned: "How it went", what you meant to sing, your own raga) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
