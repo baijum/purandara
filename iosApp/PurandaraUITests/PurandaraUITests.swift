@@ -20,7 +20,7 @@ final class PurandaraUITests: XCTestCase {
     @MainActor func testRunAdvancesToTheNextVarisai() throws {
         let app = launch()
         let row = app.buttons["Practise Sarali Varisai, All 16 varisais, one after another"].firstMatch
-        for _ in 0..<10 where !(row.exists && row.isHittable) { app.swipeUp() }
+        scrollTo(row, in: app)
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.tap()
         XCTAssertTrue(app.navigationBars["Sarali Varisai run"].waitForExistence(timeout: 5))
@@ -44,7 +44,7 @@ final class PurandaraUITests: XCTestCase {
         let app = launch()
         let row = app.buttons["Sarali Varisai 4, S R G M P , S R"].firstMatch
         // Below the landing page's cards: scroll until the row is on screen.
-        for _ in 0..<8 where !(row.exists && row.isHittable) { app.swipeUp() }
+        scrollTo(row, in: app)
         row.tap()
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))
 
@@ -73,7 +73,7 @@ final class PurandaraUITests: XCTestCase {
     @MainActor func testPractiseASetRunPassesAudit() throws {
         let app = launch()
         let row = app.buttons["Practise Sarali Varisai, All 16 varisais, one after another"].firstMatch
-        for _ in 0..<10 where !(row.exists && row.isHittable) { app.swipeUp() }
+        scrollTo(row, in: app)
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.tap()
         XCTAssertTrue(app.navigationBars["Sarali Varisai run"].waitForExistence(timeout: 5))
@@ -99,7 +99,7 @@ final class PurandaraUITests: XCTestCase {
     @MainActor func testRunSingAlongShowsThePitchLane() throws {
         let app = launch(["-singer", "0"])
         let row = app.buttons["Practise Sarali Varisai, All 16 varisais, one after another"].firstMatch
-        for _ in 0..<10 where !(row.exists && row.isHittable) { app.swipeUp() }
+        scrollTo(row, in: app)
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.tap()
         XCTAssertTrue(app.navigationBars["Sarali Varisai run"].waitForExistence(timeout: 5))
@@ -125,10 +125,18 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
+    /// Scrolls the landing page until [element] is hittable: slowly up, then back
+    /// down if it was passed. Fast swipes on a loaded CI runner can jump past a
+    /// row, and a loop that only swipes up never comes back to it.
+    @MainActor private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<12 where !(element.exists && element.isHittable) { app.swipeUp(velocity: .slow) }
+        for _ in 0..<12 where !(element.exists && element.isHittable) { app.swipeDown(velocity: .slow) }
+    }
+
     /// Taps a landing-page link once samples have loaded, scrolling to it if needed.
     @MainActor private func openFromLanding(_ app: XCUIApplication, _ label: String) {
         let link = app.buttons[label].firstMatch
-        for _ in 0..<4 where !(link.exists && link.isHittable) { app.swipeUp() }
+        scrollTo(link, in: app)
         let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: link)
         wait(for: [enabled], timeout: 10)
         link.tap()
@@ -138,9 +146,7 @@ final class PurandaraUITests: XCTestCase {
     /// Sarali, and the swaras it heard, each screen audited.
     @MainActor func testRecordingReadsTheSwarasAndPassesAudit() throws {
         let app = launch(["-singer", "0"])
-        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Recordings'")).firstMatch
-        for _ in 0..<4 where !(row.exists && row.isHittable) { app.swipeUp() }
-        row.tap()
+        openFromLanding(app, "Recordings")
         XCTAssertTrue(app.navigationBars["Recordings"].waitForExistence(timeout: 5))
         try audit(app)
         app.buttons["New recording"].tap()
@@ -517,7 +523,7 @@ final class PurandaraUITests: XCTestCase {
         app.buttons["Sound"].tap()
         XCTAssertTrue(app.navigationBars["Sound"].waitForExistence(timeout: 3))
         let link = app.descendants(matching: .any)["harmonium-notes"].firstMatch
-        for _ in 0..<6 where !(link.exists && link.isHittable) { app.swipeUp() }
+        scrollTo(link, in: app)
         XCTAssertTrue(link.isHittable)
         link.tap()
         XCTAssertTrue(app.navigationBars["Harmonium notes"].waitForExistence(timeout: 3))
