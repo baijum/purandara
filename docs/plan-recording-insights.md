@@ -1,6 +1,21 @@
 # Plan: "How it went" for recordings
 
-Status: **planned** (2026-11-15). Not started.
+Status: **in progress** (2026-11-15). Step 1 (shared analysis) is built:
+`recording/RecordingInsights.kt` (`Scale`, `Insights`, `SwaraInsight`,
+`Closeness`), `Recording.scale` and `RecordingLibrary.changeIntent`,
+`Shruti.choiceNear`, and `TanpuraProfile.heard` (a tanpura switch with no
+tanpura in the first seconds reads the recording as without).
+
+Tuned on the student's arohana (Sa A♯2, 2026-11-15; its `.pitch` kept off
+the repo): the fitted Sa is 30¢ below A♯2, and against it Ga +24¢, Ma −17¢,
+Ni +20¢, the rest in tune, the same with *Arohana* chosen as singing freely.
+Changes that took: a swara's cents are the duration-weighted **median** of
+its pieces (a drift beside a held note doesn't pull it); a piece joins the
+previous swara only if sung straight on (no breath of 0.15 s) **and** no
+nearer the next swara (a Ri sung straight after Sa is Ri); short notes are
+movement when singing freely too; steadiness measures each note's held
+middle (0.1 s off each end) against the Strictness's **close** band (the
+in-tune band called every real held note "wavered").
 
 Follows [`plan-recordings.md`](plan-recordings.md) and
 [`plan-recordings-tanpura.md`](plan-recordings-tanpura.md). A recording shows
@@ -53,8 +68,8 @@ large line, for example `S R₁ G₃ M₁ P D₁ N₃ S′`, as a reference only
    Strictness bands: *in tune* (inside the in-tune band), *a little
    flat/sharp* (inside the close band), *flat/sharp* (beyond).
 4. **Steadiness** of held notes: "Sa held steady for 2.5 s" when a held
-   note's pitch stayed within the in-tune band for most of its length;
-   otherwise "Pa wavered (±18¢)". Only notes held at least 0.5 s; gamakas
+   note's middle stayed within the Strictness's close band (90% of its
+   frames); otherwise "Ri wavered (±33¢)". Only notes held at least 0.5 s; gamakas
    aren't judged.
 5. **No tanpura heard**, when the tanpura switch was on but its first
    seconds were quiet: "No tanpura was heard in the first 3 seconds, so the

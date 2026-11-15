@@ -235,7 +235,7 @@ final class RecordingsViewModel: ObservableObject {
         }
         let recording = Recording(
             id: id, createdMillis: created, durationSeconds: seconds, saMidi: Int32(sa.0), saCents: Int32(sa.1),
-            ragaKey: nil, customTitle: nil, analysisVersion: RecordingLibrary.companion.ANALYSIS_VERSION, externalTanpura: tanpura
+            ragaKey: nil, customTitle: nil, analysisVersion: RecordingLibrary.companion.ANALYSIS_VERSION, externalTanpura: tanpura, scale: nil
         )
         updateLibrary { $0.add(recording: recording) }
         justRecorded = id

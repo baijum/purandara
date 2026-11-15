@@ -33,6 +33,14 @@ object Shruti {
     /** Frequency of Sa [cents] above (or below) the keyboard pitch [midi]. */
     fun saHz(midi: Int, cents: Int): Double = Pitch.midiToHz(midi + cents.coerceIn(FINE_TUNE_RANGE) / 100.0)
 
+    /** The Sa choice (MIDI, fine-tune cents) nearest [hz], or null outside [SA_RANGE]. */
+    fun choiceNear(hz: Double): Pair<Int, Int>? {
+        val exact = Pitch.hzToMidi(hz)
+        val midi = kotlin.math.round(exact).toInt()
+        val cents = kotlin.math.round((exact - midi) * 100).toInt().coerceIn(FINE_TUNE_RANGE)
+        return if (midi in SA_RANGE) midi to cents else null
+    }
+
     /** " +12¢" / " −8¢" after a Sa label, or "" when not fine-tuned. */
     fun fineTuneSuffix(cents: Int): String = when {
         cents > 0 -> " +$cents¢"

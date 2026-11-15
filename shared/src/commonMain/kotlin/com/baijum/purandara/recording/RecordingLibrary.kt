@@ -33,6 +33,8 @@ data class Recording(
     val customTitle: String? = null,
     val analysisVersion: Int = RecordingLibrary.FIRST_ANALYSIS_VERSION,
     val externalTanpura: Boolean = false,
+    /** What the student meant to sing from [raga] (null: singing freely; docs/plan-recording-insights.md). */
+    val scale: Scale? = null,
 ) {
     /** True when the `.pitch` file predates the current analysis and should be redone from the audio. */
     val needsAnalysis: Boolean get() = analysisVersion < RecordingLibrary.ANALYSIS_VERSION
@@ -82,6 +84,12 @@ class RecordingLibrary(recordings: Collection<Recording> = emptyList()) {
     /** Sets the raga by key, or none with null (an unknown key also means none). */
     fun changeRaga(id: String, ragaKey: String?): RecordingLibrary =
         update(id) { it.copy(ragaKey = ragaKey?.takeIf { key -> Ragas.byKey(key) != null }) }
+
+    /** What the student meant to sing: [scale] of [ragaKey]'s raga, or null for singing freely. */
+    fun changeIntent(id: String, ragaKey: String?, scale: Scale?): RecordingLibrary = update(id) {
+        val raga = ragaKey?.takeIf { key -> Ragas.byKey(key) != null }
+        it.copy(ragaKey = raga, scale = scale?.takeIf { raga != null })
+    }
 
     /**
      * Whether the student's own tanpura played. The pitch is read differently

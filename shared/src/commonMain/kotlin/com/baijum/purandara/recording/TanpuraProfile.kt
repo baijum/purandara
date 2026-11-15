@@ -14,7 +14,14 @@ import kotlin.math.roundToInt
  * @property saHz its Sa, if its strings could be told apart (any octave).
  * @property otherHz its other string (Pa, or Ma / Ni), if heard.
  */
-class TanpuraProfile(val rms: Float, val saHz: Double?, val otherHz: Double?, val listenSeconds: Double = LISTEN_SECONDS) {
+class TanpuraProfile(
+    val rms: Float,
+    val saHz: Double?,
+    val otherHz: Double?,
+    val listenSeconds: Double = LISTEN_SECONDS,
+    /** Whether a tanpura was heard at all: its strings were told apart (not just room noise). */
+    val heard: Boolean = saHz != null,
+) {
     /**
      * Whether a frame is the student's voice rather than the tanpura: clearly
      * louder than the tanpura, and louder still at the tanpura's own pitches
@@ -37,11 +44,7 @@ class TanpuraProfile(val rms: Float, val saHz: Double?, val otherHz: Double?, va
         while (hz < currentSaHz / SQRT2) hz *= 2
         while (hz >= currentSaHz * SQRT2) hz /= 2
         if (abs(Pitch.cents(currentSaHz, hz)) <= OFFER_CENTS) return null
-        val exact = Pitch.hzToMidi(hz)
-        val midi = exact.roundToInt()
-        val cents = ((exact - midi) * CENTS_PER_SEMITONE).roundToInt()
-        if (midi !in Shruti.SA_RANGE || cents !in Shruti.FINE_TUNE_RANGE) return null
-        return midi to cents
+        return Shruti.choiceNear(hz)
     }
 
     companion object {

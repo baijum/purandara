@@ -109,9 +109,15 @@ object SwaraTranscriber {
     /** Never treat anything quieter than this as voice (below sing-along's 0.01: recordings have no gain control). */
     private const val MIN_VOICE_RMS = 0.003f
 
-    /** The swaras of [recording], read from its [track] (with its tanpura, if it had one). */
-    fun transcribe(track: PitchTrack, recording: Recording, tuning: Tuning): Transcription =
-        transcribe(track, recording.saHz, recording.raga, tuning, if (recording.externalTanpura) TanpuraProfile.from(track) else null)
+    /**
+     * The swaras of [recording], read from its [track] (with its tanpura, if
+     * it had one and it was heard: with the switch on but no tanpura in the
+     * first seconds, it is read as without).
+     */
+    fun transcribe(track: PitchTrack, recording: Recording, tuning: Tuning): Transcription {
+        val tanpura = if (recording.externalTanpura) TanpuraProfile.from(track)?.takeIf { it.heard } else null
+        return transcribe(track, recording.saHz, recording.raga, tuning, tanpura)
+    }
 
     fun transcribe(track: PitchTrack, saHz: Double, raga: Raga?, tuning: Tuning): Transcription =
         transcribe(track, saHz, raga, tuning, tanpura = null)
