@@ -1,7 +1,7 @@
 # Plan: a navigation menu (drawer, tabs, sidebar)
 
 Status: **approved** (2026-11-15), with the recommended defaults for the open
-questions. N1 done.
+questions. N1 and N2 done.
 
 Today everything starts from one long landing page (`docs/plan-landing.md`):
 Continue, the Sa card (tanpura, Practise Sa, Find my Sa, Recordings), then all
@@ -129,11 +129,16 @@ with the detail column holding the chosen destination's `NavigationStack`.
 - **N1 Shared model.** Done. `NavDestination` and `NavGroup` in
   `shared/.../navigation/` (groups, order, titles, ids, Back) + tests (every
   set in exactly one group, the order follows `VarisaiSet`, ids round-trip).
-- **N2 Android.** Drawer (modal / permanent), `NavDestination` state in
-  `PracticeViewModel` (a `StateFlow`), set pages split out of `LibraryScreen`,
-  Home trimmed, Sa & voice items wired to the existing routes, back handling,
-  About. Update `AccessibilityTest` (reach screens through the drawer; audit the
-  drawer, a set page and the permanent layout).
+- **N2 Android.** Done. `ui/navigation/TopLevelNav.kt` (`MenuScaffold`: a
+  modal drawer below 840 dp, a permanent one from there; `NavigationButton`:
+  the menu button on a destination, Back on a pushed screen, through
+  `LocalTopLevelNav`); `HomeScreen` and `SetScreen` (from the old
+  `LibraryScreen`); `AboutScreen`. The page destinations (Home, a set, About)
+  are saved UI state in `PurandaraApp` (`AppNavigator`), not view-model state:
+  Shruti practice, Find my Sa and Recordings already open and close through
+  their view models, so the menu reads them and can't disagree with the
+  screen. Tests: `NavigationAccessibilityTest` (menu button, headings, items,
+  folding, About) and the Home and set-page tests in `AccessibilityTest`.
 - **N3 iOS.** `RootView`: `TabView` on compact width, `NavigationSplitView` on
   regular width; the Sa hub; set pages split out of `LibraryView`; launch
   arguments. Update `PurandaraUITests` (audit each tab, the sidebar on an iPad

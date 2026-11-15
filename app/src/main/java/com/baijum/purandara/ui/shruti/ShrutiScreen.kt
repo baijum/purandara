@@ -12,7 +12,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -41,6 +40,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baijum.purandara.R
+import com.baijum.purandara.ui.navigation.NavigationButton
 import com.baijum.purandara.domain.Note
 import com.baijum.purandara.domain.Octave
 import com.baijum.purandara.domain.Pitch
@@ -80,9 +80,7 @@ fun ShrutiScreen(state: PracticeUiState, actions: ShrutiActions, micAllowed: Boo
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = actions.onBack) {
-                        Icon(painterResource(R.drawable.ic_back), contentDescription = stringResource(R.string.back))
-                    }
+                    NavigationButton(actions.onBack)
                 },
             )
         },

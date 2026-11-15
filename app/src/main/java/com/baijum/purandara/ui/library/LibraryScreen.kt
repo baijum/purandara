@@ -2,12 +2,9 @@ package com.baijum.purandara.ui.library
 
 import android.text.format.DateUtils
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,9 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -44,6 +38,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -58,26 +53,29 @@ import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.VarisaiSet
 import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.practice.PracticeRecord
+import com.baijum.purandara.navigation.NavDestination
+import com.baijum.purandara.navigation.NavGroup
 import com.baijum.purandara.ui.SaPicker
+import com.baijum.purandara.ui.navigation.NavigationButton
 
 /**
- * The landing page: continue / next up, the student's Sa with a tanpura to
- * tune to, then every exercise by set with its shape and progress
- * (docs/plan-landing.md).
+ * Home: continue / next up, the student's Sa with a tanpura to tune to, then
+ * the sets by group, each leading to its page (docs/plan-landing.md,
+ * docs/plan-navigation.md).
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(
+fun HomeScreen(
     catalog: List<Varisai>,
     state: LibraryState,
     actions: LibraryActions,
     nowMillis: Long = System.currentTimeMillis(),
 ) {
-    val history = state.history
     val compact = LocalDensity.current.fontScale < LARGE_FONT_SCALE
     Scaffold(
         topBar = {
             TopAppBar(
+                navigationIcon = { NavigationButton(onBack = null) },
                 title = {
                     Column {
                         Text(stringResource(R.string.library_title))
@@ -92,59 +90,132 @@ fun LibraryScreen(
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            when {
-                state.loadError -> Text(
-                    stringResource(R.string.load_error),
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp),
-                )
-                !state.samplesLoaded -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            }
+            LoadStatus(state)
             LazyColumn(Modifier.fillMaxSize()) {
-                libraryItems(catalog, state, actions, compact, nowMillis)
+                item(key = "continue") { ContinueCard(catalog, state.history, nowMillis, compact, actions.onSelect) }
+                item(key = "sa") { SaCard(state, actions) }
+                val bySet = catalog.groupBy { it.set }
+                NavGroup.entries.filter { it.foldable }.forEach { group ->
+                    item(key = group.name) { GroupHeader(group.title) }
+                    items(group.destinations.filterIsInstance<NavDestination.SetPage>(), key = { it.id }) { page ->
+                        val exercises = bySet[page.set].orEmpty()
+                        if (exercises.isNotEmpty()) {
+                            SetRow(page.set, state.history.practisedCount(page.set, catalog), exercises.size) { actions.onOpenSet(page.set) }
+                            HorizontalDivider()
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-private fun LazyListScope.libraryItems(
+/**
+ * One set's page: what it trains, a run through it (numbered varisai sets),
+ * then its exercises with their shape and progress.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SetScreen(
+    set: VarisaiSet,
     catalog: List<Varisai>,
     state: LibraryState,
     actions: LibraryActions,
-    compact: Boolean,
-    nowMillis: Long,
 ) {
-    val history = state.history
-    item(key = "continue") { ContinueCard(catalog, history, nowMillis, compact, actions.onSelect) }
-    item(key = "sa") { SaCard(state, actions) }
-    catalog.groupBy { it.set }.forEach { (set, exercises) ->
-        stickyHeader(key = set.name) {
-            SetHeader(set, history.practisedCount(set, catalog), exercises.size)
-        }
-        item(key = set.name + "-about") {
-            Text(
-                set.description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+    val compact = LocalDensity.current.fontScale < LARGE_FONT_SCALE
+    val exercises = catalog.filter { it.set == set }
+    val practised = state.history.practisedCount(set, catalog)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                navigationIcon = { NavigationButton(onBack = actions.onBack) },
+                title = { Text(set.shortTitle, maxLines = 1, modifier = Modifier.semantics { heading() }) },
             )
-        }
-        if (set.practisesAsRun) {
-            item(key = set.name + "-run") {
-                RunSetRow(
-                    set = set,
-                    total = exercises.size,
-                    nextIndex = state.runPlans.planFor(set, catalog).nextIndex,
-                    onClick = { actions.onOpenRun(set) },
-                )
-                HorizontalDivider()
+        },
+    ) { padding ->
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            LoadStatus(state)
+            LazyColumn(Modifier.fillMaxSize()) {
+                item(key = "about") {
+                    Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)) {
+                        if (set.shortTitle != set.title) Text(set.title, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            set.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        if (practised > 0) {
+                            Text(
+                                stringResource(R.string.practised_count, practised, exercises.size),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                    }
+                    HorizontalDivider()
+                }
+                if (set.practisesAsRun) {
+                    item(key = "run") {
+                        RunSetRow(
+                            set = set,
+                            total = exercises.size,
+                            nextIndex = state.runPlans.planFor(set, catalog).nextIndex,
+                            onClick = { actions.onOpenRun(set) },
+                        )
+                        HorizontalDivider()
+                    }
+                }
+                items(exercises, key = { it.id }) { varisai ->
+                    ExerciseRow(varisai, state.history[varisai.id], compact) { actions.onSelect(varisai) }
+                    HorizontalDivider()
+                }
             }
         }
-        items(exercises, key = { it.id }) { varisai ->
-            ExerciseRow(varisai, history[varisai.id], compact) { actions.onSelect(varisai) }
-            HorizontalDivider()
-        }
     }
+}
+
+@Composable
+private fun LoadStatus(state: LibraryState) {
+    when {
+        state.loadError -> Text(
+            stringResource(R.string.load_error),
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(16.dp),
+        )
+        !state.samplesLoaded -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+    }
+}
+
+@Composable
+private fun GroupHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp).semantics { heading() },
+    )
+}
+
+/** A set on Home: its title and progress, leading to its page. */
+@Composable
+private fun SetRow(set: VarisaiSet, practised: Int, total: Int, onClick: () -> Unit) {
+    val detail = if (practised > 0) {
+        stringResource(R.string.practised_count, practised, total)
+    } else {
+        pluralStringResource(R.plurals.home_set_count, total, total)
+    }
+    ListItem(
+        headlineContent = { Text(set.title) },
+        supportingContent = { Text(detail) },
+        trailingContent = { Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null) },
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .clearAndSetSemantics {
+                contentDescription = "${set.title}, $detail"
+                role = Role.Button
+            },
+    )
 }
 
 @Composable
@@ -221,7 +292,6 @@ private fun NextRow(label: String, onClick: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SaCard(state: LibraryState, actions: LibraryActions) {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -232,23 +302,12 @@ private fun SaCard(state: LibraryState, actions: LibraryActions) {
                 modifier = Modifier.semantics { heading() },
             )
             SaPicker(state.saMidi, state.saCents, actions.onSaChange)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalButton(onClick = actions.onToggleTanpura, enabled = state.samplesLoaded) {
-                    Icon(painterResource(if (state.tanpuraPlaying) R.drawable.ic_stop else R.drawable.ic_play), contentDescription = null)
-                    Text(
-                        stringResource(if (state.tanpuraPlaying) R.string.tanpura_stop else R.string.tanpura_play),
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
-                FilledTonalButton(onClick = actions.onOpenShruti, enabled = state.samplesLoaded) {
-                    Text(stringResource(R.string.practise_sa))
-                }
-                OutlinedButton(onClick = actions.onFindSa) { Text(stringResource(R.string.find_my_sa)) }
-                // Recordings (docs/plan-recordings.md), in this row as on iOS.
-                OutlinedButton(onClick = actions.onOpenRecordings) {
-                    Icon(painterResource(R.drawable.ic_mic), contentDescription = null)
-                    Text(stringResource(R.string.recordings_title), modifier = Modifier.padding(start = 8.dp))
-                }
+            FilledTonalButton(onClick = actions.onToggleTanpura, enabled = state.samplesLoaded) {
+                Icon(painterResource(if (state.tanpuraPlaying) R.drawable.ic_stop else R.drawable.ic_play), contentDescription = null)
+                Text(
+                    stringResource(if (state.tanpuraPlaying) R.string.tanpura_stop else R.string.tanpura_play),
+                    modifier = Modifier.padding(start = 8.dp),
+                )
             }
             Text(
                 stringResource(R.string.tanpura_hint),
@@ -295,29 +354,6 @@ private fun RunSetRow(set: VarisaiSet, total: Int, nextIndex: Int, onClick: () -
             )
         }
         Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null)
-    }
-}
-
-@Composable
-private fun SetHeader(set: VarisaiSet, practised: Int, total: Int) {
-    val count = stringResource(R.string.practised_count, practised, total)
-    Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .semantics(mergeDescendants = true) { heading() },
-        ) {
-            Text(
-                set.title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f),
-            )
-            if (practised > 0) {
-                Text(count, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
     }
 }
 

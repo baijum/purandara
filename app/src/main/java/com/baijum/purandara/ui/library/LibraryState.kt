@@ -5,7 +5,7 @@ import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.practice.RunPlans
 import com.baijum.purandara.domain.varisai.VarisaiSet
 
-/** What the landing page shows. */
+/** What Home and the set pages show. */
 data class LibraryState(
     val history: PracticeHistory = PracticeHistory(),
     val saMidi: Int,
@@ -17,14 +17,15 @@ data class LibraryState(
     val runPlans: RunPlans = RunPlans(),
 )
 
-/** What the landing page can do. */
+/** What Home and the set pages can do. */
 data class LibraryActions(
     val onSelect: (Varisai) -> Unit,
     val onToggleTanpura: () -> Unit = {},
     val onSaChange: (Int) -> Unit = {},
-    val onOpenShruti: () -> Unit = {},
-    val onFindSa: () -> Unit = {},
     /** Open the practice run for a numbered varisai set. */
     val onOpenRun: (VarisaiSet) -> Unit = {},
-    val onOpenRecordings: () -> Unit = {},
+    /** Home: open a set's page. */
+    val onOpenSet: (VarisaiSet) -> Unit = {},
+    /** A set page shown on its own (not as a menu destination): back to Home. */
+    val onBack: () -> Unit = {},
 )

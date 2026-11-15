@@ -48,7 +48,8 @@ import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.domain.varisai.VarisaiSet
 import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.ui.library.LibraryActions
-import com.baijum.purandara.ui.library.LibraryScreen
+import com.baijum.purandara.ui.library.HomeScreen
+import com.baijum.purandara.ui.library.SetScreen
 import com.baijum.purandara.ui.library.LibraryState
 import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.practice.RunStep
@@ -257,8 +258,8 @@ class AccessibilityTest {
     }
 
     @Test
-    fun landingPageOffersOneRunThroughEachVarisaiSet() {
-        showLibrary()
+    fun setPageOffersOneRunThroughTheSet() {
+        showSet(VarisaiSet.SARALI)
         val row = hasContentDescription("Practise Sarali Varisai, All 16 varisais, one after another")
         compose.onNode(hasScrollAction()).performScrollToNode(row)
         assertTouchTarget(compose.onNode(row).assertHasClickAction())
@@ -640,26 +641,72 @@ class AccessibilityTest {
 
     private var tanpuraToggled = 0
 
+    private var setOpened: VarisaiSet? = null
+
     private fun showLibrary(history: PracticeHistory = PracticeHistory(), tanpuraPlaying: Boolean = false) {
         compose.setContent {
             PurandaraTheme {
-                LibraryScreen(
+                HomeScreen(
                     catalog = VarisaiCatalog.all,
                     state = LibraryState(history = history, saMidi = 48, tanpuraPlaying = tanpuraPlaying, samplesLoaded = true),
-                    actions = LibraryActions(onSelect = {}, onToggleTanpura = { tanpuraToggled++ }),
+                    actions = LibraryActions(onSelect = {}, onToggleTanpura = { tanpuraToggled++ }, onOpenSet = { setOpened = it }),
                     nowMillis = NOW,
                 )
             }
         }
     }
 
+    private fun showSet(set: VarisaiSet, history: PracticeHistory = PracticeHistory()) {
+        compose.setContent {
+            PurandaraTheme {
+                SetScreen(
+                    set = set,
+                    catalog = VarisaiCatalog.all,
+                    state = LibraryState(history = history, saMidi = 48, samplesLoaded = true),
+                    actions = LibraryActions(onSelect = {}),
+                )
+            }
+        }
+    }
+
     @Test
-    fun librarySetsAreHeadings() {
+    fun homeGroupsAreHeadingsAndSetsOpenTheirPages() {
+        showLibrary(PracticeHistory().practised("sarali-5", NOW - DAY))
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        compose.onNode(hasText("Your Sa (Shruthi)") and heading).assertExists()
+        compose.onNode(hasText("Continue") and heading).assertExists()
+        val group = hasText("Varisais") and heading
+        compose.onNode(hasScrollAction()).performScrollToNode(group)
+        compose.onNode(group).assertExists()
+        val row = hasContentDescription("Sarali Varisai, 1 of 16 practised")
+        compose.onNode(hasScrollAction()).performScrollToNode(row)
+        assertTouchTarget(compose.onNode(row).assertHasClickAction())
+        compose.onNode(row).performClick()
+        assertEquals(VarisaiSet.SARALI, setOpened)
+        val songs = hasContentDescription("Varnam", substring = true) and hasClickAction()
+        compose.onNode(hasScrollAction()).performScrollToNode(songs)
+        compose.onNode(songs).assertExists()
+    }
+
+    @Test
+    fun aNewStudentStartsHere() {
         showLibrary()
         val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
-        compose.onNode(hasText("Plain scale", substring = true) and heading).assertExists()
-        compose.onNode(hasText("Your Sa (Shruthi)") and heading).assertExists()
         compose.onNode(hasText("Start here") and heading).assertExists()
+    }
+
+    @Test
+    fun setPageTitleIsAHeadingWithTheFullTitleBelow() {
+        showSet(VarisaiSet.MADHYA_STHAYI)
+        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        compose.onNode(hasText("Madhya Sthayi") and heading).assertExists()
+        compose.onNodeWithText("Madhya Sthayi Varisai").assertExists() // the full title below the short one
+    }
+
+    @Test
+    fun setPageShowsItsProgress() {
+        showSet(VarisaiSet.SARALI, PracticeHistory().practised("sarali-5", NOW - DAY))
+        compose.onNodeWithText("1 of 16 practised").assertExists()
     }
 
     @Test
@@ -670,13 +717,11 @@ class AccessibilityTest {
             compose.onNodeWithContentDescription("Continue Sarali Varisai 5", substring = true).assertHasClickAction(),
         )
         assertTouchTarget(compose.onNodeWithContentDescription("Next up: Sarali Varisai 6").assertHasClickAction())
-        val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
-        compose.onNode(hasText("1 of 16 practised") and heading).assertExists()
     }
 
     @Test
     fun exerciseRowsReadTheirNotationAndProgress() {
-        showLibrary(PracticeHistory().practised("sarali-4", NOW))
+        showSet(VarisaiSet.SARALI, PracticeHistory().practised("sarali-4", NOW))
         val row = hasContentDescription("Sarali Varisai 4, S R G M P , S R, Practised")
         // Off screen in the lazy list: scroll the list to it.
         compose.onNode(hasScrollAction()).performScrollToNode(row)

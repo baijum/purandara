@@ -23,8 +23,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import com.baijum.purandara.BuildConfig
 import com.baijum.purandara.R
+import com.baijum.purandara.navigation.NavDestination
+import com.baijum.purandara.ui.about.AboutScreen
+import com.baijum.purandara.ui.navigation.MenuScaffold
 import com.baijum.purandara.ui.library.LibraryActions
-import com.baijum.purandara.ui.library.LibraryScreen
+import com.baijum.purandara.ui.library.HomeScreen
+import com.baijum.purandara.ui.library.SetScreen
 import com.baijum.purandara.ui.library.LibraryState
 import com.baijum.purandara.ui.player.PlayerActions
 import com.baijum.purandara.ui.player.PlayerScreen
@@ -46,7 +50,11 @@ import com.baijum.purandara.viewmodel.RecordingsScreen
 import com.baijum.purandara.viewmodel.RecordingsUiState
 import com.baijum.purandara.viewmodel.RecordingsViewModel
 
-/** Top-level navigation: the exercise library, or the player for the selected exercise. */
+/**
+ * Top-level navigation (docs/plan-navigation.md): the menu's destinations in a
+ * drawer, with the player, a practice run, the recorder and a recording pushed
+ * above them.
+ */
 @Composable
 fun PurandaraApp(viewModel: PracticeViewModel, recordings: RecordingsViewModel) {
     val state by viewModel.state.collectAsState()
@@ -75,21 +83,92 @@ fun PurandaraApp(viewModel: PracticeViewModel, recordings: RecordingsViewModel) 
 
     AnnounceOutputChange(state)
 
+    var pageId by rememberSaveable { mutableStateOf(NavDestination.Home.id) }
+    val navigator = AppNavigator(viewModel, recordings, state, recordingsState, pageId) { pageId = it.id }
+    val allowRecordingMic = { requestMicForRecording.launch(Manifest.permission.RECORD_AUDIO) }
+
     when {
-        recordingsState.open -> RecordingsRoute(recordings, recordingsState, state.singAlong.micPermitted || recordings.debugSyntheticSingerCents != null) {
-            requestMicForRecording.launch(Manifest.permission.RECORD_AUDIO)
-        }
-        state.shruti.open -> ShrutiRoute(viewModel, state, allowMic)
-        state.findSa.open -> FindSaRoute(viewModel, state, allowMic)
+        recordingsState.open && recordingsState.screen != RecordingsScreen.LIST || recordingsState.ragaEditor != null ->
+            RecordingsRoute(recordings, recordingsState, micForRecording(state, recordings), allowRecordingMic)
         state.run?.phase == RunPhase.PLAYING -> PlayerRoute(viewModel, state, micDenied, runMode = true) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
         state.run != null -> RunRoute(viewModel, state)
-        state.selected == null -> LibraryRoute(viewModel, state) {
-            viewModel.stop()
-            recordings.open(state.settings.tuning, state.settings.saMidi, state.settings.saCents, state.settings.strictness)
+        state.selected != null -> PlayerRoute(viewModel, state, micDenied) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
+        else -> MenuScaffold(navigator.current, navigator::navigate) {
+            MenuRoutes(navigator, allowMic, allowRecordingMic)
         }
-        else -> PlayerRoute(viewModel, state, micDenied) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
     }
 }
+
+/**
+ * Where the menu is (docs/plan-navigation.md): the page destinations (Home, a
+ * set, About) are UI state ([pageId]); Shruti practice, Find my Sa and
+ * Recordings are open while their view-model state says so, and close back to
+ * Home, so the menu can't disagree with what is showing.
+ */
+private class AppNavigator(
+    val viewModel: PracticeViewModel,
+    val recordings: RecordingsViewModel,
+    val state: PracticeUiState,
+    val recordingsState: RecordingsUiState,
+    pageId: String,
+    private val setPage: (NavDestination) -> Unit,
+) {
+    val current: NavDestination = when {
+        recordingsState.open -> NavDestination.Recordings
+        state.shruti.open -> NavDestination.ShrutiPractice
+        state.findSa.open -> NavDestination.FindSa
+        else -> NavDestination.fromId(pageId) ?: NavDestination.Home
+    }
+
+    fun navigate(target: NavDestination) {
+        if (target == current) return
+        when (current) {
+            NavDestination.ShrutiPractice -> viewModel.closeShruti()
+            NavDestination.FindSa -> viewModel.closeFindSa()
+            NavDestination.Recordings -> recordings.close()
+            else -> {}
+        }
+        when (target) {
+            NavDestination.ShrutiPractice -> viewModel.openShruti()
+            NavDestination.FindSa -> viewModel.openFindSa()
+            NavDestination.Recordings -> {
+                viewModel.stop()
+                val settings = state.settings
+                recordings.open(settings.tuning, settings.saMidi, settings.saCents, settings.strictness)
+            }
+            else -> {}
+        }
+        // Leaving Shruti practice, Find my Sa or Recordings lands Home.
+        setPage(if (target.isPage) target else NavDestination.Home)
+    }
+
+    fun openPage(page: NavDestination) = setPage(page)
+
+    private val NavDestination.isPage: Boolean
+        get() = this == NavDestination.Home || this == NavDestination.About || this is NavDestination.SetPage
+}
+
+@Composable
+private fun MenuRoutes(navigator: AppNavigator, allowMic: () -> Unit, allowRecordingMic: () -> Unit) {
+    val viewModel = navigator.viewModel
+    val recordings = navigator.recordings
+    val state = navigator.state
+    val current = navigator.current
+    val goHome = { navigator.navigate(NavDestination.Home) }
+    // Back from a destination other than Home goes Home; from Home the app leaves.
+    BackHandler(enabled = current != NavDestination.Home, onBack = goHome)
+    when (current) {
+        NavDestination.Recordings -> RecordingsRoute(recordings, navigator.recordingsState, micForRecording(state, recordings), allowRecordingMic)
+        NavDestination.ShrutiPractice -> ShrutiRoute(viewModel, state, allowMic)
+        NavDestination.FindSa -> FindSaRoute(viewModel, state, allowMic)
+        NavDestination.About -> AboutScreen(BuildConfig.VERSION_NAME, onBack = goHome)
+        is NavDestination.SetPage -> SetScreen(current.set, viewModel.catalog, libraryState(state), libraryActions(viewModel, navigator::openPage))
+        NavDestination.Home -> HomeScreen(viewModel.catalog, libraryState(state), libraryActions(viewModel, navigator::openPage))
+    }
+}
+
+private fun micForRecording(state: PracticeUiState, recordings: RecordingsViewModel): Boolean =
+    state.singAlong.micPermitted || recordings.debugSyntheticSingerCents != null
 
 /**
  * Shruti practice and an unfinished Find my Sa show a notice (a live region);
@@ -110,7 +189,6 @@ private fun AnnounceOutputChange(state: PracticeUiState) {
 
 @Composable
 private fun ShrutiRoute(viewModel: PracticeViewModel, state: PracticeUiState, allowMic: () -> Unit) {
-    BackHandler { viewModel.closeShruti() }
     ShrutiScreen(
         state,
         ShrutiActions(onBack = viewModel::closeShruti, onHoldChange = viewModel::setHold, onAllowMic = allowMic, onStartAgain = viewModel::openShruti),
@@ -120,7 +198,6 @@ private fun ShrutiRoute(viewModel: PracticeViewModel, state: PracticeUiState, al
 
 @Composable
 private fun FindSaRoute(viewModel: PracticeViewModel, state: PracticeUiState, allowMic: () -> Unit) {
-    BackHandler { viewModel.closeFindSa() }
     FindSaScreen(
         state.findSa.progress,
         micPermitted = state.singAlong.micPermitted || viewModel.debugSyntheticSingerCents != null,
@@ -134,30 +211,24 @@ private fun FindSaRoute(viewModel: PracticeViewModel, state: PracticeUiState, al
     )
 }
 
-@Composable
-private fun LibraryRoute(viewModel: PracticeViewModel, state: PracticeUiState, openRecordings: () -> Unit) {
-    LibraryScreen(
-        catalog = viewModel.catalog,
-        state = LibraryState(
-            history = state.history,
-            saMidi = state.settings.saMidi,
-            saCents = state.settings.saCents,
-            tanpuraPlaying = state.tanpuraPlaying,
-            samplesLoaded = state.samplesLoaded,
-            loadError = state.loadError,
-            runPlans = state.runPlans,
-        ),
-        actions = LibraryActions(
-            onSelect = { varisai -> viewModel.select(varisai) },
-            onToggleTanpura = viewModel::toggleTanpura,
-            onSaChange = { midi -> viewModel.updateSettings { it.copy(saMidi = midi) } },
-            onOpenShruti = viewModel::openShruti,
-            onFindSa = viewModel::openFindSa,
-            onOpenRun = viewModel.runs::open,
-            onOpenRecordings = openRecordings,
-        ),
-    )
-}
+private fun libraryState(state: PracticeUiState) = LibraryState(
+    history = state.history,
+    saMidi = state.settings.saMidi,
+    saCents = state.settings.saCents,
+    tanpuraPlaying = state.tanpuraPlaying,
+    samplesLoaded = state.samplesLoaded,
+    loadError = state.loadError,
+    runPlans = state.runPlans,
+)
+
+private fun libraryActions(viewModel: PracticeViewModel, openPage: (NavDestination) -> Unit) = LibraryActions(
+    onSelect = { varisai -> viewModel.select(varisai) },
+    onToggleTanpura = viewModel::toggleTanpura,
+    onSaChange = { midi -> viewModel.updateSettings { it.copy(saMidi = midi) } },
+    onOpenRun = viewModel.runs::open,
+    onOpenSet = { set -> openPage(NavDestination.SetPage(set)) },
+    onBack = { openPage(NavDestination.Home) },
+)
 
 @SuppressLint("MissingPermission") // startRecording is only offered once the mic is allowed
 @Composable

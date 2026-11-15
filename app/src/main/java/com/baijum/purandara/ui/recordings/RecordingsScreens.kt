@@ -36,7 +36,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -98,6 +97,7 @@ import com.baijum.purandara.singalong.PitchLane
 import com.baijum.purandara.ui.FineTuneControl
 import com.baijum.purandara.ui.LocalReduceMotion
 import com.baijum.purandara.ui.SaPicker
+import com.baijum.purandara.ui.navigation.NavigationButton
 import com.baijum.purandara.ui.saLabel
 import com.baijum.purandara.viewmodel.RecorderUi
 import com.baijum.purandara.viewmodel.RecordingDetailUi
@@ -123,11 +123,8 @@ private fun RecordingsScaffold(title: String, onBack: () -> Unit, content: @Comp
         topBar = {
             TopAppBar(
                 title = { Text(title, maxLines = 1) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_back), contentDescription = stringResource(R.string.back))
-                    }
-                },
+                // The list is a menu destination (the menu button); the recorder and a recording show Back.
+                navigationIcon = { NavigationButton(onBack) },
             )
         },
     ) { padding -> content(Modifier.padding(padding).fillMaxSize()) }
