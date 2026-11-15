@@ -70,7 +70,9 @@ class Transcription(val phrases: List<List<HeardNote>>) {
  *
  * 1. Voiced frames: a pitch, and a level above the recording's own noise
  *    floor (twice the median level of its pitchless frames, capped well
- *    below its voiced level).
+ *    below its voiced level). With the student's own tanpura
+ *    ([TanpuraProfile]), the floor is the tanpura instead, and its first
+ *    seconds (the tanpura alone) are skipped.
  * 2. Each voiced frame is named by [SwaraMapper]; frames more than
  *    [STEADY_CENTS] from their swara (mid-slide) are movement.
  * 3. A run of one swara lasting [MIN_NOTE_SECONDS] is a note; flickers up to
@@ -107,14 +109,25 @@ object SwaraTranscriber {
     /** Never treat anything quieter than this as voice (below sing-along's 0.01: recordings have no gain control). */
     private const val MIN_VOICE_RMS = 0.003f
 
-    fun transcribe(track: PitchTrack, saHz: Double, raga: Raga?, tuning: Tuning): Transcription {
+    /** The swaras of [recording], read from its [track] (with its tanpura, if it had one). */
+    fun transcribe(track: PitchTrack, recording: Recording, tuning: Tuning): Transcription =
+        transcribe(track, recording.saHz, recording.raga, tuning, if (recording.externalTanpura) TanpuraProfile.from(track) else null)
+
+    fun transcribe(track: PitchTrack, saHz: Double, raga: Raga?, tuning: Tuning): Transcription =
+        transcribe(track, saHz, raga, tuning, tanpura = null)
+
+    fun transcribe(track: PitchTrack, saHz: Double, raga: Raga?, tuning: Tuning, tanpura: TanpuraProfile?): Transcription {
         val mapper = SwaraMapper(saHz, raga, tuning)
-        val floor = voiceFloor(track)
+        val floor = if (tanpura == null) voiceFloor(track) else 0f
         val labels = arrayOfNulls<Label>(track.size)
         val voiced = BooleanArray(track.size)
         for (i in 0 until track.size) {
             val hz = track.frequencyAt(i) ?: continue
-            if (track.rmsAt(i) < floor) continue
+            if (tanpura != null) {
+                if (track.timeAt(i) < tanpura.listenSeconds || !tanpura.isVoice(hz, track.rmsAt(i))) continue
+            } else if (track.rmsAt(i) < floor) {
+                continue
+            }
             voiced[i] = true
             val reading = mapper.read(hz) ?: continue
             if (abs(reading.centsOff) <= STEADY_CENTS) labels[i] = Label(reading.swara, reading.octave)

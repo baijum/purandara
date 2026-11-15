@@ -1,12 +1,14 @@
 package com.baijum.purandara.recording
 
 import com.baijum.purandara.pitch.NeuralPitchResult
+import com.baijum.purandara.pitch.PitchDetector
 import com.baijum.purandara.pitch.PitchRange
 import com.baijum.purandara.pitch.StreamResampler
 import com.baijum.purandara.pitch.SwiftF0
 import com.baijum.purandara.pitch.SwiftF0Chunker
 import com.baijum.purandara.pitch.SwiftF0Model
 import com.baijum.purandara.pitch.SwiftF0Track
+import com.baijum.purandara.singalong.PitchFrame
 import com.baijum.purandara.singalong.PitchPipeline
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -24,6 +26,12 @@ import kotlin.math.roundToInt
  * windows wait (a few seconds of audio) until their chunk is ready, so each
  * still starts from the previous arbitrated pitch, as live.
  *
+ * With the student's own tanpura ([tanpura], docs/plan-recordings-tanpura.md)
+ * the pitch is SwiftF0's alone: YIN locks onto periods the voice shares with
+ * the tanpura's strings (its low Sa is a sub-octave of the sung Sa) and
+ * reads mandra Sa and Pa, while SwiftF0, trained on voices, follows the
+ * voice. Without a model it falls back to YIN.
+ *
  * Not thread-safe; use from one background thread.
  */
 class RecordingAnalyzer private constructor(
@@ -32,15 +40,23 @@ class RecordingAnalyzer private constructor(
     private val neural: ((FloatArray) -> NeuralPitchResult?)?,
     model: SwiftF0Model?,
     range: PitchRange,
+    tanpura: Boolean,
 ) {
     /** SwiftF0 v0.3 over the whole recording; [model] null for YIN alone. */
     constructor(sampleRate: Int, model: SwiftF0Model?, range: PitchRange) :
-        this(sampleRate, NEURAL_EVERY_WINDOW, null, model, range)
+        this(sampleRate, NEURAL_EVERY_WINDOW, null, model, range, tanpura = false)
+
+    /** As above; [tanpura] when the student's own tanpura played (SwiftF0's pitch alone). */
+    constructor(sampleRate: Int, model: SwiftF0Model?, range: PitchRange, tanpura: Boolean) :
+        this(sampleRate, NEURAL_EVERY_WINDOW, null, model, range, tanpura)
 
     /** The old per-window SwiftF0, until both apps run the v0.3 model. */
     @Deprecated("Use RecordingAnalyzer(sampleRate, model, range)")
     constructor(sampleRate: Int, neuralInterval: Int, neural: ((FloatArray) -> NeuralPitchResult?)?) :
-        this(sampleRate, neuralInterval, neural, null, PitchRange.FULL)
+        this(sampleRate, neuralInterval, neural, null, PitchRange.FULL, tanpura = false)
+
+    private val swiftF0Only = tanpura && model != null
+    private val detector = PitchDetector(silenceThreshold = SILENCE_RMS)
 
     private val pipeline = PitchPipeline(sampleRate, neuralInterval, octaveOnly = false, silenceRms = SILENCE_RMS)
     private val chunker = model?.let { SwiftF0Chunker(it, range) }
@@ -100,6 +116,12 @@ class RecordingAnalyzer private constructor(
     }
 
     private fun analyseWindow(frame: Int) {
+        val time = windows.toDouble() * PitchPipeline.HOP_SIZE / sampleRate
+        if (swiftF0Only) {
+            track.add(PitchFrame(time, swiftF0Pitch(frame), detector.rms(window)))
+            windows++
+            return
+        }
         if (pipeline.beginFrame()) {
             val done = finalTrack
             when {
@@ -110,6 +132,17 @@ class RecordingAnalyzer private constructor(
         }
         track.add(pipeline.process(window, windows.toDouble() * PitchPipeline.HOP_SIZE / sampleRate))
         windows++
+    }
+
+    /** SwiftF0's pitch at [frame] if voiced, else null. */
+    private fun swiftF0Pitch(frame: Int): Double? {
+        val done = finalTrack
+        val (hz, confidence, i) = when {
+            done != null -> Triple(done.hz, done.confidence, min(frame, done.size - 1))
+            chunker != null -> Triple(chunker.hz, chunker.confidence, frame)
+            else -> return null
+        }
+        return hz[i].takeIf { it > 0f && confidence[i] >= SwiftF0.VOICED_CONFIDENCE }?.toDouble()
     }
 
     private fun report(hz: FloatArray, confidence: FloatArray, i: Int) {

@@ -44,8 +44,8 @@ class RecordingAnalyzerTest {
         }
     }
 
-    private fun analyse(audio: FloatArray, chunk: Int, model: SwiftF0Model? = null): PitchTrack {
-        val analyzer = RecordingAnalyzer(rate, model, SwiftF0.range(SA_HZ))
+    private fun analyse(audio: FloatArray, chunk: Int, model: SwiftF0Model? = null, tanpura: Boolean = false): PitchTrack {
+        val analyzer = RecordingAnalyzer(rate, model, SwiftF0.range(SA_HZ), tanpura)
         var at = 0
         val buffer = FloatArray(chunk)
         while (at < audio.size) {
@@ -133,5 +133,23 @@ class RecordingAnalyzerTest {
         val (_, audio) = sarali()
         val failing = SwiftF0Model { _, _ -> null }
         assertEquals(analyse(audio, 1000), analyse(audio, 1000, failing))
+    }
+
+    @Test
+    fun withATanpuraThePitchIsSwiftF0s() {
+        val (_, audio) = sarali()
+        // A model that always hears 200 Hz: with a tanpura its pitch is taken as is.
+        val fixed = SwiftF0Model { a, _ -> val n = a.size / SwiftF0.HOP; SwiftF0Output(FloatArray(n) { 200f }, FloatArray(n) { 0.9f }) }
+        val track = analyse(audio, 1000, fixed, tanpura = true)
+        val pitches = (0 until track.size).mapNotNull { track.frequencyAt(it) }.toSet()
+        assertEquals(setOf(200.0), pitches)
+        assertEquals(analyse(audio, 1000).size, track.size, "a frame per window, as without")
+    }
+
+    @Test
+    fun withATanpuraButNoModelYinStillReads() {
+        val (swaras, audio) = sarali()
+        val t = SwaraTranscriber.transcribe(analyse(audio, 1000, model = null, tanpura = true), SA_HZ, Raga.MAYAMALAVAGOWLA, Tuning.JUST)
+        assertEquals(swaras, t.notes.map { it.swara })
     }
 }

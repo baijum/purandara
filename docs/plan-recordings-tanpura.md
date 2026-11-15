@@ -1,6 +1,7 @@
 # Plan: recordings with an external tanpura
 
-Status: **planned** (2026-11-15). Not started.
+Status: **in progress** (2026-11-15). Step 1 (shared) is built; the first
+real-tanpura test changed the analysis (*Results*).
 
 A follow-on to [`plan-recordings.md`](plan-recordings.md). The app plays no
 drone while recording (decided 2026-11-15), but a student may sing with
@@ -42,10 +43,14 @@ recording, and today's analysis isn't built for that.
 
 ### Analysis (`shared/`, pure Kotlin)
 
-Nothing changes in recording, decoding or the pitch track: the `.pitch`
-frames (pitch and level) are the same. The tanpura is handled when the
-swaras are read, from the saved frames, which is why the switch can change
-afterwards with no re-analysis.
+With the switch on, **the pitch is SwiftF0's alone** (`RecordingAnalyzer(...,
+tanpura = true)`): YIN locks onto periods the voice shares with the
+tanpura's strings (see *Results*). Without the model it falls back to YIN.
+The level of each frame is kept as before. Because the pitch is read
+differently, changing the switch afterwards re-analyses the recording from
+its audio (a few seconds, with the progress bar); `changeTanpura` marks it
+for analysis so an interrupted one happens on the next opening. The
+profile and the voice gate work from the saved frames:
 
 1. **`TanpuraProfile.from(track, listenSeconds)`** reads the first 3 s of
    frames:
@@ -86,6 +91,30 @@ Sa (Android `PracticePreferences`, iOS `UserDefaults`).
 - The offer, when there is one, as a line with a button under the Sa row.
 - The pitch trace shades the listening seconds and draws the tanpura's Sa
   as a faint line, so the student sees what was ignored.
+
+## Results (2026-11-15)
+
+The bundled tanpura loop at Sa A♯2 (`audio/tanpura/46.flac`) mixed under a
+synthetic voice singing Sarali up, a note per 0.5 s with breaths, after 3 s
+of tanpura alone:
+
+- **The profile works:** Sa A♯ and its Pa are read from the 3 s.
+- **YIN fails, even with the tanpura 6 dB under the voice:** it reads
+  mandra Sa and Pa through most notes (`TanpuraMixTest`, YIN only). The
+  tanpura's low Sa string (58 Hz) is a sub-octave of the sung Sa and its Pa
+  lines up with sung notes, so YIN finds their shared period. A level gate
+  can't fix a pitch read wrongly.
+- **SwiftF0 follows the voice** (the comparison tool's model, whole-file
+  chunks):
+
+  | Tanpura vs voice | Notes read right (of 8) |
+  |---|---|
+  | 6 dB under | **8** |
+  | level | 5 (Sa misread, two missed) |
+  | 6 dB over | mostly lost |
+
+  Hence SwiftF0's pitch alone with the switch on, and the guide's advice to
+  keep the tanpura a little quieter than the voice at the mic.
 
 ## Accessibility
 

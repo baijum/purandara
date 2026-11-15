@@ -14,6 +14,8 @@ import kotlinx.serialization.json.Json
  * @property saMidi, saCents the Sa the swaras are read against (changeable later).
  * @property ragaKey the raga chosen for naming, or null for default names.
  * @property customTitle the student's own title; null shows the [autoTitle].
+ * @property externalTanpura the student sang with their own tanpura, learnt
+ *   from the first seconds (docs/plan-recordings-tanpura.md).
  * @property analysisVersion the [RecordingLibrary.ANALYSIS_VERSION] that made the `.pitch` file.
  *   Defaults to the first version: the index leaves out values equal to the
  *   default, so a default of the current version would make every old
@@ -30,6 +32,7 @@ data class Recording(
     val ragaKey: String? = null,
     val customTitle: String? = null,
     val analysisVersion: Int = RecordingLibrary.FIRST_ANALYSIS_VERSION,
+    val externalTanpura: Boolean = false,
 ) {
     /** True when the `.pitch` file predates the current analysis and should be redone from the audio. */
     val needsAnalysis: Boolean get() = analysisVersion < RecordingLibrary.ANALYSIS_VERSION
@@ -80,6 +83,15 @@ class RecordingLibrary(recordings: Collection<Recording> = emptyList()) {
     fun changeRaga(id: String, ragaKey: String?): RecordingLibrary =
         update(id) { it.copy(ragaKey = ragaKey?.takeIf { key -> Ragas.byKey(key) != null }) }
 
+    /**
+     * Whether the student's own tanpura played. The pitch is read differently
+     * with a tanpura, so a change marks the recording for analysis again
+     * (done at once by the apps, and again on opening if interrupted).
+     */
+    fun changeTanpura(id: String, playing: Boolean): RecordingLibrary = update(id) {
+        if (it.externalTanpura == playing) it else it.copy(externalTanpura = playing, analysisVersion = STALE_ANALYSIS)
+    }
+
     /** Marks the recording's `.pitch` file as made by the current analysis. */
     fun analysed(id: String): RecordingLibrary = update(id) { it.copy(analysisVersion = ANALYSIS_VERSION) }
 
@@ -117,6 +129,9 @@ class RecordingLibrary(recordings: Collection<Recording> = emptyList()) {
 
         /** The version of recordings saved before the field was written. */
         const val FIRST_ANALYSIS_VERSION = 1
+
+        /** A recording whose `.pitch` no longer matches its settings (the tanpura switch changed). */
+        const val STALE_ANALYSIS = 0
 
         /** Longest recording, in seconds (10 minutes). */
         const val MAX_SECONDS = 600
