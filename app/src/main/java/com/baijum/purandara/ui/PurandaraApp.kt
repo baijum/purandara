@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import com.baijum.purandara.BuildConfig
 import com.baijum.purandara.R
 import com.baijum.purandara.ui.library.LibraryActions
 import com.baijum.purandara.ui.library.LibraryScreen
@@ -173,6 +174,7 @@ private fun RecordingsRoute(recordings: RecordingsViewModel, state: RecordingsUi
         onChangeSa = recordings::changeSa,
         onChangeRaga = recordings::changeRaga,
         onDelete = recordings::delete,
+        onReanalyse = if (BuildConfig.DEBUG) recordings::reanalyse else null,
     )
     val detail = state.detail
     when {

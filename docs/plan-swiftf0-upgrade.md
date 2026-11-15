@@ -4,7 +4,8 @@ Status: **planned** (2026-11-15); the maintainer agreed the decisions
 below as recommended. Step 1 (the comparison tool and evaluation) is done on
 synthetic tracks and 10 of the student's recordings; decisions 3 and 4 were
 settled by the results (*Results*). Step 2 (shared code) is built: see
-*Built in step 2*. Next: Android (step 3).
+*Built in step 2*. Step 3 (Android) is built: *Built in step 3*. Next:
+iOS (step 4).
 
 ## Where things stand
 
@@ -172,6 +173,29 @@ reading (new-offline) and with the old model:
   `needsAnalysis` / `RecordingLibrary.analysed(id)` support the automatic
   re-analysis. `ANALYSIS_VERSION` becomes 2 in step 5, when both apps run the
   new model.
+
+## Built in step 3 (Android)
+
+- ONNX Runtime **1.32.0**. The v0.3.0 model is bundled as
+  `models/swift_f0_v0.3.0.onnx` beside the old file, which iOS uses until
+  step 4; step 5 removes the old one.
+- `NeuralPitchSupervisor` is now a `SwiftF0Model`: it feeds `audio`, `fmin`
+  and `fmax` by name, reads float64 pitch and float32 confidence, and
+  refuses to load a model without those inputs and outputs (YIN alone then).
+- Live listening goes through shared `singalong/LivePitch` (pipeline +
+  176 ms buffer + model run, octave correction only), in `PitchListener`,
+  `SingAlongEngine` and `PracticeCapture`, with the Sa range (the full range
+  for Find my Sa). A model that hasn't loaded yet is no longer counted as a
+  failure (with a slow load it could switch SwiftF0 off for the session).
+- `RecordingDecoder` runs the shared analyser with the model (2 threads) and
+  the recording's Sa range. Opening a recording whose analysis is out of
+  date re-reads it from the audio, with a progress bar ("Updating the
+  swaras…"); debug builds have a **Re-analyse (debug)** button.
+- On the emulator (arm64): a synthetic Sarali recording reads back as its
+  swaras; SwiftF0 takes about 30 ms per 4.3 s chunk, roughly 0.4 s of model
+  time per minute of audio. Practise Sa with the synthetic singer holds Sa.
+- Found while testing: the decoder closed the model before the analyser's
+  last chunk ran; fixed (the model is closed after `finish`).
 
 ## Design
 

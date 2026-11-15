@@ -235,6 +235,8 @@
     <string name="record_elapsed">Recording, %1$s</string>
     <string name="record_limit_near">Recording stops at 10 minutes.</string>
     <string name="record_analysing">Finding the swaras…</string>
+    <string name="recording_updating">Updating the swaras: the app reads them better now…</string>
+    <string name="debug_reanalyse">Re-analyse (debug)</string>
     <string name="record_failed">That recording could not be saved. Try again.</string>
     <string name="mic_needed_record">Allow the microphone to record yourself.</string>
     <string name="recording_rename">Rename</string>

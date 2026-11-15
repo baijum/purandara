@@ -14,4 +14,6 @@ data class RecordingsActions(
     val onChangeSa: (String, Int, Int) -> Unit,
     val onChangeRaga: (String, String?) -> Unit,
     val onDelete: (String) -> Unit,
+    /** Debug builds only: read the swaras again (for tuning the analysis); null hides the button. */
+    val onReanalyse: ((String) -> Unit)? = null,
 )

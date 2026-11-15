@@ -44,6 +44,7 @@ import com.baijum.purandara.shruti.HoldGoal
 import com.baijum.purandara.shruti.HoldTarget
 import com.baijum.purandara.shruti.ShrutiOutcome
 import com.baijum.purandara.shruti.ShrutiSession
+import com.baijum.purandara.pitch.SwiftF0
 import com.baijum.purandara.singalong.BleedModel
 import com.baijum.purandara.singalong.FrameOutcome
 import com.baijum.purandara.singalong.PassResult
@@ -271,8 +272,11 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             supervisor = withContext(Dispatchers.Default) {
                 try {
-                    NeuralPitchSupervisor(getApplication<Application>().assets, MIC_SAMPLE_RATE)
+                    NeuralPitchSupervisor(getApplication<Application>().assets)
                 } catch (e: OrtException) {
+                    Log.w(TAG, "SwiftF0 unavailable; using YIN alone", e)
+                    null
+                } catch (e: IllegalArgumentException) {
                     Log.w(TAG, "SwiftF0 unavailable; using YIN alone", e)
                     null
                 } catch (e: IOException) {
@@ -382,6 +386,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
                     player.outputFrameAt(nanos)?.takeIf { it >= ShrutiSession.DEFAULT_ROOM_CHECK_SECONDS * r.sampleRate }?.let { settings.saHz }
                 },
                 { supervisor },
+                SwiftF0.range(settings.saHz),
                 timeOf = { nanos -> player.outputFrameAt(nanos)?.takeIf { it >= 0 }?.let { it.toDouble() / r.sampleRate } },
             ) { frame ->
                 val outcome = session.onFrame(frame)
@@ -424,6 +429,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         listener = PitchListener(
             micSource(echoCancellation = false) { nanos -> if ((nanos - start) / NANOS < FAKE_LOW_SECONDS) LOW_DEMO_HZ else HIGH_DEMO_HZ },
             { supervisor },
+            SwiftF0.range(null), // no Sa yet: the whole range
             timeOf = { nanos -> (nanos - start) / NANOS },
         ) { frame ->
             val hz = frame.frequencyHz?.takeIf { frame.rms >= BleedModel.MIN_VOICE_RMS }
@@ -654,7 +660,6 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         const val FAKE_LOW_SECONDS = 4.0
         const val LOW_DEMO_HZ = 98.0
         const val HIGH_DEMO_HZ = 392.0
-        const val MIC_SAMPLE_RATE = 44_100
         val HEADPHONE_TYPES = setOf(
             AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
             AudioDeviceInfo.TYPE_WIRED_HEADSET,

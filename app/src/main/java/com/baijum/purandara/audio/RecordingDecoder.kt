@@ -3,6 +3,8 @@ package com.baijum.purandara.audio
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import com.baijum.purandara.pitch.PitchRange
+import com.baijum.purandara.pitch.SwiftF0Model
 import com.baijum.purandara.recording.PitchTrack
 import com.baijum.purandara.recording.RecordingAnalyzer
 import com.baijum.purandara.singalong.PitchPipeline
@@ -13,13 +15,13 @@ import java.nio.ByteOrder
 /**
  * Decodes a saved recording and analyses its pitch (docs/plan-recordings.md):
  * the .m4a back to PCM, mixed to mono, through the shared [RecordingAnalyzer].
- * [neural] makes a SwiftF0 estimator for the decoded sample rate (null for
- * YIN alone); [onProgress] gets the fraction done. Blocking: call off the
- * main thread.
+ * [model] loads SwiftF0 (null for YIN alone; closed afterwards if
+ * [AutoCloseable]), searching [range]; [onProgress] gets the fraction done.
+ * Blocking: call off the main thread.
  */
 object RecordingDecoder {
     @Throws(IOException::class)
-    fun analyse(file: File, neural: (sampleRate: Int) -> PitchSupervisor?, onProgress: (Float) -> Unit): PitchTrack {
+    fun analyse(file: File, model: () -> SwiftF0Model?, range: PitchRange, onProgress: (Float) -> Unit): PitchTrack {
         val extractor = MediaExtractor()
         var decoder: MediaCodec? = null
         try {
@@ -33,7 +35,7 @@ object RecordingDecoder {
             decoder = codec
             codec.configure(format, null, null, 0)
             codec.start()
-            return Session(extractor, codec, format, neural, onProgress).run()
+            return Session(extractor, codec, format, model, range, onProgress).run()
         } catch (e: IllegalStateException) {
             throw IOException("could not decode ${file.name}", e) // includes MediaCodec.CodecException
         } finally {
@@ -49,14 +51,15 @@ object RecordingDecoder {
         private val extractor: MediaExtractor,
         private val codec: MediaCodec,
         format: MediaFormat,
-        private val neural: (Int) -> PitchSupervisor?,
+        private val model: () -> SwiftF0Model?,
+        private val range: PitchRange,
         private val onProgress: (Float) -> Unit,
     ) {
         private val durationMicros = if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
         private var sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
         private var channels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
         private var analyzer: RecordingAnalyzer? = null
-        private var supervisor: PitchSupervisor? = null
+        private var swiftF0: SwiftF0Model? = null
         private var mono = FloatArray(0)
         private val info = MediaCodec.BufferInfo()
         private var inputDone = false
@@ -68,11 +71,13 @@ object RecordingDecoder {
                     if (!inputDone) feedInput()
                     takeOutput()
                 }
+                // finish() runs SwiftF0's last chunk, so the model must still be open.
+                val track = analyzer?.finish() ?: PitchTrack.Builder(PitchPipeline.HOP_SIZE.toDouble() / sampleRate, 0.0).build()
+                onProgress(1f)
+                return track
             } finally {
-                (supervisor as? AutoCloseable)?.close()
+                (swiftF0 as? AutoCloseable)?.close()
             }
-            onProgress(1f)
-            return analyzer?.finish() ?: PitchTrack.Builder(PitchPipeline.HOP_SIZE.toDouble() / sampleRate, 0.0).build()
         }
 
         private fun feedInput() {
@@ -120,9 +125,9 @@ object RecordingDecoder {
         }
 
         private fun newAnalyzer(): RecordingAnalyzer {
-            val s = neural(sampleRate)
-            supervisor = s
-            return RecordingAnalyzer(sampleRate, RecordingAnalyzer.NEURAL_EVERY_WINDOW, s?.let { { window -> it.estimate(window) } })
+            val m = model()
+            swiftF0 = m
+            return RecordingAnalyzer(sampleRate, m, range)
         }
     }
 

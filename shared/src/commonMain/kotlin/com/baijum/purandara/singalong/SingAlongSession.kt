@@ -76,6 +76,9 @@ class SingAlongSession(
     val outputLevels: OutputLevels = OutputLevels(),
     strictness: Strictness = Strictness.PRECISE,
 ) {
+    /** The piece's Sa, for SwiftF0's search range. */
+    val saHz: Double get() = schedule.settings.saHz
+
     private val mapper = SwaraMapper(schedule.settings.saHz, schedule.raga, schedule.settings.tuning, strictness)
     private val scorer = NoteScorer(schedule, mapper, strictness)
     private val bleed = BleedModel()

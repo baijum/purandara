@@ -272,6 +272,15 @@ fun RecordingDetailScreen(detail: RecordingDetailUi, actions: RecordingsActions)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { renaming = true }) { Text(stringResource(R.string.recording_rename)) }
                 OutlinedButton(onClick = { deleting = true }) { Text(stringResource(R.string.recording_delete)) }
+                actions.onReanalyse?.let { reanalyse ->
+                    OutlinedButton(onClick = { reanalyse(recording.id) }, enabled = detail.updating == null) {
+                        Text(stringResource(R.string.debug_reanalyse))
+                    }
+                }
+            }
+            detail.updating?.let { progress ->
+                Text(stringResource(R.string.recording_updating), style = MaterialTheme.typography.bodyMedium)
+                LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
             }
             PlaybackControls(detail, actions)
             SwaraSection(detail, actions)

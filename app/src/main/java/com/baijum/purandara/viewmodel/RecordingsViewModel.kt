@@ -11,15 +11,19 @@ import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.baijum.purandara.BuildConfig
 import com.baijum.purandara.audio.MicInput
 import com.baijum.purandara.audio.NeuralPitchSupervisor
-import com.baijum.purandara.audio.PitchSupervisor
 import com.baijum.purandara.audio.Recorder
 import com.baijum.purandara.audio.RecordingDecoder
 import com.baijum.purandara.audio.SyntheticSingerInput
 import com.baijum.purandara.data.RecordingStore
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
+import com.baijum.purandara.pitch.SwiftF0
+import com.baijum.purandara.pitch.PitchRange
+import com.baijum.purandara.pitch.SwiftF0Model
+import com.baijum.purandara.pitch.SwiftF0Output
 import com.baijum.purandara.recording.PitchTrack
 import com.baijum.purandara.recording.Recording
 import com.baijum.purandara.recording.RecordingLibrary
@@ -65,6 +69,8 @@ data class RecordingDetailUi(
     val lane: PitchLane,
     val playing: Boolean = false,
     val positionSeconds: Double = 0.0,
+    /** Progress while the swaras are re-read with an improved analysis, else null. */
+    val updating: Float? = null,
 )
 
 data class RecordingsUiState(
@@ -94,6 +100,7 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
     private var saCents: Int = 0
     private var recorder: Recorder? = null
     private var recordingId: String? = null
+    private var reanalysing: Job? = null
     private var recordingStarted = 0L
     private var player: MediaPlayer? = null
     private var playerFor: String? = null
@@ -188,7 +195,7 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             val track = withContext(Dispatchers.Default) {
                 try {
-                    RecordingDecoder.analyse(store.audioFile(id), ::loadSupervisor) { p ->
+                    RecordingDecoder.analyse(store.audioFile(id), ::loadModel, SwiftF0.range(Shruti.saHz(ui.saMidi, ui.saCents))) { p ->
                         _state.update { it.copy(recorder = it.recorder.copy(analysing = p)) }
                     }.also { store.writePitch(id, it) }
                 } catch (e: IOException) {
@@ -209,14 +216,32 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    private fun loadSupervisor(sampleRate: Int): PitchSupervisor? = try {
-        NeuralPitchSupervisor(getApplication<Application>().assets, sampleRate)
+    private fun loadModel(): SwiftF0Model? = try {
+        NeuralPitchSupervisor(getApplication<Application>().assets, ANALYSIS_THREADS).let { timed(it) }
     } catch (e: OrtException) {
         Log.w(TAG, "SwiftF0 unavailable; analysing with YIN alone", e)
+        null
+    } catch (e: IllegalArgumentException) {
+        Log.w(TAG, "SwiftF0 model unexpected; analysing with YIN alone", e)
         null
     } catch (e: IOException) {
         Log.w(TAG, "SwiftF0 model missing; analysing with YIN alone", e)
         null
+    }
+
+    /** Debug builds log the model time per run, to check the analysis cost on devices. */
+    private fun timed(model: SwiftF0Model): SwiftF0Model = if (!BuildConfig.DEBUG) model else object : SwiftF0Model, AutoCloseable {
+        override fun run(audio16k: FloatArray, range: PitchRange): SwiftF0Output? {
+            val start = System.nanoTime()
+            return model.run(audio16k, range).also {
+                Log.d(TAG, "SwiftF0: %.2f s of audio in %d ms%s".format(
+                    audio16k.size / SwiftF0.SAMPLE_RATE.toDouble(), (System.nanoTime() - start) / NANOS_PER_MILLI,
+                    if (it == null) " (failed)" else "",
+                ))
+            }
+        }
+
+        override fun close() = (model as? AutoCloseable)?.close() ?: Unit
     }
 
     // --- One recording ---
@@ -226,6 +251,43 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         releasePlayer()
         val track = store.readPitch(id)
         _state.update { it.copy(screen = RecordingsScreen.DETAIL, detail = read(recording, track)) }
+        if (recording.needsAnalysis) reanalyse(id)
+    }
+
+    /**
+     * Reads the swaras again from the saved audio: automatically when the
+     * recording predates the current analysis (docs/plan-swiftf0-upgrade.md),
+     * and from a debug-only button for tuning. The old pitch stays until the
+     * new one is ready, and stays if analysis fails.
+     */
+    fun reanalyse(id: String) {
+        val recording = _state.value.library[id] ?: return
+        if (reanalysing != null) return
+        setUpdating(id, 0f)
+        reanalysing = viewModelScope.launch {
+            val track = withContext(Dispatchers.Default) {
+                try {
+                    RecordingDecoder.analyse(store.audioFile(id), ::loadModel, SwiftF0.range(recording.saHz)) { p -> setUpdating(id, p) }
+                        .also { store.writePitch(id, it) }
+                } catch (e: IOException) {
+                    Log.e(TAG, "could not re-analyse $id", e)
+                    null
+                }
+            }
+            reanalysing = null
+            if (track != null) updateLibrary { it.analysed(id) }
+            _state.update { s ->
+                val detail = s.detail?.takeIf { it.recording.id == id } ?: return@update s
+                val current = s.library[id] ?: return@update s
+                s.copy(detail = (if (track != null) read(current, track) else detail).copy(
+                    playing = detail.playing, positionSeconds = detail.positionSeconds, updating = null,
+                ))
+            }
+        }
+    }
+
+    private fun setUpdating(id: String, progress: Float) = _state.update { s ->
+        if (s.detail?.recording?.id == id) s.copy(detail = s.detail.copy(updating = progress)) else s
     }
 
     private fun read(recording: Recording, track: PitchTrack?): RecordingDetailUi {
@@ -339,8 +401,12 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
 
     private companion object {
         const val TAG = "RecordingsViewModel"
+
+        /** ONNX Runtime threads for analysing a recording (live listening uses 1). */
+        const val ANALYSIS_THREADS = 2
         const val TICK_MS = 50L
         const val MILLIS = 1000.0
         const val END_SLACK_SECONDS = 0.1
+        const val NANOS_PER_MILLI = 1_000_000L
     }
 }

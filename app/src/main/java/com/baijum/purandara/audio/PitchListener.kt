@@ -1,7 +1,9 @@
 package com.baijum.purandara.audio
 
+import com.baijum.purandara.pitch.PitchRange
+import com.baijum.purandara.pitch.SwiftF0Model
+import com.baijum.purandara.singalong.LivePitch
 import com.baijum.purandara.singalong.PitchFrame
-import com.baijum.purandara.singalong.PitchPipeline
 
 /**
  * Mic windows → (SwiftF0 every few windows) → YIN pipeline → [onFrame], for
@@ -9,23 +11,25 @@ import com.baijum.purandara.singalong.PitchPipeline
  * the frame's time in seconds (null skips the window); [onFrame] runs on the
  * mic thread.
  *
- * [supervisor] is read for every window, not captured at construction: the
- * model loads asynchronously, so a session started before it finishes must
- * still pick it up when it arrives (issue #14).
+ * [model] is read for every run, not captured at construction: it loads
+ * asynchronously, so a session started before it finishes must still pick it
+ * up when it arrives (issue #14). [range] is SwiftF0's band around the Sa
+ * (`SwiftF0.range`; the full range for Find my Sa).
  */
 class PitchListener(
     private val mic: MicSource,
-    private val supervisor: () -> PitchSupervisor?,
+    model: () -> SwiftF0Model?,
+    range: PitchRange,
     private val timeOf: (captureNanos: Long) -> Double?,
     private val onFrame: (PitchFrame) -> Unit,
 ) {
-    private val pipeline = PitchPipeline(mic.sampleRate)
+    private val live = LivePitch(mic.sampleRate, model, range)
 
     fun start() {
         mic.start { window, captureNanos ->
+            live.listen(window)
             val time = timeOf(captureNanos) ?: return@start
-            if (pipeline.beginFrame()) pipeline.onNeuralResult(supervisor()?.estimate(window))
-            onFrame(pipeline.process(window, time))
+            onFrame(live.process(window, time))
         }
     }
 

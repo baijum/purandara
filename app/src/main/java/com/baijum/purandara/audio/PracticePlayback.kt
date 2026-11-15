@@ -4,6 +4,7 @@ import android.os.Handler
 import android.os.Looper
 import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.schedule.Schedule
+import com.baijum.purandara.pitch.SwiftF0Model
 import com.baijum.purandara.practice.PracticeMode
 import com.baijum.purandara.practice.PracticePolicy
 import com.baijum.purandara.singalong.FrameOutcome
@@ -14,7 +15,7 @@ import kotlin.math.ceil
 /** Heard state and capture coordination; only the output worker mutates the shared transport. */
 class PracticePlayback(
     private val player: VarisaiAudioPlayer,
-    private val supervisor: () -> PitchSupervisor?,
+    private val model: () -> SwiftF0Model?,
     private val makeMic: ((Long) -> Double?) -> MicSource,
     private val callbacks: Callbacks,
 ) {
@@ -96,7 +97,7 @@ class PracticePlayback(
         finishCapture()
         preparedId = preparation.segmentId
         val token = generation
-        val engine = PracticeCapture(makeMic(::targetAt), player, source.sampleRate, supervisor) { outcome ->
+        val engine = PracticeCapture(makeMic(::targetAt), player, source.sampleRate, model) { outcome ->
             main.post {
                 if (generation == token && capture?.id == preparation.segmentId) callbacks.onOutcome(preparation.attempt, outcome)
             }

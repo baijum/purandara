@@ -1,7 +1,9 @@
 package com.baijum.purandara.audio
 
+import com.baijum.purandara.pitch.SwiftF0
+import com.baijum.purandara.pitch.SwiftF0Model
 import com.baijum.purandara.singalong.FrameOutcome
-import com.baijum.purandara.singalong.PitchPipeline
+import com.baijum.purandara.singalong.LivePitch
 import com.baijum.purandara.singalong.SingAlongClock
 import com.baijum.purandara.singalong.SingAlongSession
 import com.baijum.purandara.singalong.Strictness
@@ -19,20 +21,21 @@ import com.baijum.purandara.domain.schedule.Schedule
  *
  * [onOutcome] runs on the mic thread; post to the main thread to use it.
  *
- * [supervisor] is read for every window, not captured at construction: the
- * model loads asynchronously, so an engine started before it finishes (sing-along
- * enabled during playback) must still pick it up when it arrives (issue #14).
+ * [model] is read for every run, not captured at construction: it loads
+ * asynchronously, so an engine started before it finishes (sing-along enabled
+ * during playback) must still pick it up when it arrives (issue #14). SwiftF0
+ * searches around the session's Sa.
  */
 class SingAlongEngine(
     private val mic: MicSource,
     private val player: VarisaiAudioPlayer,
     renderer: SampleRenderer,
     private val session: SingAlongSession,
-    private val supervisor: () -> PitchSupervisor?,
+    model: () -> SwiftF0Model?,
     private val onOutcome: (FrameOutcome) -> Unit,
 ) {
     private val sampleRate = renderer.sampleRate
-    private val pipeline = PitchPipeline(mic.sampleRate)
+    private val live = LivePitch(mic.sampleRate, model, SwiftF0.range(session.saHz))
 
     /** Call before [VarisaiAudioPlayer.play] so output levels are recorded from the first block. */
     fun attach() {
@@ -41,9 +44,9 @@ class SingAlongEngine(
 
     fun start() {
         mic.start { window, captureNanos ->
+            live.listen(window)
             val heardFrame = player.outputFrameAt(captureNanos) ?: return@start
-            if (pipeline.beginFrame()) pipeline.onNeuralResult(supervisor()?.estimate(window))
-            val frame = pipeline.process(window, heardFrame.toDouble() / sampleRate)
+            val frame = live.process(window, heardFrame.toDouble() / sampleRate)
             onOutcome(session.onFrame(frame))
         }
     }
