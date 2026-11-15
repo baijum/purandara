@@ -1,7 +1,9 @@
 # Plan: upgrade SwiftF0 and ONNX Runtime
 
 Status: **planned** (2026-11-15); the maintainer agreed the decisions
-below as recommended. Step 1 (the comparison tool) in progress.
+below as recommended. Step 1 (the comparison tool) is built; the synthetic
+results (below, *Results so far*) changed decisions 3 and 4, pending a check
+on real voices.
 
 The app's neural pitch checker is the SwiftF0 model run by ONNX Runtime (the
 approved exception in AGENTS.md). Both are out of date, and the two apps use
@@ -49,8 +51,8 @@ Our callers would break as they are:
    which haven't changed. The alternative is to hold both at 1.30.0 for an
    exact match, but that means downgrading Android.
 2. **Pitch range per call.** Pass `fmin` and `fmax` from the student's voice
-   range around Sa: mandra Pa to two octaves above, clamped to the model's
-   range. Narrowing the range is what raised F1 in v0.3.0. It may also remove
+   range around Sa: mandra Pa to tara Pa with a semitone of margin, clamped
+   to the model's range. Narrowing the range is what raised F1 in v0.3.0. It may also remove
    the octave errors we bring SwiftF0 in to catch, because a pitch outside the
    range gets confidence 0 instead of a wrong octave. *Find my Sa* has no Sa
    yet, so it keeps the full range.
@@ -72,6 +74,49 @@ Our callers would break as they are:
    with overlap, as the reference does (about 20 calls). Each YIN frame then
    takes the nearest SwiftF0 frame. This should be much faster than today and
    exactly as accurate as the reference.
+
+## Results so far (synthetic tracks, 2026-11-15)
+
+From `tools/pitch/compare_swiftf0.py`. The tracks are Sarali 1 at Sa A♯2, D3,
+F♯3, G♯3, A♯3 and C4 on three vowels (aa, oo, ee), plus a breathy soft voice,
+room noise at 12 dB SNR, a weak fundamental, a kampita and a jaru. Errors are
+counted at the app's pitch-frame times:
+
+| Method | Octave errors | Gross errors (> 50¢ on held notes) | Model time per minute of audio (Mac, 1 thread) |
+|---|---|---|---|
+| Old model, today's window | 6, all on the weak-fundamental track | 5 | 1.3 s live, 6.6 s on every window |
+| **New, short buffer** (3 frames before, 2 after) | **0** | **0** | **1.2 s live, 5.9 s on every window** |
+| New, reference context (11 before, 10 after) | 163 | 2851 (the reading is 176 ms old, so it lags every note change) | 3.3 s live |
+| New, whole recording in chunks | 178 | 156 | 0.4 s |
+| New, whole recording with the Sa range | 0, but 1% of voiced frames are lost | 0 | 0.4 s |
+
+What this showed:
+
+- **The newest frame is never voiced.** The model gives low confidence on the
+  first and last frame of any input, so option (b) of decision 3 is out. One
+  or two frames of audio after a frame are enough for a full-confidence
+  reading.
+- **The full context reads high voices an octave up.** At Sa A♯3 and C4, on
+  the open vowels (aa, ee), with the reference context or the whole
+  recording, the model read some upper notes one or two octaves too high:
+  Ma at 349 Hz as 1396 Hz, tara Sa as 1046 Hz. The short buffer doesn't, and
+  neither does the old model. The Sa range turns these into "no pitch"
+  (YIN decides alone) rather than fixing them.
+- **The new model is more precise:** median error 1–2¢ against the old model's
+  4–5¢. It also fixes the old model's octave errors on a weak fundamental.
+
+These are synthetic voices, so the high-voice finding may be an artefact of
+the simple vowel model. The student's recordings decide it (Evaluation step 3).
+
+**Revised decisions 3 and 4 (pending the real-voice check):** use the **short
+buffer for both live listening and Recordings**, with the Sa range. Live, the
+frame read is about 32–48 ms behind the newest audio, close to the YIN frame
+(21 ms). Recordings keep today's design, SwiftF0 on every window, at the same
+cost as today. This means no chunker and no whole-recording track: callers
+pass the last 96 ms of capture audio (4608 samples at 48 kHz) instead of the
+2048-sample window, and the supervisor reads the frame 2 from the end. The
+design below still describes the chunked version and will be rewritten once
+the real-voice check settles it.
 
 ## Design
 
