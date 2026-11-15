@@ -1,6 +1,12 @@
 package com.baijum.purandara.ui
 
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isToggleable
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -44,11 +50,13 @@ class RecordingsAccessibilityTest {
     private var opened: String? = null
     private var started = 0
     private var seekedTo: Double? = null
+    private var tanpura: Boolean? = null
+    private var usedSa: Pair<Int, Int>? = null
 
     private val actions = RecordingsActions(
         onBack = {}, onNew = {}, onOpen = { opened = it }, onStart = { started++ }, onStop = {}, onAllowMic = {},
-        onTogglePlay = {}, onSeek = { seekedTo = it }, onRename = { _, _ -> }, onChangeSa = { _, _, _ -> },
-        onChangeRaga = { _, _ -> }, onDelete = {},
+        onTogglePlay = {}, onSeek = { seekedTo = it }, onRename = { _, _ -> }, onChangeSa = { _, midi, cents -> usedSa = midi to cents },
+        onChangeRaga = { _, _ -> }, onDelete = {}, onTanpura = { tanpura = it },
     )
 
     private val recording = Recording(id = "r1", createdMillis = 0, durationSeconds = 134.0, saMidi = 48, ragaKey = Raga.MAYAMALAVAGOWLA.key)
@@ -88,6 +96,37 @@ class RecordingsAccessibilityTest {
         assertTrue(bounds.width >= min && bounds.height >= min)
         button.performClick()
         assertEquals(1, started)
+    }
+
+    @Test
+    fun theTanpuraSwitchIsAToggleWithItsState() {
+        compose.setContent { PurandaraTheme { RecordScreen(RecorderUi(tanpura = false), micAllowed = true, actions = actions) } }
+        val toggle = compose.onNode(hasText("External tanpura playing", substring = true) and isToggleable())
+        toggle.assertIsOff()
+        toggle.performClick()
+        assertEquals(true, tanpura)
+    }
+
+    @Test
+    fun whileListeningTheCueIsAnnouncedAndTheCountdownIsNot() {
+        compose.setContent {
+            PurandaraTheme { RecordScreen(RecorderUi(recording = true, seconds = 1.2, tanpura = true), micAllowed = true, actions = actions) }
+        }
+        compose.onNodeWithText("Listening to your tanpura…").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Assertive),
+        )
+        compose.onAllNodesWithText("2").assertCountEquals(0) // the countdown digit is visual only
+    }
+
+    @Test
+    fun theTanpuraSaOfferSaysWhatItDoes() {
+        compose.setContent {
+            PurandaraTheme {
+                RecordingDetailScreen(detail().copy(recording = recording.copy(externalTanpura = true), tanpuraSa = 49 to 12), actions)
+            }
+        }
+        compose.onNodeWithContentDescription("Use the tanpura's Sa", substring = true).performScrollTo().performClick()
+        assertEquals(49 to 12, usedSa)
     }
 
     @Test

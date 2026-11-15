@@ -14,6 +14,10 @@ data class RecordingsActions(
     val onChangeSa: (String, Int, Int) -> Unit,
     val onChangeRaga: (String, String?) -> Unit,
     val onDelete: (String) -> Unit,
+    /** The Record screen's "External tanpura playing" switch. */
+    val onTanpura: (Boolean) -> Unit = {},
+    /** A recording's tanpura switch (the swaras are read again). */
+    val onChangeTanpura: (String, Boolean) -> Unit = { _, _ -> },
     /** Debug builds only: read the swaras again (for tuning the analysis); null hides the button. */
     val onReanalyse: ((String) -> Unit)? = null,
 )

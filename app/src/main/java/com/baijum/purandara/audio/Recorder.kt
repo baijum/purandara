@@ -87,7 +87,12 @@ class MicInput(private val audioManager: AudioManager) : RecorderInput {
  * back) at [saHz], [centsOff] off, half a second a note, in real time; so a
  * recording can be made on an emulator without a voice.
  */
-class SyntheticSingerInput(private val saHz: Double, private val centsOff: Double) : RecorderInput {
+class SyntheticSingerInput(
+    private val saHz: Double,
+    private val centsOff: Double,
+    /** Silent this long first (the listening seconds of a recording with a tanpura). */
+    private val silentSeconds: Double = 0.0,
+) : RecorderInput {
     override val sampleRate: Int = 44_100
     @Volatile private var running = false
     private var phase = 0.0
@@ -102,7 +107,12 @@ class SyntheticSingerInput(private val saHz: Double, private val centsOff: Doubl
     override fun read(buffer: ShortArray): Int {
         if (!running) return -1
         for (i in buffer.indices) {
-            val t = frame.toDouble() / sampleRate
+            val t = frame.toDouble() / sampleRate - silentSeconds
+            if (t < 0) {
+                buffer[i] = 0
+                frame++
+                continue
+            }
             val step = (t / NOTE_SECONDS).toInt() % SARALI.size
             val hz = saHz * SARALI[step] * 2.0.pow(centsOff / CENTS_PER_OCTAVE)
             phase += 2 * PI * hz / sampleRate

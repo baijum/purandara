@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -42,10 +43,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,10 +59,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -86,6 +92,7 @@ import com.baijum.purandara.recording.HeardNote
 import com.baijum.purandara.recording.PitchTrack
 import com.baijum.purandara.recording.Recording
 import com.baijum.purandara.recording.RecordingLibrary
+import com.baijum.purandara.recording.TanpuraProfile
 import com.baijum.purandara.singalong.PitchLane
 import com.baijum.purandara.ui.FineTuneControl
 import com.baijum.purandara.ui.LocalReduceMotion
@@ -93,6 +100,7 @@ import com.baijum.purandara.ui.SaPicker
 import com.baijum.purandara.ui.saLabel
 import com.baijum.purandara.viewmodel.RecorderUi
 import com.baijum.purandara.viewmodel.RecordingDetailUi
+import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -208,7 +216,10 @@ fun RecordScreen(recorder: RecorderUi, micAllowed: Boolean, actions: RecordingsA
                     Text(stringResource(R.string.mic_needed_record), style = MaterialTheme.typography.bodyLarge)
                     Button(onClick = actions.onAllowMic) { Text(stringResource(R.string.allow_mic)) }
                 }
-                else -> RecordControls(recorder, actions)
+                else -> {
+                    if (!recorder.recording) TanpuraSwitch(recorder.tanpura, actions.onTanpura, help = true)
+                    RecordControls(recorder, actions)
+                }
             }
             if (recorder.failed) {
                 Text(
@@ -242,6 +253,7 @@ private fun RecordControls(recorder: RecorderUi, actions: RecordingsActions) {
     }
     Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.clearAndSetSemantics {})
     if (recorder.recording) {
+        if (recorder.tanpura) TanpuraCue(recorder)
         // Not a live region: a screen reader reads it when focused, not every second.
         Text(clock(recorder.seconds), style = MaterialTheme.typography.displaySmall)
         LinearProgressIndicator(
@@ -254,6 +266,57 @@ private fun RecordControls(recorder: RecorderUi, actions: RecordingsActions) {
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
+    }
+}
+
+/**
+ * "Listening to your tanpura…" with a countdown for the first seconds, then
+ * "Now sing" (announced, with a haptic tap). The live region carries only
+ * the two messages, not the countdown, so a screen reader says each once.
+ */
+@Composable
+private fun TanpuraCue(recorder: RecorderUi) {
+    val listening = recorder.listening
+    val haptics = LocalHapticFeedback.current
+    var wasListening by remember { mutableStateOf(listening) }
+    LaunchedEffect(listening) {
+        if (wasListening && !listening) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        wasListening = listening
+    }
+    val message = stringResource(if (listening) R.string.record_listening else R.string.record_now_sing)
+    Text(
+        message,
+        style = MaterialTheme.typography.titleLarge,
+        color = if (listening) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive },
+    )
+    if (listening) {
+        val left = ceil(TanpuraProfile.LISTEN_SECONDS - recorder.seconds).toInt().coerceAtLeast(1)
+        Text(left.toString(), style = MaterialTheme.typography.displayMedium, modifier = Modifier.clearAndSetSemantics {})
+    }
+}
+
+/** "External tanpura playing": a switch with its label (and, on the Record screen, its help). */
+@Composable
+private fun TanpuraSwitch(on: Boolean, onChange: (Boolean) -> Unit, help: Boolean) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .toggleable(value = on, role = Role.Switch, onValueChange = onChange)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.record_tanpura), style = MaterialTheme.typography.bodyLarge)
+            if (help) {
+                Text(
+                    stringResource(R.string.record_tanpura_help),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Switch(checked = on, onCheckedChange = null)
     }
 }
 
@@ -293,6 +356,8 @@ fun RecordingDetailScreen(detail: RecordingDetailUi, actions: RecordingsActions)
             SaPicker(recording.saMidi, recording.saCents) { midi -> actions.onChangeSa(recording.id, midi, recording.saCents) }
             FineTuneControl(recording.saCents) { cents -> actions.onChangeSa(recording.id, recording.saMidi, cents) }
             RagaPicker(recording.ragaKey) { key -> actions.onChangeRaga(recording.id, key) }
+            TanpuraSwitch(recording.externalTanpura, { actions.onChangeTanpura(recording.id, it) }, help = false)
+            detail.tanpuraSa?.let { (midi, cents) -> TanpuraOffer(midi, cents) { actions.onChangeSa(recording.id, midi, cents) } }
         }
     }
     if (renaming) {
@@ -458,10 +523,28 @@ private fun RecordingTrace(detail: RecordingDetailUi, onSeek: (Double) -> Unit) 
         drawLines(view, colors) { note, at ->
             drawText(measurer, PitchLane.label(note), at, style = TextStyle(color = colors.label, fontSize = TRACE_LABEL_SP.sp))
         }
+        if (detail.recording.externalTanpura) {
+            // The listening seconds (the tanpura alone), which the swaras ignore.
+            val end = view.x(TanpuraProfile.LISTEN_SECONDS)
+            if (end > view.left) drawRect(colors.line.copy(alpha = LISTEN_SHADE), Offset(view.left, 0f), Size(end - view.left, size.height))
+        }
         drawPitch(view, track, detail.recording.saHz, colors.pitch)
         drawNotes(view, detail.transcription.notes, colors.note)
         val cx = view.x(position)
         if (cx >= view.left) drawLine(colors.cursor, Offset(cx, 0f), Offset(cx, size.height), strokeWidth = CURSOR_STROKE)
+    }
+}
+
+/** "Your tanpura is at C♯3 +12¢" with a button to use it as the recording's Sa. */
+@Composable
+private fun TanpuraOffer(midi: Int, cents: Int, onUse: () -> Unit) {
+    val sa = saLabel(midi, cents)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(stringResource(R.string.recording_tanpura_at, sa), style = MaterialTheme.typography.bodyLarge)
+        val description = stringResource(R.string.recording_tanpura_use_description, sa)
+        OutlinedButton(onClick = onUse, modifier = Modifier.semantics { contentDescription = description }) {
+            Text(stringResource(R.string.recording_tanpura_use))
+        }
     }
 }
 
@@ -589,3 +672,4 @@ private const val LEVEL_GAIN = 4f
 private const val MIN_SLIDER_SECONDS = 0.1f
 private const val MAX_TITLE = 80
 private const val SECONDS_PER_MINUTE = 60
+private const val LISTEN_SHADE = 0.35f

@@ -15,6 +15,12 @@ import java.io.IOException
  */
 class RecordingStore(context: Context) {
     val folder: File = File(context.filesDir, FOLDER)
+    private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+
+    /** The Record screen's "External tanpura playing" switch, remembered for next time. */
+    var externalTanpura: Boolean
+        get() = preferences.getBoolean(KEY_TANPURA, false)
+        set(value) = preferences.edit().putBoolean(KEY_TANPURA, value).apply()
     private val index = File(folder, RecordingLibrary.INDEX_FILE_NAME)
 
     /** The saved library, without entries whose files are gone; stray files are removed. */
@@ -70,5 +76,7 @@ class RecordingStore(context: Context) {
     private companion object {
         const val TAG = "RecordingStore"
         const val FOLDER = "recordings"
+        const val PREFERENCES = "recordings"
+        const val KEY_TANPURA = "external_tanpura"
     }
 }

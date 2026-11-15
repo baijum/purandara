@@ -28,6 +28,7 @@ import com.baijum.purandara.recording.PitchTrack
 import com.baijum.purandara.recording.Recording
 import com.baijum.purandara.recording.RecordingLibrary
 import com.baijum.purandara.recording.SwaraTranscriber
+import com.baijum.purandara.recording.TanpuraProfile
 import com.baijum.purandara.recording.Transcription
 import com.baijum.purandara.singalong.PitchLane
 import kotlinx.coroutines.Dispatchers
@@ -59,7 +60,12 @@ data class RecorderUi(
     /** The Sa it is recorded against. */
     val saMidi: Int = Shruti.DEFAULT_SA_MIDI,
     val saCents: Int = 0,
-)
+    /** The student's own tanpura is playing (docs/plan-recordings-tanpura.md). */
+    val tanpura: Boolean = false,
+) {
+    /** Recording, in the first seconds with a tanpura: the app is learning it, the student waits. */
+    val listening: Boolean get() = recording && tanpura && seconds < TanpuraProfile.LISTEN_SECONDS
+}
 
 /** One recording opened: its swaras, trace and playback. */
 data class RecordingDetailUi(
@@ -71,6 +77,8 @@ data class RecordingDetailUi(
     val positionSeconds: Double = 0.0,
     /** Progress while the swaras are re-read with an improved analysis, else null. */
     val updating: Float? = null,
+    /** The student's tanpura's Sa (MIDI, cents) when it differs from the recording's, to offer. */
+    val tanpuraSa: Pair<Int, Int>? = null,
 )
 
 data class RecordingsUiState(
@@ -148,8 +156,18 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
     fun showRecorder() {
         releasePlayer()
         _state.update {
-            it.copy(screen = RecordingsScreen.RECORD, detail = null, recorder = RecorderUi(saMidi = saMidi, saCents = saCents))
+            it.copy(
+                screen = RecordingsScreen.RECORD, detail = null,
+                recorder = RecorderUi(saMidi = saMidi, saCents = saCents, tanpura = store.externalTanpura),
+            )
         }
+    }
+
+    /** The Record screen's "External tanpura playing" switch (remembered). */
+    fun setTanpura(playing: Boolean) {
+        if (_state.value.recorder.recording) return
+        store.externalTanpura = playing
+        _state.update { it.copy(recorder = it.recorder.copy(tanpura = playing)) }
     }
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
@@ -160,7 +178,7 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         val file = store.audioFile(id)
         val synthetic = debugSyntheticSingerCents
         val source = if (synthetic != null) {
-            SyntheticSingerInput(Shruti.saHz(ui.saMidi, ui.saCents), synthetic)
+            SyntheticSingerInput(Shruti.saHz(ui.saMidi, ui.saCents), synthetic, if (ui.tanpura) TanpuraProfile.LISTEN_SECONDS else 0.0)
         } else {
             MicInput(audioManager)
         }
@@ -195,7 +213,7 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             val track = withContext(Dispatchers.Default) {
                 try {
-                    RecordingDecoder.analyse(store.audioFile(id), ::loadModel, SwiftF0.range(Shruti.saHz(ui.saMidi, ui.saCents))) { p ->
+                    RecordingDecoder.analyse(store.audioFile(id), ::loadModel, SwiftF0.range(Shruti.saHz(ui.saMidi, ui.saCents)), ui.tanpura) { p ->
                         _state.update { it.copy(recorder = it.recorder.copy(analysing = p)) }
                     }.also { store.writePitch(id, it) }
                 } catch (e: IOException) {
@@ -208,7 +226,10 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
                 _state.update { it.copy(recorder = it.recorder.copy(analysing = null, failed = true)) }
                 return@launch
             }
-            val recording = Recording(id, created, seconds, ui.saMidi, ui.saCents, analysisVersion = RecordingLibrary.ANALYSIS_VERSION)
+            val recording = Recording(
+                id, created, seconds, ui.saMidi, ui.saCents,
+                analysisVersion = RecordingLibrary.ANALYSIS_VERSION, externalTanpura = ui.tanpura,
+            )
             updateLibrary { it.add(recording) }
             _state.update { it.copy(recorder = it.recorder.copy(analysing = null)) }
             // Still on the record screen (not closed or backed out meanwhile): show the result.
@@ -267,7 +288,9 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         reanalysing = viewModelScope.launch {
             val track = withContext(Dispatchers.Default) {
                 try {
-                    RecordingDecoder.analyse(store.audioFile(id), ::loadModel, SwiftF0.range(recording.saHz)) { p -> setUpdating(id, p) }
+                    RecordingDecoder.analyse(store.audioFile(id), ::loadModel, SwiftF0.range(recording.saHz), recording.externalTanpura) { p ->
+                        setUpdating(id, p)
+                    }
                         .also { store.writePitch(id, it) }
                 } catch (e: IOException) {
                     Log.e(TAG, "could not re-analyse $id", e)
@@ -291,8 +314,9 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun read(recording: Recording, track: PitchTrack?): RecordingDetailUi {
-        val transcription = track?.let { SwaraTranscriber.transcribe(it, recording.saHz, recording.raga, tuning) } ?: Transcription(emptyList())
-        return RecordingDetailUi(recording, track, transcription, PitchLane.forRecording(transcription, recording.raga))
+        val transcription = track?.let { SwaraTranscriber.transcribe(it, recording, tuning) } ?: Transcription(emptyList())
+        val tanpuraSa = track?.takeIf { recording.externalTanpura }?.let { TanpuraProfile.from(it) }?.suggestedSa(recording.saHz)
+        return RecordingDetailUi(recording, track, transcription, PitchLane.forRecording(transcription, recording.raga), tanpuraSa = tanpuraSa)
     }
 
     fun rename(id: String, title: String) = updateLibrary { it.rename(id, title) }
@@ -300,6 +324,12 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
     fun changeSa(id: String, midi: Int, cents: Int) = updateLibrary { it.changeSa(id, midi, cents) }
 
     fun changeRaga(id: String, ragaKey: String?) = updateLibrary { it.changeRaga(id, ragaKey) }
+
+    /** The recording's tanpura switch: the pitch is read differently, so the audio is analysed again. */
+    fun changeTanpura(id: String, playing: Boolean) {
+        updateLibrary { it.changeTanpura(id, playing) }
+        reanalyse(id)
+    }
 
     fun delete(id: String) {
         if (playerFor == id) releasePlayer()
@@ -318,8 +348,11 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
                 library = next,
                 detail = when {
                     detail == null || updated == null -> detail
-                    updated.saHz != detail.recording.saHz || updated.ragaKey != detail.recording.ragaKey ->
-                        read(updated, detail.track).copy(playing = detail.playing, positionSeconds = detail.positionSeconds)
+                    updated.saHz != detail.recording.saHz || updated.ragaKey != detail.recording.ragaKey ||
+                        updated.externalTanpura != detail.recording.externalTanpura ->
+                        read(updated, detail.track).copy(
+                            playing = detail.playing, positionSeconds = detail.positionSeconds, updating = detail.updating,
+                        )
                     else -> detail.copy(recording = updated)
                 },
             )

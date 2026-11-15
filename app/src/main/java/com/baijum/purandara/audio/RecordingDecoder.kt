@@ -16,12 +16,13 @@ import java.nio.ByteOrder
  * Decodes a saved recording and analyses its pitch (docs/plan-recordings.md):
  * the .m4a back to PCM, mixed to mono, through the shared [RecordingAnalyzer].
  * [model] loads SwiftF0 (null for YIN alone; closed afterwards if
- * [AutoCloseable]), searching [range]; [onProgress] gets the fraction done.
+ * [AutoCloseable]), searching [range]; [tanpura] when the student's own
+ * tanpura played (SwiftF0's pitch alone); [onProgress] gets the fraction done.
  * Blocking: call off the main thread.
  */
 object RecordingDecoder {
     @Throws(IOException::class)
-    fun analyse(file: File, model: () -> SwiftF0Model?, range: PitchRange, onProgress: (Float) -> Unit): PitchTrack {
+    fun analyse(file: File, model: () -> SwiftF0Model?, range: PitchRange, tanpura: Boolean, onProgress: (Float) -> Unit): PitchTrack {
         val extractor = MediaExtractor()
         var decoder: MediaCodec? = null
         try {
@@ -35,7 +36,7 @@ object RecordingDecoder {
             decoder = codec
             codec.configure(format, null, null, 0)
             codec.start()
-            return Session(extractor, codec, format, model, range, onProgress).run()
+            return Session(extractor, codec, format, Analysis(model, range, tanpura), onProgress).run()
         } catch (e: IllegalStateException) {
             throw IOException("could not decode ${file.name}", e) // includes MediaCodec.CodecException
         } finally {
@@ -51,8 +52,7 @@ object RecordingDecoder {
         private val extractor: MediaExtractor,
         private val codec: MediaCodec,
         format: MediaFormat,
-        private val model: () -> SwiftF0Model?,
-        private val range: PitchRange,
+        private val analysis: Analysis,
         private val onProgress: (Float) -> Unit,
     ) {
         private val durationMicros = if (format.containsKey(MediaFormat.KEY_DURATION)) format.getLong(MediaFormat.KEY_DURATION) else 0L
@@ -125,11 +125,14 @@ object RecordingDecoder {
         }
 
         private fun newAnalyzer(): RecordingAnalyzer {
-            val m = model()
+            val m = analysis.model()
             swiftF0 = m
-            return RecordingAnalyzer(sampleRate, m, range)
+            return RecordingAnalyzer(sampleRate, m, analysis.range, analysis.tanpura)
         }
     }
+
+    /** How to analyse: the model, its search range, and whether a tanpura played. */
+    private class Analysis(val model: () -> SwiftF0Model?, val range: PitchRange, val tanpura: Boolean)
 
     private const val TIMEOUT_MICROS = 10_000L
     private const val SHORT_SCALE = 32768f

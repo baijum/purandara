@@ -174,6 +174,8 @@ private fun RecordingsRoute(recordings: RecordingsViewModel, state: RecordingsUi
         onChangeSa = recordings::changeSa,
         onChangeRaga = recordings::changeRaga,
         onDelete = recordings::delete,
+        onTanpura = recordings::setTanpura,
+        onChangeTanpura = recordings::changeTanpura,
         onReanalyse = if (BuildConfig.DEBUG) recordings::reanalyse else null,
     )
     val detail = state.detail
