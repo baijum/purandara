@@ -1,7 +1,7 @@
 name: iOS CI flake rerun
 
 # Runner-load flakes cost a manual rerun on most PRs (issue #28): the audit
-# machinery timing out, roaming Dynamic Type and element-less hit-area false
+# machinery timing out, roaming Dynamic Type (element-less too) and element-less hit-area false
 # positives on plain screens, the count-in test on a stalled simulator, and
 # setup-java 504s from the adoptium CDN. When iOS CI fails on its first
 # attempt with a known signature, rerun the failed job ONCE, so real
@@ -32,7 +32,7 @@ jobs:
         run: |
           # Fail loudly if the log can't be read, rather than calling it "not a flake".
           log=$(gh run view "$RUN_ID" --log-failed)
-          if grep -qE "Audit failed to complete in time|Dynamic Type font sizes are partially unsupported|Hit area is too small — \?|count-in is shown first|Unexpected HTTP response: 504" <<<"$log"; then
+          if grep -qE "Audit failed to complete in time|Dynamic Type font sizes are partially unsupported|Dynamic Type font sizes are unsupported — \?|Hit area is too small — \?|count-in is shown first|Unexpected HTTP response: 504" <<<"$log"; then
             echo "Known runner-load flake signature; rerunning the failed job once"
             gh run rerun "$RUN_ID" --failed
           else

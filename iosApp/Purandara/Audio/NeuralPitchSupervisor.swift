@@ -26,6 +26,18 @@ final class NeuralPitchSupervisor: NSObject, SwiftF0Model, @unchecked Sendable {
     }
 
     private let lock = NSLock()
+
+    /// One ONNX Runtime environment for the process, never released: ONNX
+    /// Runtime expects a single environment, and with several (one per model)
+    /// released at different times the process crashed on exit
+    /// ("recursive_mutex lock failed", on CI). Android's is a singleton too.
+    // Written once by the lazy initialiser, then only read.
+    nonisolated(unsafe) private static let sharedEnv: (api: UnsafePointer<OrtApi>, env: OpaquePointer)? = {
+        guard let apiBase = OrtGetApiBase(), let api = apiBase.pointee.GetApi(UInt32(ORT_API_VERSION)) else { return nil }
+        var env: OpaquePointer?
+        guard ok(api, api.pointee.CreateEnv(ORT_LOGGING_LEVEL_WARNING, "purandara", &env)), let env else { return nil }
+        return (api, env)
+    }()
     private static let inputNames = ["audio", "fmin", "fmax"]
     private static let outputNames = ["pitch", "confidence"]
 
@@ -38,28 +50,20 @@ final class NeuralPitchSupervisor: NSObject, SwiftF0Model, @unchecked Sendable {
     /// `threads`: 1 for live listening (it runs beside the audio), more for analysing a recording.
     init?(threads: Int = 1, bundle: Bundle = .main) {
         guard let modelPath = bundle.path(forResource: "models/\(Self.modelName)", ofType: "onnx"),
-              let apiBase = OrtGetApiBase(),
-              let apiPtr = apiBase.pointee.GetApi(UInt32(ORT_API_VERSION)) else { return nil }
+              let shared = Self.sharedEnv else { return nil }
+        let apiPtr = shared.api
+        let envPtr = shared.env
         api = apiPtr
-
-        var envPtr: OpaquePointer?
-        guard Self.ok(api, api.pointee.CreateEnv(ORT_LOGGING_LEVEL_WARNING, "purandara", &envPtr)), let envPtr else { return nil }
         env = envPtr
 
         var optionsPtr: OpaquePointer?
-        guard Self.ok(api, api.pointee.CreateSessionOptions(&optionsPtr)), let optionsPtr else {
-            api.pointee.ReleaseEnv(envPtr)
-            return nil
-        }
+        guard Self.ok(api, api.pointee.CreateSessionOptions(&optionsPtr)), let optionsPtr else { return nil }
         _ = api.pointee.SetInterOpNumThreads(optionsPtr, 1)
         _ = api.pointee.SetIntraOpNumThreads(optionsPtr, Int32(threads))
         var sessionPtr: OpaquePointer?
         let created = Self.ok(api, api.pointee.CreateSession(envPtr, modelPath, optionsPtr, &sessionPtr))
         api.pointee.ReleaseSessionOptions(optionsPtr)
-        guard created, let sessionPtr else {
-            api.pointee.ReleaseEnv(envPtr)
-            return nil
-        }
+        guard created, let sessionPtr else { return nil }
         session = sessionPtr
 
         var info: OpaquePointer?
@@ -67,7 +71,6 @@ final class NeuralPitchSupervisor: NSObject, SwiftF0Model, @unchecked Sendable {
               Self.names(apiPtr, sessionPtr, input: true).isSuperset(of: Self.inputNames),
               Self.names(apiPtr, sessionPtr, input: false).isSuperset(of: Self.outputNames) else {
             api.pointee.ReleaseSession(sessionPtr)
-            api.pointee.ReleaseEnv(envPtr)
             return nil
         }
         memInfo = info
@@ -77,7 +80,7 @@ final class NeuralPitchSupervisor: NSObject, SwiftF0Model, @unchecked Sendable {
     deinit {
         api.pointee.ReleaseMemoryInfo(memInfo)
         api.pointee.ReleaseSession(session)
-        api.pointee.ReleaseEnv(env)
+        // The environment is shared and lives as long as the process.
     }
 
     /// The model's pitch (Hz) and confidence per 16 ms frame of `audio16k`, or nil.
