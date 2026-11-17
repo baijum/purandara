@@ -14,6 +14,7 @@ import com.baijum.purandara.domain.varisai.SectionSpan
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.WrittenSwara
 import kotlin.math.abs
+import kotlin.math.floor
 import kotlin.math.roundToInt
 
 /** How to perform an exercise. Its raga and tala come from the exercise itself. */
@@ -129,6 +130,19 @@ class Schedule private constructor(
 
     /** Seconds per written avarta (one row block of notation) at the piece's own gati and speed. */
     val avartaSeconds: Double get() = aksharaSeconds * varisai.tala.aksharas * varisai.beat
+
+    /**
+     * Seconds per tala cycle at the tala's tempo: the same for every cycle,
+     * whatever the gati or a section's speed (only the cells per beat change).
+     * The cycles are the blocks of [com.baijum.purandara.domain.varisai.NotationLayout].
+     */
+    val cycleSeconds: Double get() = settings.talaAksharaSeconds * tala.aksharas
+
+    /** Tala cycles in one performance (all [repetitions]); the performance always fills whole cycles. */
+    val cycles: Int get() = (durationSeconds / cycleSeconds).roundToInt()
+
+    /** The 0-based tala cycle at [seconds] into the performance, clamped to the performance. */
+    fun cycleAt(seconds: Double): Int = floor(seconds / cycleSeconds + CYCLES_EPSILON).toInt().coerceIn(0, cycles - 1)
 
     /** Only a whole-piece request is eligible for whole-piece practice history. */
     val isWholePiece: Boolean get() = selection == PracticeSelection.WHOLE_PIECE

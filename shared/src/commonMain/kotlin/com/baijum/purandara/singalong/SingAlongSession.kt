@@ -4,6 +4,8 @@ import com.baijum.purandara.audio.PracticeSegment
 import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.platform.PlatformLock
 import com.baijum.purandara.platform.withLock
+import kotlin.math.floor
+import kotlin.math.min
 
 /**
  * Levels of what the app has rendered, by rendered frame, so the mic side
@@ -57,9 +59,17 @@ data class LiveReading(val reading: SwaraReading?, val pass: Int?, val secondsIn
 /**
  * Result of one mic frame: the live reading, notes whose marks are now
  * known (judged as soon as each note has ended), and a pass that this
- * frame completed, if any.
+ * frame completed, if any. [rewoundToSeconds] is set when a repeated tala
+ * cycle has come round again (docs/plan-repeat-cycle.md): the pass is being
+ * sung again from that point, so a trace drawn from it on is stale (marks
+ * are judged afresh and replace the old ones).
  */
-data class FrameOutcome(val live: LiveReading, val newMarks: List<NoteMark>, val completedPass: PassResult?)
+data class FrameOutcome(
+    val live: LiveReading,
+    val newMarks: List<NoteMark>,
+    val completedPass: PassResult?,
+    val rewoundToSeconds: Double? = null,
+)
 
 /**
  * Ties the sing-along pieces together for one playback: bleed calibration
@@ -86,6 +96,7 @@ class SingAlongSession(
     private val marks = mutableListOf<NoteMark>()
     private var nextNote = 0
     private var currentPass = -1
+    private var lastSecondsInPass = 0.0
     private val results = mutableListOf<PassResult>()
     private var finished = false
     private var finishedResult: PassResult? = null
@@ -114,6 +125,7 @@ class SingAlongSession(
         if (!bleed.isCalibrated) bleed.finishCalibration()
 
         var completed: PassResult? = null
+        var rewound: Double? = null
         val newMarks = mutableListOf<NoteMark>()
         if (position.pass != currentPass) {
             if (currentPass >= 0) {
@@ -122,12 +134,15 @@ class SingAlongSession(
                 completed = result
             }
             currentPass = position.pass
+        } else if (position.secondsInPass < lastSecondsInPass - REWIND_SECONDS) {
+            rewound = rewind(lastSecondsInPass, position.secondsInPass, newMarks)
         }
+        lastSecondsInPass = position.secondsInPass
         val voice = frame.frequencyHz != null && bleed.isVoice(frame.rms, outputRms)
         frames += ScoredFrame(position.secondsInPass, frame.frequencyHz, voice)
         newMarks += judgeEndedNotes(position.secondsInPass)
         val reading = if (voice) mapper.read(frame.frequencyHz) else null
-        return FrameOutcome(LiveReading(reading, position.pass, position.secondsInPass), newMarks, completed)
+        return FrameOutcome(LiveReading(reading, position.pass, position.secondsInPass), newMarks, completed, rewound)
     }
 
     /**
@@ -154,6 +169,24 @@ class SingAlongSession(
         return out
     }
 
+    /**
+     * The performance went back from [from] to [to] (seconds in the pass) to
+     * repeat a tala cycle: judge the notes that ended at the jump, then forget
+     * what was sung from the start of the repeated cycle on, so it is judged
+     * afresh. Returns that start.
+     */
+    private fun rewind(from: Double, to: Double, newMarks: MutableList<NoteMark>): Double {
+        val cycle = schedule.cycleSeconds
+        val jump = (floor(from / cycle + TIME_EPSILON) + 1) * cycle
+        newMarks += judgeEndedNotes(jump + JUDGE_DELAY_SECONDS)
+        val start = floor(to / cycle + TIME_EPSILON) * cycle
+        frames.removeAll { it.secondsInPass >= start - TIME_EPSILON }
+        marks.removeAll { it.event.startSeconds >= start - TIME_EPSILON }
+        val first = schedule.notes.indexOfFirst { it.startSeconds >= start - TIME_EPSILON }
+        nextNote = if (first < 0) schedule.notes.size else min(nextNote, first)
+        return start
+    }
+
     private fun completePass(): Pair<List<NoteMark>, PassResult> {
         val rest = judgeEndedNotes(Double.MAX_VALUE)
         val result = PassResult(currentPass, marks.toList(), scorer.summarise(marks))
@@ -161,6 +194,7 @@ class SingAlongSession(
         frames.clear()
         marks.clear()
         nextNote = 0
+        lastSecondsInPass = 0.0
         return rest to result
     }
 
@@ -185,5 +219,9 @@ class SingAlongSession(
 
         /** Wait this long after a note ends before judging it (smoothing and timing slack). */
         const val JUDGE_DELAY_SECONDS = 0.06
+
+        /** Time going back by more than this within a pass is a repeated cycle, not jitter. */
+        private const val REWIND_SECONDS = 0.1
+        private const val TIME_EPSILON = 1e-6
     }
 }

@@ -1,7 +1,10 @@
 package com.baijum.purandara.singalong
 
+import com.baijum.purandara.audio.CycleRepeats
 import com.baijum.purandara.audio.PracticeSegment
+import com.baijum.purandara.audio.SampleRenderer
 import kotlin.math.floor
+import kotlin.math.roundToLong
 
 /** Where in the exercise a sung moment belongs. */
 data class SungPosition(val pass: Int, val secondsInPass: Double)
@@ -35,6 +38,10 @@ class SingAlongClock(
 
     private var segmentOriginSeconds: Double = 0.0
 
+    /** Cycles repeated in the renderer's output, at [repeatsRate]: heard time maps back through them. */
+    private var repeats: CycleRepeats? = null
+    private var repeatsRate: Int = 0
+
     /** Playback-timeline time the singer was responding to at [captureSeconds], still global for output levels. */
     fun heardSeconds(captureSeconds: Double): Double = captureSeconds - inputLatencySeconds - outputLatencySeconds
 
@@ -43,14 +50,34 @@ class SingAlongClock(
 
     /** The pass and time within it, or null during the count-in, before playback or after the end. */
     fun locate(captureSeconds: Double): SungPosition? {
-        val sinceStart = heardSeconds(captureSeconds) - segmentOriginSeconds - countInSeconds
-        if (sinceStart < 0.0) return null
+        val heard = heardSeconds(captureSeconds) - segmentOriginSeconds - countInSeconds
+        if (heard < 0.0) return null
+        val sinceStart = repeats?.let { it.performanceFrame((heard * repeatsRate).roundToLong()).toDouble() / repeatsRate } ?: heard
         val pass = floor(sinceStart / passSeconds).toInt()
         if (!loop && pass > 0) return null
         return SungPosition(pass, sinceStart - pass * passSeconds)
     }
 
     companion object {
+        /**
+         * The clock for [renderer]'s own playback, with capture times already
+         * on its heard-output clock (zero latency): count-in, pass length,
+         * looping and any repeated cycles from the renderer.
+         */
+        fun forRenderer(renderer: SampleRenderer): SingAlongClock {
+            val rate = renderer.sampleRate.toDouble()
+            return SingAlongClock(
+                countInSeconds = renderer.countInFrames / rate,
+                passSeconds = renderer.performanceFrames / rate,
+                loop = renderer.totalFrames == Long.MAX_VALUE,
+                outputLatencySeconds = 0.0,
+                inputLatencySeconds = 0.0,
+            ).also {
+                it.repeats = renderer.repeats
+                it.repeatsRate = renderer.sampleRate
+            }
+        }
+
         /**
          * Mic times remain transport-global. Only count-in/location subtract the segment origin;
          * [heardSeconds] remains global so persistent output-level history uses the same frame key.
