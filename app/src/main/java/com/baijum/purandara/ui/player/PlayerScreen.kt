@@ -57,11 +57,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -120,7 +124,7 @@ fun PlayerScreen(
         },
         bottomBar = {
             if (playback.recovering) RecoveryBar(playback, actions)
-            else PlayButtonBar(playback.playing, canPlay || playback.playing, actions.onTogglePlay)
+            else PlayButtonBar(playback, canPlay || playback.playing, actions)
         },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
@@ -142,6 +146,7 @@ fun PlayerScreen(
             NotationView(
                 layout = layout,
                 position = playback.position,
+                repeatingBlock = playback.repeatingBlock,
                 marks = if (settings.singAlong) state.singAlong.marks else emptyMap(),
                 words = settings.words,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -222,18 +227,38 @@ private fun RunBanner(run: RunUiState, onSkip: () -> Unit) {
     }
 }
 
+/** Play/Stop, with Repeat this cycle (or Continue, while repeating) beside Stop while playing. */
 @Composable
-private fun PlayButtonBar(playing: Boolean, enabled: Boolean, onToggle: () -> Unit) {
+private fun PlayButtonBar(playback: PlaybackState, enabled: Boolean, actions: PlayerActions) {
+    val playing = playback.playing
     Surface(tonalElevation = 3.dp) {
-        Button(
-            onClick = onToggle,
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
-        ) {
-            Icon(painterResource(if (playing) R.drawable.ic_stop else R.drawable.ic_play), contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(if (playing) R.string.stop else R.string.play))
+        Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (playing && playback.repeatOffered) RepeatCycleButton(playback, actions, Modifier.weight(1f))
+            Button(
+                onClick = actions.onTogglePlay,
+                enabled = enabled,
+                modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+            ) {
+                Icon(painterResource(if (playing) R.drawable.ic_stop else R.drawable.ic_play), contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(if (playing) R.string.stop else R.string.play))
+            }
         }
+    }
+}
+
+@Composable
+private fun RepeatCycleButton(playback: PlaybackState, actions: PlayerActions, modifier: Modifier) {
+    val repeating = playback.repeatingBlock != null
+    val hint = stringResource(if (repeating) R.string.continue_after_repeat_hint else R.string.repeat_cycle_hint)
+    OutlinedButton(
+        onClick = actions.onToggleRepeatCycle,
+        enabled = repeating || playback.canRepeatCycle,
+        modifier = modifier.heightIn(min = 56.dp).semantics { onClick(label = hint, action = null) },
+    ) {
+        Icon(painterResource(if (repeating) R.drawable.ic_play else R.drawable.ic_repeat_one), contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(if (repeating) R.string.continue_after_repeat else R.string.repeat_cycle))
     }
 }
 
@@ -356,6 +381,18 @@ private fun PlaybackStatus(playback: PlaybackState, sa: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (playback.phase != null) StatusText(stringResource(R.string.practice_attempt, playback.attempt), MaterialTheme.colorScheme.onSurfaceVariant)
+        playback.repeatingBlock?.let { block ->
+            // Announced once as repeating starts; the count below changes every cycle, so it isn't.
+            Text(
+                stringResource(R.string.repeating_cycle, block + 1),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
+            )
+            if (playback.repeatTimes > 1) {
+                StatusText(pluralStringResource(R.plurals.repeat_times, playback.repeatTimes, playback.repeatTimes), MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         when {
             playback.countingIn -> StatusText(stringResource(R.string.counting_in), MaterialTheme.colorScheme.primary)
             playback.phase == PracticePhase.LISTEN -> StatusText(stringResource(R.string.practice_listen), MaterialTheme.colorScheme.primary)

@@ -112,6 +112,12 @@
     <string name="practice_listen">Listen</string>
     <string name="practice_your_turn">Your turn</string>
     <string name="practice_attempt">Attempt %1$d</string>
+    <string name="repeat_cycle">Repeat this cycle</string>
+    <string name="repeat_cycle_hint">play this tala cycle again until you continue</string>
+    <string name="continue_after_repeat">Continue</string>
+    <string name="continue_after_repeat_hint">carry on into the next cycle</string>
+    <string name="repeating">Repeating</string>
+    <string name="repeating_cycle">Repeating cycle %1$d</string>
     <string name="count_in">Count in one avarta</string>
     <string name="counting_in">Count-in…</string>
     <string name="harmonium_volume">Harmonium volume</string>
@@ -301,6 +307,10 @@
     <string name="swara_held">%1$s held</string>
     <string name="swara_not_in_raga">%1$s, not in the raga</string>
     <string name="recording_jump_hint">play from here</string>
+    <plurals name="repeat_times">
+        <item quantity="one">%1$d time</item>
+        <item quantity="other">%1$d times</item>
+    </plurals>
     <plurals name="notes">
         <item quantity="one">%d note</item>
         <item quantity="other">%d notes</item>

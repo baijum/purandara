@@ -52,22 +52,14 @@ class SingAlongEngine(
     }
 
     companion object {
-        /** The session for [renderer]'s playback of [schedule]: count-in, pass length and looping from the renderer. */
-        fun sessionFor(renderer: SampleRenderer, schedule: Schedule, strictness: Strictness): SingAlongSession {
-            val rate = renderer.sampleRate.toDouble()
-            return SingAlongSession(
+        /** The session for [renderer]'s playback of [schedule]: count-in, pass length, looping and repeated cycles from the renderer. */
+        fun sessionFor(renderer: SampleRenderer, schedule: Schedule, strictness: Strictness): SingAlongSession =
+            SingAlongSession(
                 schedule = schedule,
-                clock = SingAlongClock(
-                    countInSeconds = renderer.countInFrames / rate,
-                    passSeconds = renderer.performanceFrames / rate,
-                    loop = renderer.totalFrames == Long.MAX_VALUE,
-                    outputLatencySeconds = 0.0,
-                    inputLatencySeconds = 0.0,
-                ),
+                clock = SingAlongClock.forRenderer(renderer),
                 sampleRate = renderer.sampleRate,
                 strictness = strictness,
             )
-        }
     }
 
     /** Stops the mic; returns the scored final pass, if one was in progress. */

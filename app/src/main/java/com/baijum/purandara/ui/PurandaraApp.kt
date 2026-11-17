@@ -305,6 +305,7 @@ private fun PlayerRoute(viewModel: PracticeViewModel, state: PracticeUiState, mi
             onSettingsChange = viewModel::updateSettings,
             onContinue = { viewModel.continuePractice() },
             onWaitForMe = { viewModel.continuePractice(waitForMe = true) },
+            onToggleRepeatCycle = viewModel.cycleRepeat::toggle,
             onSelectSection = { section -> if (!runMode) viewModel.select(selected, section) },
             onSelectPhrase = { phrase -> if (!runMode) viewModel.select(selected, phrase = phrase) },
             onSkipRun = { if (runMode) viewModel.runs.skip() },

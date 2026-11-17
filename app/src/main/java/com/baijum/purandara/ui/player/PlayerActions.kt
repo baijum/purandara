@@ -20,4 +20,6 @@ class PlayerActions(
     val onSelectPhrase: (PracticePhrase?) -> Unit = {},
     /** In a run: skip the rest of this varisai and start the next one. */
     val onSkipRun: () -> Unit = {},
+    /** Repeat the tala cycle being heard, or (while repeating) continue (docs/plan-repeat-cycle.md). */
+    val onToggleRepeatCycle: () -> Unit = {},
 )

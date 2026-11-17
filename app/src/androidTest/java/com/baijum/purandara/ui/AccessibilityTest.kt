@@ -9,6 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -461,6 +463,35 @@ class AccessibilityTest {
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.LiveRegion))
         compose.onNode(hasText("Rest") and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)).assertIsDisplayed()
         compose.onAllNodesWithText("Reviewed practice phrase").assertCountEquals(0)
+    }
+
+    @Test
+    fun repeatThisCycleIsALabelledButtonBesideStop() {
+        showPlayer(PlaybackState(playing = true, repeatOffered = true, canRepeatCycle = true))
+        val repeat = compose.onNodeWithText("Repeat this cycle").assertHasClickAction().assertIsEnabled()
+        assertTouchTarget(repeat)
+        repeat.assert(SemanticsMatcher("click label") { it.config.getOrNull(SemanticsActions.OnClick)?.label == "play this tala cycle again until you continue" })
+        assertTouchTarget(compose.onNodeWithText("Stop").assertHasClickAction())
+    }
+
+    @Test
+    fun repeatThisCycleWaitsOutTheCountIn() {
+        showPlayer(PlaybackState(playing = true, countingIn = true, repeatOffered = true, canRepeatCycle = false))
+        compose.onNodeWithText("Repeat this cycle").assertIsNotEnabled()
+    }
+
+    @Test
+    fun repeatingOffersContinueAndMarksTheCycle() {
+        showPlayer(PlaybackState(playing = true, repeatOffered = true, canRepeatCycle = true, repeatingBlock = 1, repeatTimes = 2))
+        assertTouchTarget(compose.onNodeWithText("Continue").assertHasClickAction())
+        compose.onNodeWithText("Repeating cycle 2").assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+        compose.onNodeWithText("2 times").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.LiveRegion))
+        compose.onNode(
+            SemanticsMatcher("repeating block") { node ->
+                node.config.getOrNull(SemanticsProperties.ContentDescription)?.any { it.startsWith("Repeating. Avarta 2:") } == true
+            },
+        ).assertExists()
     }
 
     @Test

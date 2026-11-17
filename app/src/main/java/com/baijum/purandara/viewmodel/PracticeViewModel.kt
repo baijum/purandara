@@ -75,6 +75,14 @@ data class PlaybackState(
     val attempt: Int = 1,
     val recoverySeconds: Int = 0,
     val pausedForContinue: Boolean = false,
+    /** The player shows Repeat this cycle (docs/plan-repeat-cycle.md): not in the practice transport's modes. */
+    val repeatOffered: Boolean = false,
+    /** Repeat this cycle can be pressed now (not in the count-in or after the end). */
+    val canRepeatCycle: Boolean = false,
+    /** The notation block (tala cycle in the pass) being repeated, or null. */
+    val repeatingBlock: Int? = null,
+    /** Times the repeated cycle has been heard so far, counting the first. */
+    val repeatTimes: Int = 0,
 ) {
     val recovering: Boolean get() = phase == PracticePhase.RECOVERY || phase == PracticePhase.WAITING || pausedForContinue
 }
@@ -122,6 +130,9 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         ),
     )
     val state: StateFlow<PracticeUiState> = _state.asStateFlow()
+
+    /** Repeat this cycle in the player (docs/plan-repeat-cycle.md). */
+    val cycleRepeat = CycleRepeatControl(player, _state)
 
     val catalog: List<Varisai> = VarisaiCatalog.all
 
@@ -491,7 +502,9 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
             )
         }
         val singAlong = settings.singAlong && (_state.value.singAlong.micPermitted || debugSyntheticSingerCents != null)
-        if (needsTransport(settings, singAlong, runPlaying)) {
+        val direct = !needsTransport(settings, singAlong, runPlaying)
+        cycleRepeat.start(r.takeIf { direct }, schedule.cycles)
+        if (!direct) {
             practicePlayback.start(bank, schedule, settings, singAlong, automaticRestart)
             return
         }
@@ -523,14 +536,16 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     private fun onTick(r: SampleRenderer, schedule: Schedule, varisai: Varisai) {
         val frames = player.outputFrameAt(System.nanoTime())
         if (frames == null || frames < 0) return
-        if (!practisedThisPlay && frames >= r.countInFrames + r.performanceFrames) {
+        if (!practisedThisPlay && (r.performanceFrame(frames) ?: 0L) >= r.performanceFrames) {
             practisedThisPlay = true
             // A section alone doesn't count as practising the whole piece.
             if (schedule.isWholePiece) updateHistory { it.practised(varisai.id, System.currentTimeMillis()) }
         }
         val countInBeat = r.countInBeat(frames)
         val seconds = r.passSeconds(frames)
-        val attempt = ((frames - r.countInFrames).coerceAtLeast(0) / r.performanceFrames).toInt() + 1
+        val attempt = r.passAt(frames) + 1
+        val repeatTimes = cycleRepeat.timesHeard(r, frames)
+        val canRepeat = countInBeat == null && r.cycleToRepeat(frames) != null
         _state.update {
             it.copy(
                 playback = it.playback.copy(
@@ -539,6 +554,9 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
                     attempt = attempt,
                     position = if (countInBeat != null) null else schedule.cursorAt(seconds),
                     beatInAvarta = countInBeat ?: schedule.beatAt(seconds)?.beatInAvarta,
+                    repeatOffered = true,
+                    canRepeatCycle = canRepeat,
+                    repeatTimes = repeatTimes,
                 ),
             )
         }
@@ -577,7 +595,9 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         outcome.completedPass?.let { recordScore(it) }
         _state.update { s ->
             val live = outcome.live
-            var trace = s.singAlong.trace
+            // A repeated cycle has come round: its old trace would draw over the new one.
+            var trace = outcome.rewoundToSeconds?.let { from -> s.singAlong.trace.filterNot { it.pass == live.pass && it.secondsInPass >= from } }
+                ?: s.singAlong.trace
             if (live.reading != null && live.pass != null && live.secondsInPass != null) {
                 trace = (trace + TraceSample(live.pass!!, live.secondsInPass!!, Pitch.cents(sa, live.reading!!.frequencyHz), live.reading!!.zone))
                     .takeLast(MAX_TRACE)
@@ -598,6 +618,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
 
     private fun recordScore(result: PassResult) {
         if (schedule?.isWholePiece != true) return // only explicit whole-piece passes are a best result
+        if (cycleRepeat.repeatedIn(result.pass)) return // nor a pass with a repeated cycle
         val id = _state.value.selected?.id ?: return
         updateHistory { it.scored(id, result, System.currentTimeMillis()) }
     }
@@ -632,7 +653,10 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         if (!immediate) player.stop()
         _state.update {
             it.copy(
-                playback = it.playback.copy(playing = false, position = null, beatInAvarta = null, countingIn = false, phase = null, pausedForContinue = false),
+                playback = it.playback.copy(
+                    playing = false, position = null, beatInAvarta = null, countingIn = false, phase = null, pausedForContinue = false,
+                    canRepeatCycle = false, repeatingBlock = null, repeatTimes = 0,
+                ),
                 tanpuraPlaying = false,
             )
         }

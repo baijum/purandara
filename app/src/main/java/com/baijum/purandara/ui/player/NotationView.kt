@@ -74,6 +74,8 @@ fun NotationView(
     modifier: Modifier = Modifier,
     marks: Map<MarkKey, NoteResult> = emptyMap(),
     words: WordsDisplay = WordsDisplay.BOTH,
+    /** The block being repeated by Repeat this cycle, marked "Repeating". */
+    repeatingBlock: Int? = null,
 ) {
     val listState = rememberLazyListState()
     val reduceMotion = LocalReduceMotion.current
@@ -97,8 +99,20 @@ fun NotationView(
             val blockMarks = marks.filterKeys { (it.avarta to it.akshara) in cells }
             val swaras = if (blockMarks.isEmpty()) layout.spoken(index, karvaiWord) else markedSpoken(layout, index, blockMarks, karvaiWord)
             val spoken = layout.spokenWords(index)?.let { stringResource(R.string.avarta_words, swaras, it) } ?: swaras
-            val description = stringResource(R.string.avarta_description, index + 1, spoken)
+            val repeatingLabel = stringResource(R.string.repeating)
+            val repeating = index == repeatingBlock
+            val plain = stringResource(R.string.avarta_description, index + 1, spoken)
+            val description = if (repeating) "$repeatingLabel. $plain" else plain
             Column {
+                if (repeating) {
+                    Text(
+                        repeatingLabel,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        // Part of the block's description, so not read twice.
+                        modifier = Modifier.padding(horizontal = 16.dp).clearAndSetSemantics {},
+                    )
+                }
                 block.heading?.let { heading ->
                     Text(
                         heading,
