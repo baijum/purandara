@@ -14,7 +14,8 @@ varnam stage is built — rests, per-section speed, the two-kalai strip and
 all four varnams; they wait on their second-source checks, issue #7), and
 the notation laid out by tala cycle at every speed
 (`docs/plan-speed-layout.md`) and practice runs through a whole varisai set
-(`docs/plan-practice-run.md`) and recordings with approximate swaras
+(`docs/plan-practice-run.md`) and Repeat this cycle
+(`docs/plan-repeat-cycle.md`) and recordings with approximate swaras
 (`docs/plan-recordings.md`), with an external tanpura
 (`docs/plan-recordings-tanpura.md`). On the website: search (`docs/plan-site-search.md`)
 and the Learn section, beginner theory for learners (`docs/plan-learn.md`).
@@ -46,7 +47,8 @@ features speculatively.
   (recordings with an external tanpura) and [`docs/plan-recording-insights.md`](docs/plan-recording-insights.md)
   ("How it went", what you meant to sing, your own raga; steps 1–3 built) and
   [`docs/plan-navigation.md`](docs/plan-navigation.md) (a navigation menu: Android drawer,
-  iOS tabs and iPad sidebar; built) (and, for the website,
+  iOS tabs and iPad sidebar; built) and [`docs/plan-repeat-cycle.md`](docs/plan-repeat-cycle.md)
+  (Repeat this cycle: go over one tala cycle until Continue; built) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
@@ -121,13 +123,13 @@ features speculatively.
 | `shared/.../recording/` | Recordings (docs/plan-recordings.md): `RecordingAnalyzer` (decoded audio → `PitchTrack`, SwiftF0 on every window), `PitchTrack` (the saved `.pitch` format), `SwaraTranscriber` (steady stretches → `HeardNote`s in phrases, approximate by design), `RecordingLibrary` + `Recording` (index JSON, auto title); `TanpuraProfile` (the student's own tanpura, learnt from the first 3 s: level, Sa, the drone-aware voice gate); `RecordingInsights` ("How it went": what was meant to be sung (`Scale`) aligned to what was heard, the Sa it fits, cents and words by Strictness, steadiness; docs/plan-recording-insights.md); iOS `ByteBridge` for `.pitch` bytes |
 | `shared/.../navigation/` | `NavDestination` (the top-level destinations: Home, a set page, Shruti practice, Find my Sa, Recordings, About; stable `id`s, where Back goes) and `NavGroup` (the menu's groups and their items), shared by the Android drawer and the iOS tabs and sidebar (docs/plan-navigation.md) |
 | `shared/.../domain/schedule/` | `Schedule`: timed note/beat/cursor events, `cursorAt`/`beatAt`; `ofSection` plays one section (`Varisai.sections`) with the piece's avarta numbers |
-| `shared/.../audio/` | `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output) |
+| `shared/.../audio/` | `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output; its output is spans, and `repeatCycle` / `continueAfterRepeat` on the render worker go back to a tala cycle: docs/plan-repeat-cycle.md), `CycleRepeats` (the jumps, readable from any thread: heard frame → performance) |
 | `shared/.../pitch/` | `PitchDetector` (YIN), `AudioResampler`, `NeuralArbitrator`: ported from ukulele-companion with the interpolation sign fix; `SwiftF0.kt` (the v0.3 model's contract: range, silence gate, `StreamResampler`, `SwiftF0Chunker` for recordings, `SwiftF0Live` for live listening; docs/plan-swiftf0-upgrade.md) |
 | `shared/.../singalong/` | `LivePitch` (live listening: YIN + SwiftF0 v0.3 on a rolling buffer, octave correction only), `PitchPipeline`, `SwaraMapper` (+ `Zone`, `Strictness`), `SingAlongClock`, `BleedModel` (room noise + leakage), `NoteScorer`, `SingAlongSession`: sing-along scoring |
 | `app/.../audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (`AudioTrack` on a worker thread) |
 | `app/.../audio/` (sing-along) | `MicSource` (`AudioRecordMicSource` with echo cancellation; debug-only `SyntheticSingerMicSource`), `SingAlongEngine`, `PitchListener` (Shruti practice, Find my Sa), `NeuralPitchSupervisor` (the SwiftF0 v0.3 ONNX session, a shared `SwiftF0Model`) |
 | `app/.../audio/` (recordings) | `Recorder` (`AudioRecord` unprocessed → AAC .m4a; debug `SyntheticSingerInput`), `RecordingDecoder` (.m4a → shared analyser); `data/RecordingStore` (files in `filesDir/recordings`) |
-| `app/.../viewmodel/` | `RecordingsViewModel` (record, analyse, list, play, rename, Sa/raga, delete; kept apart from `PracticeViewModel`; `RagaEditing` for Your own raga), `PracticeViewModel`, `RunController` + `RunState` (a run sequences the normal player through its kalas and repeats), `SingAlongState`, `ShrutiState` |
+| `app/.../viewmodel/` | `CycleRepeatControl` (Repeat this cycle for the player), `RecordingsViewModel` (record, analyse, list, play, rename, Sa/raga, delete; kept apart from `PracticeViewModel`; `RagaEditing` for Your own raga), `PracticeViewModel`, `RunController` + `RunState` (a run sequences the normal player through its kalas and repeats), `SingAlongState`, `ShrutiState` |
 | `app/.../ui/` | `PurandaraApp` (routes: the menu's destinations in `MenuScaffold`, with the player, practice run and recorder pushed above; `AppNavigator`), `navigation/` (`TopLevelNav.kt`: the drawer, modal or permanent, and `NavigationButton`), `library/` (`HomeScreen`: continue, Sa, the sets; `SetScreen`: a set's page with its run row), `about/`, `player/`, `run/` (setup and complete; playing uses the player with a run banner), `recordings/` (list, record, recording; `RagaEditor` for Your own raga), `shruti/`, `SaControls.kt` (Sa picker, fine-tune, strictness) |
 | `iosApp/Purandara/Audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (renders ahead on a queue into `AVAudioPlayerNode` buffers; no Kotlin on the real-time thread) |
 | `iosApp/Purandara/ViewModels/`, `Views/` | `PracticeViewModel` (including `RunUI`); `NavigationViews` (`AppNavigation`, `RootView`: tabs on compact width, a sidebar on regular; the Sa tab, `AboutView`, `appDestinations` for pushed screens); `HomeView` (Home: continue, Sa + tanpura, the sets; `SetView`: a set's page with contours and its run row; `SaSection`), `PlayerView` (+ settings sheet, `SaChoiceList`), `RunView` (run plan and complete; playing uses `PlayerView` with a run banner), `NotationView` (+ `TalaStripView`), `SingAlongViews`, `ShrutiView` (Shruti practice, Find my Sa) |

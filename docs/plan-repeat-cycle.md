@@ -1,7 +1,7 @@
 # Plan: repeat this cycle
 
 Status: **approved** (2026-11-17), with the suggested answers to the open
-questions. R1 (shared) and R2 (Android) done.
+questions. R1–R4 done (shared, Android, iOS, docs and site).
 
 ## Why
 

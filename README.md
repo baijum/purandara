@@ -31,6 +31,9 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
   Choose your Sa (kattai, fine-tune ±50 cents), tempo, speed (kala), tuning
   (just or equal), connected or lightly separated harmonium notes, count-in,
   tala click and looping.
+- **Repeat this cycle:** go over one tala cycle again and again, with the
+  tanpura and tala running on, then Continue into the rest of the exercise.
+  With sing-along on, the cycle's marks are judged afresh each time round.
 - **Recovery and listen–repeat:** keep the tanpura sounding between attempts,
   with a timed break or Continue when ready. Listen to a harmonium model,
   then sing the same unit, with optional pitch feedback and response guide.
@@ -117,6 +120,7 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [docs/plan-gitam-swarajati-varnam.md](docs/plan-gitam-swarajati-varnam.md) | More gitams, swarajatis, varnams (in progress; open items in issues #1–#6) |
 | [docs/plan-speed-layout.md](docs/plan-speed-layout.md) | Notation laid out by tala cycle at every speed: strip and notation share columns (done) |
 | [docs/plan-speed-clarification.md](docs/plan-speed-clarification.md) | Written-pace multipliers, paired Janta speeds and the player’s About speed help |
+| [docs/plan-repeat-cycle.md](docs/plan-repeat-cycle.md) | Repeat this cycle: go over one tala cycle until Continue, without stopping (built) |
 | [docs/plan-practice-run.md](docs/plan-practice-run.md) | Practising a whole varisai set in one run: per-varisai speed climb and repeats (built) |
 | [docs/plan-recordings.md](docs/plan-recordings.md) | Recordings with approximate swaras: record, analyse, play back (built) |
 | [docs/plan-site-search.md](docs/plan-site-search.md) | Website: full-text search (done) |
