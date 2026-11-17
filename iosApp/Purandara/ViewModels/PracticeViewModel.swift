@@ -19,6 +19,14 @@ struct PlaybackState: Equatable {
     var practicePhase: PracticePhase?
     var attempt = 1
     var recoverySeconds: Int?
+    /// The player shows Repeat this cycle (docs/plan-repeat-cycle.md): not in the practice transport's modes.
+    var repeatOffered = false
+    /// Repeat this cycle can be pressed now (not in the count-in or after the end).
+    var canRepeatCycle = false
+    /// The notation block (tala cycle in the pass) being repeated, or nil.
+    var repeatingBlock: Int?
+    /// Times the repeated cycle has been heard so far, counting the first.
+    var repeatTimes = 0
 
     var recovering: Bool { practicePhase == .recovery || practicePhase == .waiting }
 }
@@ -204,6 +212,10 @@ final class PracticeViewModel: ObservableObject {
     private var engine: SingAlongEngine?
     /// The exercise playing now has been heard through one full pass (recorded once per play).
     private var practisedThisPlay = false
+    /// Output frame (since the count-in) heard when Repeat this cycle was pressed, while repeating.
+    private var repeatHeardFrom: Int64?
+    /// Passes in which a cycle was repeated in this play: none is a best score.
+    private var repeatedPasses: Set<Int> = []
     /// Shruti practice or Find my Sa listening.
     private var listener: PitchListener?
     private var shrutiSession: ShrutiSession?
@@ -305,6 +317,8 @@ final class PracticeViewModel: ObservableObject {
         tanpuraPlaying = false
         self.schedule = schedule
         self.renderer = renderer
+        repeatHeardFrom = nil
+        repeatedPasses = []
         singAlong.live = nil
         singAlong.pass = nil
         singAlong.trace = []
@@ -332,7 +346,7 @@ final class PracticeViewModel: ObservableObject {
             return
         }
         newEngine?.start()
-        playback = PlaybackState(playing: true, repetitions: Int(schedule.repetitions))
+        playback = PlaybackState(playing: true, repetitions: Int(schedule.repetitions), repeatOffered: true)
         let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
@@ -1160,7 +1174,7 @@ final class PracticeViewModel: ObservableObject {
             return
         }
         guard let renderer, let schedule, let frames = player.positionFrames() else { return }
-        if !practisedThisPlay, let current, frames >= Int64(renderer.countInFrames) + Int64(renderer.performanceFrames) {
+        if !practisedThisPlay, let current, (renderer.performanceFrame(frame: frames)?.int64Value ?? 0) >= Int64(renderer.performanceFrames) {
             practisedThisPlay = true
             // A section alone doesn't count as practising the whole piece.
             if schedule.isWholePiece { updateHistory { $0.practised(varisaiId: current.id, nowMillis: Self.nowMillis) } }
@@ -1168,8 +1182,10 @@ final class PracticeViewModel: ObservableObject {
         let countInBeat = renderer.countInBeat(frame: frames).map { Int(truncating: $0) }
         let seconds = renderer.passSeconds(frame: frames)
         let position = countInBeat == nil ? schedule.cursorAt(seconds: seconds) : nil
-        let attempt = max(1, Int((frames - Int64(renderer.countInFrames)) / Int64(renderer.performanceFrames)) + 1)
+        let attempt = Int(renderer.passAt(frame: frames)) + 1
         var next = playback
+        next.canRepeatCycle = countInBeat == nil && renderer.cycleToRepeat(frame: frames) != nil
+        next.repeatTimes = repeatHeardFrom.map { 1 + Int(renderer.repeats.jumpsBetween(from: $0, to: frames - Int64(renderer.countInFrames))) } ?? 0
         next.attempt = attempt
         next.countingIn = countInBeat != nil
         next.repetition = position.map { Int($0.repetition) }
@@ -1179,6 +1195,32 @@ final class PracticeViewModel: ObservableObject {
         next.beatInAvarta = countInBeat ?? schedule.beatAt(seconds: seconds).map { Int($0.beatInAvarta) }
         if next != playback { playback = next }
         if run?.phase == .playing { onRunPass(attempt) }
+    }
+
+    /// Repeat this cycle (docs/plan-repeat-cycle.md): from the end of the cycle
+    /// playing, play the heard cycle (or the one just finished, if pressed in its
+    /// first beat) again until pressed again (Continue), when the cycle playing
+    /// finishes and the exercise carries on into the next. The tanpura and tala
+    /// carry on throughout.
+    func toggleRepeatCycle() {
+        guard transport == nil, let renderer, let schedule else { return }
+        if playback.repeatingBlock != nil {
+            player.command(renderer) { $0.continueAfterRepeat() }
+            repeatHeardFrom = nil
+            playback.repeatingBlock = nil
+            playback.repeatTimes = 0
+            UIAccessibility.post(notification: .announcement, argument: String(localized: "Continuing"))
+            return
+        }
+        guard let heard = player.positionFrames(), let cycle = renderer.cycleToRepeat(frame: heard)?.int64Value else { return }
+        let cycles = Int64(schedule.cycles)
+        repeatedPasses.insert(Int(cycle / cycles))
+        repeatHeardFrom = heard - Int64(renderer.countInFrames)
+        player.command(renderer) { _ = $0.repeatCycle(cycle: cycle) }
+        let block = Int(cycle % cycles)
+        playback.repeatingBlock = block
+        playback.repeatTimes = 1
+        UIAccessibility.post(notification: .announcement, argument: String(localized: "Repeating cycle \(block + 1)"))
     }
 
     // MARK: - Sing along
@@ -1212,6 +1254,10 @@ final class PracticeViewModel: ObservableObject {
         // Same counter the trace is tagged with: the whole-performance
         // loop, reported even while no voice is heard (issue #12).
         singAlong.pass = live.pass.map { attempt.map { $0 - 1 } ?? Int(truncating: $0) }
+        // A repeated cycle has come round: its old trace would draw over the new one.
+        if let from = outcome.rewoundToSeconds.map({ Double(truncating: $0) }), let pass = singAlong.pass {
+            singAlong.trace.removeAll { $0.pass == pass && $0.secondsInPass >= from }
+        }
         if let reading = live.reading, let pass = live.pass, let t = live.secondsInPass {
             singAlong.trace.append(TraceSample(
                 pass: attempt.map { $0 - 1 } ?? Int(truncating: pass), secondsInPass: Double(truncating: t),
@@ -1234,7 +1280,9 @@ final class PracticeViewModel: ObservableObject {
     }
 
     private func announce(_ result: PassResult, attempt: Int? = nil) {
-        if let current, schedule?.isWholePiece == true { // only whole-piece passes are a best result
+        // Only whole-piece passes are a best result, and never one with a repeated cycle.
+        let repeated = attempt == nil && repeatedPasses.contains(Int(result.pass))
+        if let current, schedule?.isWholePiece == true, !repeated {
             updateHistory { $0.scored(varisaiId: current.id, result: result, nowMillis: Self.nowMillis) }
         }
         let number = attempt ?? (Int(result.pass) + 1)

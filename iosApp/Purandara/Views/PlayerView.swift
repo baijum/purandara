@@ -89,6 +89,12 @@ struct PlayerView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
+            // Repeat this cycle beside Stop; stacked at accessibility text sizes rather than clipped.
+            let bar = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 12))
+            bar {
+            if viewModel.playback.playing && viewModel.playback.repeatOffered {
+                RepeatCycleButton(playback: viewModel.playback) { viewModel.toggleRepeatCycle() }
+            }
             Button {
                 if runMode {
                     viewModel.stopRun()
@@ -107,6 +113,7 @@ struct PlayerView: View {
             // Stop stays available even when the Sa is out of range or the samples
             // are still loading; only starting playback needs those (issue #13).
             .disabled(!runMode && !viewModel.playback.playing && (!viewModel.canPlay || !saPlayable))
+            }
             .padding()
             // Opaque: controls scrolling behind a translucent bar fail contrast checks.
             .background(Color(uiColor: .systemBackground))
@@ -164,6 +171,29 @@ struct PlayerView: View {
     }
 }
 
+/// Repeat this cycle (docs/plan-repeat-cycle.md), or Continue while a cycle repeats.
+private struct RepeatCycleButton: View {
+    let playback: PlaybackState
+    let action: () -> Void
+
+    var body: some View {
+        let repeating = playback.repeatingBlock != nil
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: repeating ? "play.fill" : "repeat.1")
+                Text(repeating ? "Continue" : "Repeat this cycle")
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.center)
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .disabled(!repeating && !playback.canRepeatCycle)
+        .accessibilityHint(Text(repeating ? "Carry on into the next cycle" : "Plays this tala cycle again until you continue"))
+    }
+}
+
 /// What changes while practising: tempo and speed. Everything else is in `PracticeSettingsView`.
 /// While playing: the Sa in use, then "Count-in…" or "Pass n of m". Side by
 /// side when they fit, stacked at large text sizes rather than clipped.
@@ -175,6 +205,14 @@ private struct PlaybackStatus: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             sa
+            if let block = playback.repeatingBlock {
+                // VoiceOver hears an announcement when repeating starts; the count changes every cycle.
+                Text("Repeating cycle \(block + 1)").foregroundStyle(Color.accentColor)
+                    .fixedSize(horizontal: false, vertical: true)
+                if playback.repeatTimes > 1 {
+                    Text("\(playback.repeatTimes) times").foregroundStyle(Color.subdued)
+                }
+            }
             status.fixedSize(horizontal: false, vertical: true)
         }
         .font(.callout)

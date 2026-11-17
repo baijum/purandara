@@ -40,7 +40,16 @@ struct NotationView: View {
                     ForEach(Array(layout.blocks.enumerated()), id: \.offset) { index, block in
                         let cells = Set(block.cells.map { "\($0.avarta):\($0.akshara)" })
                         let blockMarks = marks.filter { cells.contains("\($0.key.avarta):\($0.key.akshara)") }
+                        let repeating = playback.repeatingBlock == index
                         VStack(alignment: .leading, spacing: 4) {
+                            if repeating {
+                                // Read as part of the block's label instead.
+                                Text("Repeating")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Color.accentColor)
+                                    .padding(.horizontal, 4)
+                                    .accessibilityHidden(true)
+                            }
                             if let heading = block.heading {
                                 Text(heading)
                                     .font(.subheadline.weight(.semibold))
@@ -56,7 +65,9 @@ struct NotationView: View {
                                 marks: blockMarks,
                                 words: words)
                             .accessibilityElement(children: .ignore)
-                            .accessibilityLabel(Text("Avarta \(index + 1): \(spoken(index, marks: blockMarks))"))
+                            .accessibilityLabel(repeating
+                                ? Text("Repeating. Avarta \(index + 1): \(spoken(index, marks: blockMarks))")
+                                : Text("Avarta \(index + 1): \(spoken(index, marks: blockMarks))"))
                         }
                         .id(index)
                     }

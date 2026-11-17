@@ -356,6 +356,30 @@ final class PurandaraUITests: XCTestCase {
     // Xcode 16's XCTestCase is not @MainActor, but XCUIApplication/XCUIElement
     // are: mark each test (not the class, which would break the nonisolated
     // setUp override) and every helper they call.
+    /// Repeat this cycle (docs/plan-repeat-cycle.md): the cycle is marked and
+    /// Continue offered while it repeats; both states pass the audit.
+    @MainActor func testRepeatThisCyclePassesAuditAndContinues() throws {
+        let app = launch(["-open", "sarali-3", "-countIn", "NO", "-tempo", "40", "-autoplay", "YES"])
+        XCTAssertTrue(app.navigationBars["Sarali Varisai 3"].waitForExistence(timeout: 5))
+        let repeatButton = app.buttons["Repeat this cycle"]
+        XCTAssertTrue(repeatButton.waitForExistence(timeout: 15))
+        let enabled = expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: repeatButton)
+        wait(for: [enabled], timeout: 15)
+        try audit(app)
+        repeatButton.tap()
+        XCTAssertTrue(app.buttons["Continue"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Repeating cycle 1"].exists || app.staticTexts["Repeating cycle 2"].exists)
+        let marked = app.otherElements.matching(NSPredicate(format: "label BEGINSWITH 'Repeating. Avarta'")).firstMatch
+        XCTAssertTrue(marked.exists, "the repeated cycle is marked in its label")
+        // The "Repeating" mark sits in the notation area, below status lines that grow
+        // with larger text: the same below-the-fold false alarm as a section heading.
+        try audit(app, longNotation: true)
+        app.buttons["Continue"].tap()
+        XCTAssertTrue(app.buttons["Repeat this cycle"].waitForExistence(timeout: 3))
+        app.buttons["Stop"].tap()
+        XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 3))
+    }
+
     @MainActor func testPlayerPassesAccessibilityAudit() throws {
         let app = launch(["-open", "sarali-4"])
         XCTAssertTrue(app.navigationBars["Sarali Varisai 4"].waitForExistence(timeout: 5))

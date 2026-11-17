@@ -26,12 +26,7 @@ final class SingAlongEngine: @unchecked Sendable {
         let rate = Double(renderer.sampleRate)
         let session = SingAlongSession(
             schedule: schedule,
-            clock: SingAlongClock(
-                countInSeconds: Double(renderer.countInFrames) / rate,
-                passSeconds: Double(renderer.performanceFrames) / rate,
-                loop: renderer.totalFrames == Int64.max,
-                outputLatencySeconds: 0,
-                inputLatencySeconds: 0),
+            clock: SingAlongClock.companion.forRenderer(renderer: renderer),
             sampleRate: renderer.sampleRate,
             outputLevels: OutputLevels(capacity: 512),
             strictness: strictness)

@@ -126,6 +126,15 @@ final class VarisaiAudioPlayer: @unchecked Sendable {
         }
     }
 
+    /// Runs [action] on the render queue against [renderer] if it is still the one playing (repeating a cycle).
+    func command(_ renderer: SampleRenderer, _ action: @escaping @Sendable (SampleRenderer) -> Void) {
+        let id = ObjectIdentifier(renderer)
+        queue.async { [self] in
+            guard let current = self.renderer as? SampleRenderer, ObjectIdentifier(current) == id, !stopRequested else { return }
+            action(current)
+        }
+    }
+
     private var micTapInstalled = false
     private var reconfiguring = false
     private var voiceProcessingOn = false
