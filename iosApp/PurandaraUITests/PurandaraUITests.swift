@@ -304,12 +304,21 @@ final class PurandaraUITests: XCTestCase {
     // are: mark each test (not the class, which would break the nonisolated
     // setUp override) and every helper they call.
     @MainActor func testShrutiPracticeHoldsSaAndPassesAudit() throws {
+        // The audit runs with the synthetic singer silent: every element is there, but
+        // nothing redraws. With it singing, the pitch trace redraws every frame, and
+        // the audit didn't complete in time on CI runners in five runs out of five (issue #36).
+        let quiet = launch(["-singer", "0", "-singerSilent", "YES"])
+        quiet.tabBars.buttons["Sa"].tap()
+        openFromLanding(quiet, "Shruti practice")
+        XCTAssertTrue(quiet.navigationBars["Shruti practice"].waitForExistence(timeout: 5))
+        XCTAssertTrue(quiet.staticTexts["Sing Sa and hold it"].waitForExistence(timeout: 10))
+        try audit(quiet)
+        quiet.terminate()
+
         let app = launch(["-singer", "0"])
         app.tabBars.buttons["Sa"].tap()
         openFromLanding(app, "Shruti practice")
         XCTAssertTrue(app.navigationBars["Shruti practice"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["S · in tune · +0¢ · C3"].waitForExistence(timeout: 10) || true)
-        try audit(app)
         // The hold status is at the bottom of the list: scroll down while waiting.
         let reached = app.staticTexts["Goal reached: Sa held for 10 seconds"]
         let deadline = Date().addingTimeInterval(30)

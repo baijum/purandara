@@ -943,9 +943,16 @@ final class PracticeViewModel: ObservableObject {
         syntheticCents: Double?, deliver: @escaping @Sendable (ShrutiOutcome, Double) -> Void
     ) -> PitchListener {
         // The debug synthetic singer sings Sa after the room check, like a student would.
+        // `-singerSilent YES` keeps it quiet: the screen is still, for the accessibility
+        // audit (a live trace redrawn every frame can keep a slow runner from finishing it).
+        #if DEBUG
+        let silent = UserDefaults.standard.bool(forKey: "singerSilent")
+        #else
+        let silent = false
+        #endif
         let synthetic = syntheticCents.map { cents in
             PitchListener.SyntheticSinger(cents: cents) { [weak player] host in
-                guard let frame = player?.outputFrame(atHostTime: host), Double(frame) / rate >= room else { return nil }
+                guard !silent, let frame = player?.outputFrame(atHostTime: host), Double(frame) / rate >= room else { return nil }
                 return saHz
             }
         }
