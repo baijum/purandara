@@ -106,7 +106,10 @@ struct RecordingStore {
 /// The raga editor's subject: a new raga (`key` nil) or one of the student's.
 struct RagaEditorTarget: Identifiable {
     let key: String?
-    var id: String { key ?? "new" }
+    /// Opened from the varisais' raga list (docs/plan-own-raga-varisais.md): shown in its own sheet there,
+    /// and a new raga (or one of the app's, offered by the editor) becomes the varisais' raga.
+    var forVarisais = false
+    var id: String { (key ?? "new") + (forVarisais ? "-varisais" : "") }
 }
 
 /// Recordings with approximate swaras (docs/plan-recordings.md): record,
@@ -213,24 +216,29 @@ final class RecordingsViewModel: ObservableObject {
         ragaEditor = RagaEditorTarget(key: key.flatMap { customRagas.get(key: $0) != nil ? $0 : nil })
     }
 
-    /// Saves the editor's raga when it passes the checks. A new raga becomes the
-    /// choice on the screen it was added from (`onRecording` nil: the Record screen).
-    func saveRaga(name: String, arohana: [Swara], avarohana: [Swara], onRecording: String?) {
-        guard let editor = ragaEditor,
-              customRagas.problem(key: editor.key, name: name, arohana: arohana, avarohana: avarohana) == nil else { return }
+    /// Sets the varisais' raga (a new own raga, or one of the app's offered by the editor); set by the app.
+    var onVarisaiRaga: ((String) -> Void)?
+
+    /// Saves `editor`'s raga when it passes the checks. A new raga becomes the
+    /// choice on the screen it was added from (`onRecording` nil: the Record screen),
+    /// or the varisais' raga when added from their raga list.
+    func saveRaga(_ editor: RagaEditorTarget, name: String, arohana: [Swara], avarohana: [Swara], onRecording: String?) {
+        guard customRagas.problem(key: editor.key, name: name, arohana: arohana, avarohana: avarohana) == nil else { return }
         let key = editor.key ?? CustomRaga.companion.keyAt(millis: Int64(Date().timeIntervalSince1970 * 1000))
         useRagas(customRagas.save(key: key, name: name, arohana: arohana, avarohana: avarohana))
         guard editor.key == nil else { return }
-        if let id = onRecording, let recording = library.get(id: id) {
+        if editor.forVarisais {
+            if Ragas.shared.forVarisais(key: key) != nil { onVarisaiRaga?(key) }
+        } else if let id = onRecording, let recording = library.get(id: id) {
             changeIntent(id, raga: key, scale: recording.scale)
         } else if onRecording == nil {
             setIntent(raga: key, scale: recorder.scale)
         }
     }
 
-    /// Deletes the editor's raga: recordings and the Record screen that used it go back to singing freely.
-    func deleteRaga() {
-        guard let key = ragaEditor?.key else { return }
+    /// Deletes `editor`'s raga: recordings and the Record screen that used it go back to singing freely.
+    func deleteRaga(_ editor: RagaEditorTarget) {
+        guard let key = editor.key else { return }
         useRagas(customRagas.delete(key: key))
         updateLibrary { $0.forgetRaga(ragaKey: key) }
         if recorder.ragaKey == key || UserDefaults.standard.string(forKey: Self.intentRagaKey) == key {

@@ -53,6 +53,7 @@ struct RagaEditorView: View {
                              CustomRaga.companion.spokenLine(swaras: arohana, descending: false))
                     readBack("Down", CustomRaga.companion.line(swaras: avarohana, descending: true),
                              CustomRaga.companion.spokenLine(swaras: avarohana, descending: true))
+                    melakartaSuggestion
                     if let problem {
                         Text(problem).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
                     }
@@ -60,7 +61,10 @@ struct RagaEditorView: View {
                         Button("Delete raga", role: .destructive) { deleting = true }
                             .buttonStyle(.bordered)
                             .alert("Delete this raga?", isPresented: $deleting) {
-                                Button("Delete raga", role: .destructive) { recordings.deleteRaga() }
+                                Button("Delete raga", role: .destructive) {
+                                    recordings.deleteRaga(target)
+                                    if target.forVarisais { dismiss() }
+                                }
                                 Button("Cancel", role: .cancel) {}
                             } message: {
                                 Text("\(editing.name) will be removed. Recordings that used it go back to default names and free singing.")
@@ -79,7 +83,8 @@ struct RagaEditorView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        recordings.saveRaga(name: name, arohana: arohana, avarohana: avarohana, onRecording: onRecording)
+                        recordings.saveRaga(target, name: name, arohana: arohana, avarohana: avarohana, onRecording: onRecording)
+                        if target.forVarisais { dismiss() }
                     } label: { Image(systemName: "checkmark") }
                         .accessibilityLabel(Text("Save"))
                         .disabled(problem != nil)
@@ -87,6 +92,40 @@ struct RagaEditorView: View {
             }
         }
         .onAppear(perform: load)
+    }
+
+    /// With all seven swaras the scale is a melakarta (docs/plan-own-raga-varisais.md): its number and
+    /// name, Use this name, and, when it is one of the app's ragas, a way to choose that one instead.
+    @ViewBuilder private var melakartaSuggestion: some View {
+        if let mela = CustomRaga.companion.melakartaOf(arohana: arohana, avarohana: avarohana) {
+            let number = Int32(truncating: mela)
+            let builtIn = Melakartas.shared.builtIn(number: number)
+            let suggested = builtIn?.name ?? Melakartas.shared.nameOf(number: number)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("This is melakarta \(Int(number)), \(suggested).")
+                    .fixedSize(horizontal: false, vertical: true)
+                if let builtIn {
+                    Text("\(builtIn.name) is already in the list of ragas for the varisais.")
+                        .font(.subheadline).foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Button("Use this name") { name = suggested }
+                    .buttonStyle(.bordered)
+                if let builtIn, target.forVarisais {
+                    Button("Choose \(builtIn.name) instead") {
+                        recordings.onVarisaiRaga?(builtIn.key)
+                        dismiss()
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+            .onAppear { UIAccessibility.post(notification: .announcement, argument: "This is melakarta \(Int(number)), \(suggested).") }
+            .id(number) // a different melakarta is announced again
+        } else if !up.isEmpty {
+            Text("The varisais need all seven swaras, going up and coming down. With fewer, this raga is for Recordings only.")
+                .font(.subheadline).foregroundStyle(Color.subdued)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private func load() {

@@ -310,8 +310,12 @@ struct SaSection: View {
 /// (docs/plan-other-ragas.md). Mirrors Android's `RagaPicker`.
 struct VarisaiRagaList: View {
     @EnvironmentObject private var viewModel: PracticeViewModel
+    @EnvironmentObject private var recordings: RecordingsViewModel
     @Binding var ragaKey: String
     @Environment(\.dismiss) private var dismiss
+    /// The raga editor for an own raga, in this list's own sheet (docs/plan-own-raga-varisais.md).
+    @State private var editor: RagaEditorTarget?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         List {
@@ -324,46 +328,92 @@ struct VarisaiRagaList: View {
                     row(raga)
                 }
             }
+            Section {
+                // A heading row, not a section header: those cap Dynamic Type (the audit).
+                Text("Your own ragas").font(.headline).accessibilityAddTraits(.isHeader)
+                ForEach(recordings.customRagas.ragas, id: \.key) { own in
+                    if let raga = Ragas.shared.forVarisais(key: own.key) {
+                        row(raga, editKey: own.key)
+                    } else {
+                        unavailable(own)
+                    }
+                }
+                Button("Add your own raga…") {
+                    viewModel.stopPreview()
+                    editor = RagaEditorTarget(key: nil, forVarisais: true)
+                }
+            }
         }
         .navigationTitle("Raga")
         .navigationBarTitleDisplayMode(.inline)
         .onDisappear { viewModel.stopPreview() }
+        .sheet(item: $editor) { target in
+            RagaEditorView(target: target, onRecording: nil)
+        }
+    }
+
+    /// An own raga without all seven swaras: shown with why it can't be chosen, and Edit.
+    private func unavailable(_ own: CustomRaga) -> some View {
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 12))
+        return layout {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(own.name).foregroundStyle(Color.subdued)
+                Text("Needs all seven swaras for the varisais · \(CustomRaga.companion.line(swaras: own.arohana, descending: false))")
+                    .font(.subheadline).foregroundStyle(Color.subdued)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("\(own.name): Needs all seven swaras for the varisais"))
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 4) }
+            editButton(own)
+        }
+    }
+
+    private func editButton(_ own: CustomRaga) -> some View {
+        Button("Edit") {
+            viewModel.stopPreview()
+            editor = RagaEditorTarget(key: own.key, forVarisais: true)
+        }
+        .buttonStyle(.borderless)
+        .accessibilityLabel(Text("Edit \(own.name)"))
     }
 
     /// Choose the raga (the row), or hear its scale (the speaker): buttons sharing a
     /// list row each need their own style.
-    private func row(_ raga: Raga) -> some View {
+    private func row(_ raga: Raga, editKey: String? = nil) -> some View {
         let swaras = Array(raga.swaras.dropFirst())
         let detail = raga.key == VarisaiCatalog.shared.raga.key
             ? String(localized: "The usual raga for the varisais")
-            : String(localized: "Melakarta \(Int(truncating: raga.mela ?? 0))")
+            : String(localized: "Melakarta \(Int(truncating: raga.mela ?? Melakartas.shared.numberOf(raga: raga) ?? 0))")
         let line = CustomRaga.companion.line(swaras: swaras, descending: false)
         let spoken = CustomRaga.companion.spokenLine(swaras: swaras, descending: false)
         let selected = raga.key == ragaKey
         let previewing = viewModel.previewRagaKey == raga.key
-        return HStack(spacing: 12) {
-            Button {
-                viewModel.stopPreview()
-                ragaKey = raga.key
-                dismiss()
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(raga.name).foregroundStyle(Color.primary)
-                        Text("\(detail) · \(line)")
-                            .font(.subheadline)
-                            .foregroundStyle(Color.subdued)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 4)
-                    if selected { Image(systemName: "checkmark").accessibilityHidden(true) }
+        let choose = Button {
+            viewModel.stopPreview()
+            ragaKey = raga.key
+            dismiss()
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(raga.name).foregroundStyle(Color.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("\(detail) · \(line)")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .contentShape(Rectangle())
+                Spacer(minLength: 4)
+                if selected { Image(systemName: "checkmark").accessibilityHidden(true) }
             }
-            .buttonStyle(.borderless)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text("\(raga.name), \(detail): \(spoken)"))
-            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(raga.name), \(detail): \(spoken)"))
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        let buttons = HStack(spacing: 12) {
             Button {
                 viewModel.togglePreview(raga)
             } label: {
@@ -376,6 +426,14 @@ struct VarisaiRagaList: View {
             .disabled(!viewModel.samplesLoaded)
             .accessibilityLabel(Text(previewing ? "Stop \(raga.name)" : "Play \(raga.name)"))
             .accessibilityHint(Text("Plays the raga's scale up and down at your Sa"))
+            if let editKey, let own = recordings.customRagas.get(key: editKey) { editButton(own) }
+        }
+        // At accessibility text sizes the buttons go under the raga, so its text has the width.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(spacing: 12))
+        return layout {
+            choose
+            buttons
         }
     }
 }

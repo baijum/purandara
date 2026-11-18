@@ -26,8 +26,10 @@ extension View {
 
 @main
 struct PurandaraApp: App {
-    @StateObject private var viewModel = PracticeViewModel()
+    // Recordings first: it loads the student's own ragas (Ragas.useOwn), and the raga chosen
+    // for the varisais may be one of them (docs/plan-own-raga-varisais.md).
     @StateObject private var recordings = RecordingsViewModel()
+    @StateObject private var viewModel = PracticeViewModel()
     @StateObject private var navigation = AppNavigation()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -35,9 +37,13 @@ struct PurandaraApp: App {
         WindowGroup {
             RootView()
             .environmentObject(navigation)
+            .environmentObject(recordings) // first: it loads the own ragas the varisais' raga may be one of
             .environmentObject(viewModel)
-            .environmentObject(recordings)
-            .onAppear(perform: openFromLaunchArguments)
+            .onAppear {
+                // A new own raga (or one of the app's) chosen from the varisais' raga list.
+                recordings.onVarisaiRaga = { [weak viewModel] key in viewModel?.settings.ragaKey = key }
+                openFromLaunchArguments()
+            }
         }
         .onChange(of: scenePhase) { phase in
             // Practice audio stops when the app leaves the screen, and resumes

@@ -117,8 +117,9 @@ struct PracticeSettings: Equatable {
     /// Whether the notation shows swara numbers (R₂ G₂).
     var swaraNumbers: SwaraNumbersChoice = .otherRagas
 
-    /// The chosen raga for the varisais, Mayamalavagowla when `ragaKey` is unknown.
-    var raga: Raga { Ragas.shared.melakarta(key: ragaKey) ?? VarisaiCatalog.shared.raga }
+    /// The chosen raga for the varisais: one of the app's, or the student's own with all seven swaras;
+    /// Mayamalavagowla when `ragaKey` is unknown, deleted or no longer has seven swaras.
+    var raga: Raga { Ragas.shared.forVarisais(key: ragaKey) ?? VarisaiCatalog.shared.raga }
 
     static let saRange = Int(Shruti.shared.SA_RANGE.first)...Int(Shruti.shared.SA_RANGE.last)
     static let tempoRange = Int(PerformanceSettings.companion.TEMPO_RANGE.first)...Int(PerformanceSettings.companion.TEMPO_RANGE.last)
@@ -230,7 +231,10 @@ struct PracticeSettingsStore {
         if let raw = defaults.string(forKey: Key.recoveryMode), let v = PracticeSettings.RecoveryChoice(rawValue: raw) { s.recoveryMode = v }
         if let v = defaults.object(forKey: Key.recoverySeconds) as? Int, (1...30).contains(v) { s.recoverySeconds = v }
         if let v = defaults.object(forKey: Key.responseGuide) as? Bool { s.responseGuide = v }
-        if let v = defaults.string(forKey: Key.varisaiRaga), Ragas.shared.melakarta(key: v) != nil { s.ragaKey = v }
+        // An own raga's key is kept even before the own ragas load (resolved by `raga`).
+        if let v = defaults.string(forKey: Key.varisaiRaga), Ragas.shared.melakarta(key: v) != nil || CustomRaga.companion.isOwn(key: v) {
+            s.ragaKey = v
+        }
         if let raw = defaults.string(forKey: Key.swaraNumbers), let v = PracticeSettings.SwaraNumbersChoice(rawValue: raw) { s.swaraNumbers = v }
         return s
     }

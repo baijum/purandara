@@ -271,6 +271,45 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
+    /// Your own raga for the varisais (docs/plan-own-raga-varisais.md): added from their raga list,
+    /// named as a melakarta by the editor, chosen, and the varisais sung in it.
+    @MainActor func testOwnRagaForTheVarisaisIsNamedChosenAndPassesAudit() throws {
+        let app = launch()
+        XCTAssertTrue(app.navigationBars["Purandara"].waitForExistence(timeout: 5))
+        let row = app.buttons["Mayamalavagowla, Gitams, swarajatis and varnams keep their own."].firstMatch
+        scrollTo(row, in: app)
+        row.tap()
+        let add = app.buttons["Add your own raga…"]
+        scrollTo(add, in: app)
+        add.tap()
+        XCTAssertTrue(app.navigationBars["Your own raga"].waitForExistence(timeout: 5))
+        for (letter, swara) in [("Ri", "Ri 1"), ("Ga", "Ga 3"), ("Ma", "Ma 1"), ("Pa", "Pa"), ("Dha", "Dha 2"), ("Ni", "Ni 2")] {
+            let letterRow = app.buttons[letter]
+            scrollTo(letterRow, in: app)
+            letterRow.tap()
+            let choice = app.buttons[swara]
+            XCTAssertTrue(choice.waitForExistence(timeout: 5))
+            choice.tap()
+        }
+        let suggestion = app.staticTexts["This is melakarta 16, Chakravakam."]
+        scrollTo(suggestion, in: app)
+        XCTAssertTrue(suggestion.exists)
+        app.buttons["Use this name"].tap()
+        try audit(app)
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.navigationBars["Raga"].waitForExistence(timeout: 5), "back on the raga list")
+        let mine = app.buttons["Chakravakam, Melakarta 16: Sa, Ri 1, Ga 3, Ma 1, Pa, Dha 2, Ni 2, high Sa"]
+        scrollTo(mine, in: app)
+        XCTAssertTrue(mine.isSelected, "the new raga is the varisais' raga")
+        // From the top: the list is taller than the screen now (element-less issues from off-screen
+        // rows are ignored), and a row low on the screen is flagged because larger text pushes it
+        // off (AGENTS.md). The own row is the same view as the fifteen, audited in the test above.
+        for _ in 0..<6 { app.swipeDown(velocity: .fast) }
+        try audit(app, longList: true)
+        app.navigationBars["Raga"].buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.staticTexts["Chakravakam · Adi tala"].waitForExistence(timeout: 5))
+    }
+
     /// Leaving the Sa tab stops Shruti practice; coming back shows the Sa page, not a restarted practice.
     @MainActor func testLeavingTheSaTabClosesShrutiPractice() throws {
         let app = launch(["-open", "shruti"])
@@ -870,22 +909,28 @@ final class PurandaraUITests: XCTestCase {
     /// sit at its edges are ones larger text pushes out of view (the warning
     /// moves to whichever row is there). The rows are a scrolling system list in
     /// the body text style, checked by screenshot at the largest size.
-    @MainActor private func audit(_ app: XCUIApplication, longNotation: Bool = false, sidebar: Bool = false) throws {
+    ///
+    /// With [longList] (a list taller than the screen, such as the varisais' raga list with an own
+    /// raga), Dynamic Type and clipped-text issues with no element are ignored: they come from rows
+    /// loaded off screen and move with the scroll position, as for `longNotation`. Issues on a
+    /// visible element still fail.
+    @MainActor private func audit(_ app: XCUIApplication, longNotation: Bool = false, sidebar: Bool = false, longList: Bool = false) throws {
         let visibleNotation = longNotation ? app.scrollViews["notation"].frame : .zero
         let sidebarFrame = sidebar ? app.collectionViews["sidebar"].frame : .zero
         // On a loaded runner the audit machinery itself can time out ("Audit
         // failed to complete in time", issue #28). That is never a code signal:
         // settle and retry once before failing.
         do {
-            try performAudit(app, longNotation: longNotation, visibleNotation: visibleNotation, sidebar: sidebarFrame)
+            try performAudit(app, longNotation: longNotation, visibleNotation: visibleNotation, sidebar: sidebarFrame, longList: longList)
         } catch {
             print("AUDIT: retrying after the audit did not complete: \(error)")
             Thread.sleep(forTimeInterval: 2)
-            try performAudit(app, longNotation: longNotation, visibleNotation: visibleNotation, sidebar: sidebarFrame)
+            try performAudit(app, longNotation: longNotation, visibleNotation: visibleNotation, sidebar: sidebarFrame, longList: longList)
         }
     }
 
-    @MainActor private func performAudit(_ app: XCUIApplication, longNotation: Bool, visibleNotation: CGRect, sidebar: CGRect = .zero) throws {
+    @MainActor private func performAudit(_ app: XCUIApplication, longNotation: Bool, visibleNotation: CGRect,
+                                         sidebar: CGRect = .zero, longList: Bool = false) throws {
         try app.performAccessibilityAudit { issue in
             let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)' at \($0.frame)" } ?? "?"
             if issue.auditType == .contrast {
@@ -902,6 +947,10 @@ final class PurandaraUITests: XCTestCase {
             if issue.auditType == .dynamicType, let label = issue.element?.label,
                label.range(of: #"^(([SRGMPDN][′\x{0323}]?)+|,|[a-z·]+|–)$"#, options: .regularExpression) != nil {
                 return true // ignored, see above
+            }
+            if longList, issue.element == nil, issue.auditType == .dynamicType || issue.auditType == .textClipped {
+                print("AUDIT (long list, element-less, ignored): \(issue.compactDescription)")
+                return true // a row loaded off screen, see above
             }
             if issue.auditType == .dynamicType, let frame = issue.element?.frame, sidebar.contains(frame) {
                 return true // a sidebar row at the menu's edge, see above
