@@ -55,6 +55,7 @@ import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.practice.PracticeRecord
 import com.baijum.purandara.navigation.NavDestination
 import com.baijum.purandara.navigation.NavGroup
+import com.baijum.purandara.ui.RagaPicker
 import com.baijum.purandara.ui.SaPicker
 import com.baijum.purandara.ui.navigation.NavigationButton
 
@@ -80,7 +81,7 @@ fun HomeScreen(
                     Column {
                         Text(stringResource(R.string.library_title))
                         Text(
-                            stringResource(R.string.library_raga),
+                            stringResource(R.string.library_raga, state.raga.name),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -137,22 +138,7 @@ fun SetScreen(
             LoadStatus(state)
             LazyColumn(Modifier.fillMaxSize()) {
                 item(key = "about") {
-                    Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)) {
-                        if (set.shortTitle != set.title) Text(set.title, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            set.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        if (practised > 0) {
-                            Text(
-                                stringResource(R.string.practised_count, practised, exercises.size),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp),
-                            )
-                        }
-                    }
+                    SetAbout(set, state, practised, exercises.size)
                     HorizontalDivider()
                 }
                 if (set.practisesAsRun) {
@@ -171,6 +157,34 @@ fun SetScreen(
                     HorizontalDivider()
                 }
             }
+        }
+    }
+}
+
+/** A set page's header: its full title, what it trains, the raga it's sung in and progress. */
+@Composable
+private fun SetAbout(set: VarisaiSet, state: LibraryState, practised: Int, total: Int) {
+    Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)) {
+        if (set.shortTitle != set.title) Text(set.title, style = MaterialTheme.typography.titleMedium)
+        Text(
+            set.description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (set.followsChosenRaga) {
+            Text(
+                stringResource(R.string.set_raga, state.raga.name),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+        if (practised > 0) {
+            Text(
+                stringResource(R.string.practised_count, practised, total),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }
@@ -302,6 +316,12 @@ private fun SaCard(state: LibraryState, actions: LibraryActions) {
                 modifier = Modifier.semantics { heading() },
             )
             SaPicker(state.saMidi, state.saCents, actions.onSaChange)
+            RagaPicker(state.raga, actions.onRagaChange)
+            Text(
+                stringResource(R.string.varisai_raga_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             FilledTonalButton(onClick = actions.onToggleTanpura, enabled = state.samplesLoaded) {
                 Icon(painterResource(if (state.tanpuraPlaying) R.drawable.ic_stop else R.drawable.ic_play), contentDescription = null)
                 Text(

@@ -44,8 +44,8 @@ import com.baijum.purandara.ui.navigation.NavigationButton
 import com.baijum.purandara.domain.Note
 import com.baijum.purandara.domain.Octave
 import com.baijum.purandara.domain.Pitch
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.SwaraLetter
-import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.shruti.HoldGoal
 import com.baijum.purandara.shruti.HoldTarget
 import com.baijum.purandara.singalong.Zone
@@ -103,7 +103,7 @@ fun ShrutiScreen(state: PracticeUiState, actions: ShrutiActions, micAllowed: Boo
                     contentDescription = label
                     stateDescription = reading
                 }) {
-                    if (!large) FreePitchTrace(shruti.trace, settings.saHz, Modifier.fillMaxWidth().height(TRACE_HEIGHT))
+                    if (!large) FreePitchTrace(shruti.trace, settings.saHz, settings.raga, Modifier.fillMaxWidth().height(TRACE_HEIGHT))
                     Text(reading, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(vertical = 8.dp))
                 }
                 if (state.singAlong.onSpeaker) {
@@ -203,10 +203,9 @@ private fun targetLabel(target: HoldTarget) = when (target) {
 
 /** The last ten seconds of the student's pitch against the raga's swara lines (decorative; the reading is spoken). */
 @Composable
-private fun FreePitchTrace(trace: List<FreeTracePoint>, saHz: Double, modifier: Modifier) {
+private fun FreePitchTrace(trace: List<FreeTracePoint>, saHz: Double, raga: Raga, modifier: Modifier) {
     val colors = MaterialTheme.colorScheme
     val measurer = rememberTextMeasurer()
-    val raga = VarisaiCatalog.raga
     val lines = listOf(Octave.MANDRA to listOf(SwaraLetter.P, SwaraLetter.D, SwaraLetter.N), Octave.MADHYA to SwaraLetter.entries)
         .flatMap { (octave, letters) -> letters.map { Note(raga.swara(it), octave) } } + Note(raga.swara(SwaraLetter.S), Octave.TARA)
     Canvas(modifier) {

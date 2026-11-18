@@ -3,9 +3,12 @@ package com.baijum.purandara.data
 import android.content.Context
 import com.baijum.purandara.audio.HarmoniumArticulation
 import com.baijum.purandara.audio.RenderOptions
+import com.baijum.purandara.domain.Raga
+import com.baijum.purandara.domain.Ragas
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.schedule.PerformanceSettings
+import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.practice.PracticeMode
@@ -44,8 +47,13 @@ data class PracticeSettings(
     val recoverySeconds: Int = 5,
     /** Harmonium support during Your turn, independent of the always-on model guide. */
     val responseGuide: Boolean = false,
+    /** The raga the varisais and alankarams are sung in ([Ragas.melakartas] key; docs/plan-other-ragas.md). */
+    val ragaKey: String = VarisaiCatalog.raga.key,
 ) {
     val saHz: Double get() = Shruti.saHz(saMidi, saCents)
+
+    /** The chosen raga for the varisais, Mayamalavagowla when [ragaKey] is unknown. */
+    val raga: Raga get() = Ragas.melakarta(ragaKey) ?: VarisaiCatalog.raga
 
     fun performance(): PerformanceSettings =
         PerformanceSettings(saHz = saHz, tempo = tempo, kala = kala, tuning = tuning)
@@ -90,8 +98,13 @@ class PracticePreferences(context: Context) {
             recoveryMode = RecoveryMode.entries.firstOrNull { it.name == prefs.getString(RECOVERY_MODE, null) } ?: d.recoveryMode,
             recoverySeconds = prefs.getInt(RECOVERY_SECONDS, d.recoverySeconds).takeIf { it in RECOVERY_RANGE } ?: d.recoverySeconds,
             responseGuide = prefs.getBoolean(RESPONSE_GUIDE, d.responseGuide),
+            ragaKey = loadRagaKey(d.ragaKey),
         )
     }
+
+    /** The saved raga for the varisais, if it's still one of [Ragas.melakartas]. */
+    private fun loadRagaKey(default: String): String =
+        prefs.getString(RAGA, null)?.takeIf { Ragas.melakarta(it) != null } ?: default
 
     fun loadHistory(): PracticeHistory = PracticeHistory.decode(prefs.getString(HISTORY, null))
 
@@ -128,6 +141,7 @@ class PracticePreferences(context: Context) {
             .putString(RECOVERY_MODE, s.recoveryMode.name)
             .putInt(RECOVERY_SECONDS, s.recoverySeconds)
             .putBoolean(RESPONSE_GUIDE, s.responseGuide)
+            .putString(RAGA, s.ragaKey)
             .apply()
     }
 
@@ -156,5 +170,6 @@ class PracticePreferences(context: Context) {
         const val RECOVERY_MODE = "recovery_mode"
         const val RECOVERY_SECONDS = "recovery_seconds"
         const val RESPONSE_GUIDE = "response_guide"
+        const val RAGA = "varisai_raga"
     }
 }

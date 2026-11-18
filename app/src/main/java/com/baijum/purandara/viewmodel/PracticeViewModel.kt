@@ -134,11 +134,12 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     /** Repeat this cycle in the player (docs/plan-repeat-cycle.md). */
     val cycleRepeat = CycleRepeatControl(player, _state)
 
-    val catalog: List<Varisai> = VarisaiCatalog.all
+    /** Every exercise, the varisais and alankarams in the chosen raga (docs/plan-other-ragas.md). */
+    val catalog: List<Varisai> get() = VarisaiCatalog.inRaga(_state.value.settings.raga)
 
     /** Plans and plays a whole numbered varisai set as one run; the UI calls `viewModel.runs`. */
     val runs: RunController = RunController(
-        catalog = catalog,
+        catalogNow = { catalog },
         preferences = preferences,
         host = RunController.Host(
             settings = { _state.value.settings },
@@ -380,7 +381,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         val r = SampleRenderer(bank, Schedule.of(catalog.first(), settings.performance()), RenderOptions.droneOnly(settings.droneLevel))
         renderer = r
         val listening = _state.value.singAlong.micPermitted || debugSyntheticSingerCents != null
-        val session = ShrutiSession(settings.saHz, VarisaiCatalog.raga, settings.tuning, settings.strictness, r.sampleRate)
+        val session = ShrutiSession(settings.saHz, settings.raga, settings.tuning, settings.strictness, r.sampleRate)
         val shruti = _state.value.shruti
         session.startHold(shruti.target, shruti.goal)
         if (listening) {

@@ -1,6 +1,8 @@
 package com.baijum.purandara.ui.library
 
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.varisai.Varisai
+import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.practice.PracticeHistory
 import com.baijum.purandara.practice.RunPlans
 import com.baijum.purandara.domain.varisai.VarisaiSet
@@ -15,6 +17,8 @@ data class LibraryState(
     val loadError: Boolean = false,
     /** Saved run plans, for each set's continue point. */
     val runPlans: RunPlans = RunPlans(),
+    /** The raga the varisais and alankarams are sung in. */
+    val raga: Raga = VarisaiCatalog.raga,
 )
 
 /** What Home and the set pages can do. */
@@ -22,6 +26,8 @@ data class LibraryActions(
     val onSelect: (Varisai) -> Unit,
     val onToggleTanpura: () -> Unit = {},
     val onSaChange: (Int) -> Unit = {},
+    /** Home: sing the varisais and alankarams in another raga. */
+    val onRagaChange: (Raga) -> Unit = {},
     /** Open the practice run for a numbered varisai set. */
     val onOpenRun: (VarisaiSet) -> Unit = {},
     /** Home: open a set's page. */

@@ -26,14 +26,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.baijum.purandara.R
+import com.baijum.purandara.domain.CustomRaga
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.VoiceRange
+import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.singalong.Strictness
 import kotlin.math.roundToInt
@@ -74,6 +78,53 @@ fun SaPicker(saMidi: Int, saCents: Int, onSelect: (Int) -> Unit) {
                         },
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * The raga the varisais and alankarams are sung in (docs/plan-other-ragas.md):
+ * each choice shows its arohanam, read aloud in full.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RagaPicker(raga: Raga, onSelect: (Raga) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = raga.name,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.varisai_raga)) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            VarisaiCatalog.ragas.forEach { choice ->
+                val swaras = choice.swaras.drop(1)
+                val detail = if (choice == VarisaiCatalog.raga) {
+                    stringResource(R.string.varisai_raga_usual)
+                } else {
+                    stringResource(R.string.raga_mela, choice.mela ?: 0)
+                }
+                val spoken = "${choice.name}, $detail: ${CustomRaga.spokenLine(swaras, descending = false)}"
+                DropdownMenuItem(
+                    text = {
+                        Column(Modifier.clearAndSetSemantics { contentDescription = spoken }) {
+                            Text(choice.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                "$detail · ${CustomRaga.line(swaras, descending = false)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onSelect(choice)
+                    },
+                )
             }
         }
     }

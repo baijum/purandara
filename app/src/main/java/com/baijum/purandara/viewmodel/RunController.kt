@@ -7,6 +7,7 @@ import com.baijum.purandara.domain.varisai.VarisaiSet
 import com.baijum.purandara.practice.PracticeRun
 import com.baijum.purandara.practice.RunEntry
 import com.baijum.purandara.practice.RunPlan
+import com.baijum.purandara.practice.RunPlans
 import com.baijum.purandara.practice.RunStep
 
 /**
@@ -20,10 +21,13 @@ import com.baijum.purandara.practice.RunStep
  * pass count starts again.
  */
 class RunController(
-    private val catalog: List<Varisai>,
+    private val catalogNow: () -> List<Varisai>,
     private val preferences: PracticePreferences,
     private val host: Host,
 ) {
+    /** The catalog in the chosen raga, read when a run is planned. */
+    private val catalog: List<Varisai> get() = catalogNow()
+
     /** The view model's side of a run: state, and starting/stopping the normal player. */
     @Suppress("LongParameterList") // One explicit bundle of view-model hooks, built once.
     class Host(
@@ -196,7 +200,8 @@ class RunController(
     }
 
     private fun persist(set: VarisaiSet, steps: List<RunStep>, nextIndex: Int) {
-        val plan = RunPlan(set.name, nextIndex, steps.map { RunEntry(it.varisai.id, it.speed, it.repeats) })
+        val key = steps.firstOrNull()?.let { RunPlans.keyFor(set, it.varisai.raga) } ?: set.name
+        val plan = RunPlan(key, nextIndex, steps.map { RunEntry(it.varisai.id, it.speed, it.repeats) })
         val plans = host.state().runPlans.with(plan)
         preferences.saveRunPlans(plans)
         host.update { it.copy(runPlans = plans) }

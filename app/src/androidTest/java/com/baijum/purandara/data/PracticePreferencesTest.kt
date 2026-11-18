@@ -5,6 +5,8 @@ import android.content.ContextWrapper
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.baijum.purandara.audio.HarmoniumArticulation
+import com.baijum.purandara.domain.Raga
+import com.baijum.purandara.domain.Ragas
 import com.baijum.purandara.practice.PracticeMode
 import com.baijum.purandara.practice.RunEntry
 import com.baijum.purandara.practice.RunPlan
@@ -35,6 +37,19 @@ class PracticePreferencesTest {
     @After
     fun removeSettings() {
         stored.edit().clear().commit()
+    }
+
+    @Test
+    fun theRagaForTheVarisaisRoundTripsAndAnUnknownOneIsMayamalavagowla() {
+        assertEquals(Raga.MAYAMALAVAGOWLA, preferences.load().raga)
+        Ragas.melakartas.forEach { raga ->
+            preferences.save(PracticeSettings(ragaKey = raga.key))
+            assertEquals(raga, PracticePreferences(context).load().raga)
+        }
+        for (value in listOf("malahari", "nowhere", "")) {
+            stored.edit().putString("varisai_raga", value).commit()
+            assertEquals(Raga.MAYAMALAVAGOWLA, preferences.load().raga)
+        }
     }
 
     @Test

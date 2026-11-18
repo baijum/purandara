@@ -219,12 +219,14 @@ private fun libraryState(state: PracticeUiState) = LibraryState(
     samplesLoaded = state.samplesLoaded,
     loadError = state.loadError,
     runPlans = state.runPlans,
+    raga = state.settings.raga,
 )
 
 private fun libraryActions(viewModel: PracticeViewModel, openPage: (NavDestination) -> Unit) = LibraryActions(
     onSelect = { varisai -> viewModel.select(varisai) },
     onToggleTanpura = viewModel::toggleTanpura,
     onSaChange = { midi -> viewModel.updateSettings { it.copy(saMidi = midi) } },
+    onRagaChange = { raga -> viewModel.updateSettings { it.copy(ragaKey = raga.key) } },
     onOpenRun = viewModel.runs::open,
     onOpenSet = { set -> openPage(NavDestination.SetPage(set)) },
     onBack = { openPage(NavDestination.Home) },
