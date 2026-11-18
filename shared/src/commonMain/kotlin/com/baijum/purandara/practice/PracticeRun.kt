@@ -1,5 +1,6 @@
 package com.baijum.purandara.practice
 
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.schedule.PerformanceSettings
 import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.domain.varisai.Varisai
@@ -43,7 +44,7 @@ data class RunEntry(
 /** The saved run for one set: its per-varisai choices and where to continue. */
 @Serializable
 data class RunPlan(
-    /** [VarisaiSet.name], e.g. "SARALI". */
+    /** [RunPlans.keyFor]: [VarisaiSet.name], e.g. "SARALI", or "SARALI@kalyani" in another raga. */
     val set: String,
     /** The index into the set's exercises to start at next (0 = the first). */
     val nextIndex: Int = 0,
@@ -71,16 +72,24 @@ class RunPlans(plans: Collection<RunPlan> = emptyList()) {
 
     operator fun get(set: VarisaiSet): RunPlan? = bySet[set.name]
 
-    /** The saved plan for [set], reconciled with [catalog] (defaults when none is saved). */
+    /** The saved plan for [set] sung in [raga], if any. */
+    fun get(set: VarisaiSet, raga: Raga): RunPlan? = bySet[keyFor(set, raga)]
+
+    /**
+     * The saved plan for [set], reconciled with [catalog] (defaults when none
+     * is saved). A set sung in another raga than Mayamalavagowla has its own
+     * plan (docs/plan-other-ragas.md), found from the raga of [catalog]'s exercises.
+     */
     fun planFor(set: VarisaiSet, catalog: List<Varisai>): RunPlan {
         val exercises = catalog.filter { it.set == set }
-        val saved = bySet[set.name]
+        val key = exercises.firstOrNull()?.let { keyFor(set, it.raga) } ?: set.name
+        val saved = bySet[key]
         val entries = exercises.map { varisai ->
             val entry = saved?.entries?.firstOrNull { it.varisaiId == varisai.id }
             entry?.clamped() ?: RunEntry(varisai.id)
         }
         val nextIndex = if (entries.isEmpty()) 0 else (saved?.nextIndex ?: 0).coerceIn(entries.indices)
-        return RunPlan(set.name, nextIndex, entries)
+        return RunPlan(key, nextIndex, entries)
     }
 
     fun with(plan: RunPlan): RunPlans = RunPlans(bySet.values.filter { it.set != plan.set } + plan)
@@ -98,6 +107,10 @@ class RunPlans(plans: Collection<RunPlan> = emptyList()) {
 
     companion object {
         private val json = Json { ignoreUnknownKeys = true }
+
+        /** A plan's key: the set's name, plus `@<raga>` when a varisai set is sung in another raga. */
+        fun keyFor(set: VarisaiSet, raga: Raga): String =
+            if (set.followsChosenRaga && raga != Raga.MAYAMALAVAGOWLA) "${set.name}${Varisai.RAGA_SEPARATOR}${raga.key}" else set.name
 
         /** Reads [encode]d text; unreadable or missing text gives no saved plans. */
         fun decode(text: String?): RunPlans = try {

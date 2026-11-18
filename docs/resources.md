@@ -391,6 +391,13 @@ there too, so the next person does not repeat them.
   [Varnam](https://en.wikipedia.org/wiki/Varnam),
   [Purandara Dasa](https://en.wikipedia.org/wiki/Purandara_Dasa),
   [Haridasa](https://en.wikipedia.org/wiki/Haridasa)
+- The melakartas the varisais can be sung in (docs/plan-other-ragas.md):
+  15 Mayamalavagowla, 20 Natabhairavi, 21 Keeravani, 22 Kharaharapriya,
+  28 Harikambhoji, 29 Shankarabharanam and 65 Kalyani were checked
+  (2026-11-18) against karnatik.com's list
+  (<https://www.karnatik.com/melas.shtml>) and Wikipedia's Melakarta table;
+  the two agree on every swara. `OtherRagasTest` also works out each mela
+  number from its swaras.
 - Guruguha: English translations of the lakshana texts, including the
   *Sangita Sampradaya Pradarshini*, *Chaturdandi Prakashika*,
   *Swaramelakalanidhi* and *Ragatarangini*, plus Dikshitar kritis —

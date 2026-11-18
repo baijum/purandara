@@ -150,6 +150,17 @@ enum class VarisaiSet(val title: String, val description: String, val shortTitle
     ;
 
     /**
+     * Whether the set is sung in the raga the student chooses for the varisais
+     * (docs/plan-other-ragas.md): the varisais and alankarams, written in
+     * Mayamalavagowla. Gitams, swarajatis and varnams keep their own ragas.
+     */
+    val followsChosenRaga: Boolean
+        get() = when (this) {
+            PLAIN_SCALE, SARALI, MADHYA_STHAYI, JANTA, VAKRA_JANTA, DHATTU, ALANKARAM -> true
+            GITAM, SWARAJATI, VARNAM -> false
+        }
+
+    /**
      * Whether a set can be practised as one run, varisai after varisai
      * (`docs/plan-practice-run.md`). The numbered varisai sets can; the plain
      * scale (one exercise) and the pieces with sections and written speeds
@@ -210,8 +221,28 @@ data class Varisai(
             else -> "${set.shortTitle} $number"
         }
 
-    /** Stable identifier, e.g. `sarali-4`. */
-    val id: String get() = "${set.name.lowercase().replace('_', '-')}-$number"
+    /**
+     * Stable identifier, e.g. `sarali-4`. A varisai or alankaram sung in
+     * another raga than Mayamalavagowla ([inRaga]) adds the raga's key,
+     * `sarali-4@kalyani`, so its practice history is kept apart.
+     */
+    val id: String
+        get() {
+            val base = "${set.name.lowercase().replace('_', '-')}-$number"
+            return if (set.followsChosenRaga && raga != Raga.MAYAMALAVAGOWLA) "$base$RAGA_SEPARATOR${raga.key}" else base
+        }
+
+    /**
+     * This exercise sung in [raga] (docs/plan-other-ragas.md). Only the sets
+     * that [VarisaiSet.followsChosenRaga] change; gitams, swarajatis and
+     * varnams keep their own raga.
+     */
+    fun inRaga(raga: Raga): Varisai = if (set.followsChosenRaga && raga != this.raga) copy(raga = raga) else this
+
+    companion object {
+        /** Between an exercise's id and the raga it is sung in: `sarali-4@kalyani`. */
+        const val RAGA_SEPARATOR: Char = '@'
+    }
 
     /** Display title, e.g. "Sarali Varisai 4". */
     val title: String

@@ -54,10 +54,16 @@ class PracticeHistory(records: Collection<PracticeRecord> = emptyList()) {
         return if (better) with(old.copy(bestInTuneOrClose = good, bestJudged = judged)) else this
     }
 
-    /** The most recently practised exercise, if any. */
-    fun continueWith(catalog: List<Varisai>): Varisai? =
-        byId.values.filter { it.timesPracticed > 0 }.maxByOrNull { it.lastPracticedMillis }
-            ?.let { r -> catalog.firstOrNull { it.id == r.varisaiId } }
+    /**
+     * The most recently practised exercise in [catalog], if any. With the
+     * catalog in one raga (`VarisaiCatalog.inRaga`), exercises practised in
+     * another raga are passed over.
+     */
+    fun continueWith(catalog: List<Varisai>): Varisai? {
+        val byIdInCatalog = catalog.associateBy { it.id }
+        return byId.values.filter { it.timesPracticed > 0 && it.varisaiId in byIdInCatalog }
+            .maxByOrNull { it.lastPracticedMillis }?.let { byIdInCatalog.getValue(it.varisaiId) }
+    }
 
     /** The exercise after the most recently practised one, in teaching order (null at the end). */
     fun nextUp(catalog: List<Varisai>): Varisai? {

@@ -1,0 +1,127 @@
+package com.baijum.purandara.domain.varisai
+
+import com.baijum.purandara.domain.Raga
+import com.baijum.purandara.domain.Ragas
+import com.baijum.purandara.domain.Shruti
+import com.baijum.purandara.domain.Swara
+import com.baijum.purandara.domain.SwaraLetter
+import com.baijum.purandara.practice.PracticeHistory
+import com.baijum.purandara.practice.RunPlans
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertSame
+import kotlin.test.assertTrue
+
+/** The varisais and alankarams in other melakartas (docs/plan-other-ragas.md). */
+class OtherRagasTest {
+    /**
+     * The melakarta number worked out from the swaras: M2 adds 36, then six
+     * per R/G pair and one per D/N pair, both in the standard order. An
+     * independent check on each raga's swaras (a typo gives another number).
+     */
+    private fun melaOf(raga: Raga): Int {
+        val rg = listOf(
+            Swara.R1 to Swara.G1, Swara.R1 to Swara.G2, Swara.R1 to Swara.G3,
+            Swara.R2 to Swara.G2, Swara.R2 to Swara.G3, Swara.R3 to Swara.G3,
+        ).indexOf(raga.swara(SwaraLetter.R) to raga.swara(SwaraLetter.G))
+        val dn = listOf(
+            Swara.D1 to Swara.N1, Swara.D1 to Swara.N2, Swara.D1 to Swara.N3,
+            Swara.D2 to Swara.N2, Swara.D2 to Swara.N3, Swara.D3 to Swara.N3,
+        ).indexOf(raga.swara(SwaraLetter.D) to raga.swara(SwaraLetter.N))
+        assertTrue(rg >= 0 && dn >= 0, "${raga.name}: not a melakarta pair")
+        val m = if (raga.swara(SwaraLetter.M) == Swara.M2) 36 else 0
+        return m + rg * 6 + dn + 1
+    }
+
+    @Test
+    fun theShortListAndTheirNumbers() {
+        assertEquals(
+            listOf(
+                "Mayamalavagowla" to 15, "Natabhairavi" to 20, "Keeravani" to 21, "Kharaharapriya" to 22,
+                "Harikambhoji" to 28, "Shankarabharanam" to 29, "Kalyani" to 65,
+            ),
+            Ragas.melakartas.map { it.name to it.mela },
+        )
+        Ragas.melakartas.forEach { raga ->
+            assertEquals(raga.mela, melaOf(raga), raga.name)
+            assertEquals(raga.swaras + Swara.S, raga.arohanam.map { it.swara }, "${raga.name} ascends through its swaras")
+            assertEquals(raga.arohanam.reversed(), raga.avarohanam, "${raga.name} is the same both ways")
+            assertSame(raga, Ragas.builtIn(raga.key), "${raga.name} is one of the app's ragas")
+        }
+        assertSame(Raga.MAYAMALAVAGOWLA, VarisaiCatalog.ragas.first())
+    }
+
+    @Test
+    fun everyVarisaiAndAlankaramWorksInEveryRaga() {
+        val following = VarisaiCatalog.all.filter { it.set.followsChosenRaga }
+        assertTrue(following.isNotEmpty())
+        following.forEach { varisai ->
+            val letters = varisai.avartas.flatMap { it.aksharas }.filterIsInstance<Akshara.Swaras>().flatMap { it.swaras }
+            assertTrue(letters.all { it.variant == null }, "${varisai.id} writes no variant digits, so the raga decides each swara")
+        }
+        Ragas.melakartas.forEach { raga ->
+            VarisaiCatalog.inRaga(raga).filter { it.set.followsChosenRaga }.forEach { varisai ->
+                assertSame(raga, varisai.raga)
+                assertTrue(!varisai.playableSaMidis.isEmpty(), "${varisai.id} fits some Sa")
+                assertTrue(Shruti.SA_RANGE.first in varisai.playableSaMidis, "${varisai.id} fits the lowest Sa")
+            }
+        }
+    }
+
+    @Test
+    fun gitamsSwarajatisAndVarnamsKeepTheirRagas() {
+        val kalyani = VarisaiCatalog.inRaga(Raga.KALYANI)
+        VarisaiCatalog.all.filter { !it.set.followsChosenRaga }.forEach { piece ->
+            val same = kalyani.first { it.id == piece.id }
+            assertSame(piece.raga, same.raga, piece.id)
+        }
+    }
+
+    @Test
+    fun idsCarryTheRagaExceptMayamalavagowla() {
+        val sarali = VarisaiCatalog.inSet(VarisaiSet.SARALI).first { it.number == 3 }
+        assertEquals("sarali-3", sarali.id)
+        assertEquals("sarali-3", sarali.inRaga(Raga.MAYAMALAVAGOWLA).id)
+        val inKalyani = sarali.inRaga(Raga.KALYANI)
+        assertEquals("sarali-3@kalyani", inKalyani.id)
+        assertEquals(inKalyani, VarisaiCatalog.byId("sarali-3@kalyani"))
+        assertEquals(sarali, VarisaiCatalog.byId("sarali-3"))
+        assertNull(VarisaiCatalog.byId("sarali-3@malahari"), "only the short list")
+        assertNull(VarisaiCatalog.byId("sarali-3@nowhere"))
+        assertEquals("gitam-1", VarisaiCatalog.byId("gitam-1")?.id)
+        assertNull(VarisaiCatalog.byId("gitam-1@kalyani"), "gitams keep their own raga")
+        assertEquals(VarisaiCatalog.inSet(VarisaiSet.SARALI).size, VarisaiCatalog.inSet(VarisaiSet.SARALI, Raga.KEERAVANI).size)
+    }
+
+    @Test
+    fun historyIsKeptPerRaga() {
+        val kalyani = VarisaiCatalog.inRaga(Raga.KALYANI)
+        val history = PracticeHistory()
+            .practised("sarali-2", nowMillis = 1)
+            .practised("sarali-5@kalyani", nowMillis = 2)
+        assertEquals("sarali-2", history.continueWith(VarisaiCatalog.all)?.id, "the newer Kalyani practice is passed over")
+        assertEquals("sarali-5@kalyani", history.continueWith(kalyani)?.id)
+        assertEquals("sarali-6@kalyani", history.nextUp(kalyani)?.id)
+        assertEquals(1, history.practisedCount(VarisaiSet.SARALI, kalyani))
+        assertEquals(1, history.practisedCount(VarisaiSet.SARALI, VarisaiCatalog.all))
+        assertNull(history.continueWith(VarisaiCatalog.inRaga(Raga.KEERAVANI)))
+    }
+
+    @Test
+    fun runPlansArePerRaga() {
+        val kalyani = VarisaiCatalog.inRaga(Raga.KALYANI)
+        val plain = RunPlans().planFor(VarisaiSet.SARALI, VarisaiCatalog.all)
+        assertEquals("SARALI", plain.set)
+        val inKalyani = RunPlans().planFor(VarisaiSet.SARALI, kalyani)
+        assertEquals("SARALI@kalyani", inKalyani.set)
+        assertTrue(inKalyani.entries.all { it.varisaiId.endsWith("@kalyani") })
+        val saved = RunPlans().with(inKalyani.copy(nextIndex = 4))
+        assertEquals(4, saved.planFor(VarisaiSet.SARALI, kalyani).nextIndex)
+        assertEquals(0, saved.planFor(VarisaiSet.SARALI, VarisaiCatalog.all).nextIndex)
+        assertNotNull(saved.get(VarisaiSet.SARALI, Raga.KALYANI))
+        assertNull(saved[VarisaiSet.SARALI])
+        assertEquals("GITAM", RunPlans.keyFor(VarisaiSet.GITAM, Raga.KALYANI))
+    }
+}

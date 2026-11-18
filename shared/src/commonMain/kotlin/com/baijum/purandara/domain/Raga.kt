@@ -36,11 +36,16 @@ class Raga(
     val arohanam: List<Note> = emptyList(),
     val avarohanam: List<Note> = emptyList(),
     val allowedVariants: Map<SwaraLetter, List<Swara>> = emptyMap(),
+    /** The melakarta number (1–72) when the raga is one of the parent scales, or null. */
+    val mela: Int? = null,
 ) {
     init {
         require(swaraMap[SwaraLetter.S] == Swara.S) { "$name: S must be Sa" }
         require(swaraMap[SwaraLetter.P] in setOf(null, Swara.P)) { "$name: P must be Pa" }
         require(swaraMap.size >= MIN_LETTERS) { "$name needs at least $MIN_LETTERS letters" }
+        require(mela == null || (mela in MELA_RANGE && swaraMap.size == SwaraLetter.entries.size)) {
+            "$name: a melakarta has all seven letters and a number in $MELA_RANGE"
+        }
         allowedVariants.forEach { (letter, variants) ->
             require(letter in swaraMap) { "$name: cannot allow variants of ${letter.symbol}, which it does not use" }
             require(variants.all { it !in swaraMap.values || it == swaraMap[letter] }) {
@@ -69,6 +74,7 @@ class Raga(
 
     companion object {
         private const val MIN_LETTERS = 5
+        private val MELA_RANGE = 1..72
 
         /** 15th melakarta; the raga of Sarali Varisai and the other graded exercises. */
         val MAYAMALAVAGOWLA: Raga = Raga(
@@ -84,6 +90,7 @@ class Raga(
             ),
             arohanam = scale(Swara.S, Swara.R1, Swara.G3, Swara.M1, Swara.P, Swara.D1, Swara.N3),
             avarohanam = scale(Swara.S, Swara.R1, Swara.G3, Swara.M1, Swara.P, Swara.D1, Swara.N3).reversed(),
+            mela = 15,
         )
 
         /**
@@ -183,6 +190,7 @@ class Raga(
             ),
             arohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M2, Swara.P, Swara.D2, Swara.N3),
             avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M2, Swara.P, Swara.D2, Swara.N3).reversed(),
+            mela = 65,
         )
 
         /**
@@ -280,6 +288,7 @@ class Raga(
             ),
             arohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M1, Swara.P, Swara.D2, Swara.N3),
             avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.M1, Swara.P, Swara.D2, Swara.N3).reversed(),
+            mela = 29,
         )
 
         /** Janya of Shankarabharanam (29): ascent S R2 G3 P N3 S′ (no M, no D), descent S′ N3 P G3 R2 S. */
@@ -295,6 +304,30 @@ class Raga(
             arohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.P, Swara.N3),
             avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.P, Swara.N3).reversed(),
         )
+
+        /** 20th melakarta, the parent of Bhairavi and Anandabhairavi. */
+        val NATABHAIRAVI: Raga = melakarta("Natabhairavi", 20, Swara.R2, Swara.G2, Swara.M1, Swara.D1, Swara.N2)
+
+        /** 21st melakarta. */
+        val KEERAVANI: Raga = melakarta("Keeravani", 21, Swara.R2, Swara.G2, Swara.M1, Swara.D1, Swara.N3)
+
+        /** 22nd melakarta. */
+        val KHARAHARAPRIYA: Raga = melakarta("Kharaharapriya", 22, Swara.R2, Swara.G2, Swara.M1, Swara.D2, Swara.N2)
+
+        /** 28th melakarta, the parent of Mohanam and Khamas. */
+        val HARIKAMBHOJI: Raga = melakarta("Harikambhoji", 28, Swara.R2, Swara.G3, Swara.M1, Swara.D2, Swara.N2)
+
+        /** A melakarta: all seven swaras, the same up and down. */
+        private fun melakarta(name: String, number: Int, r: Swara, g: Swara, m: Swara, d: Swara, n: Swara): Raga {
+            val swaras = listOf(Swara.S, r, g, m, Swara.P, d, n)
+            return Raga(
+                name,
+                SwaraLetter.entries.zip(swaras).toMap(),
+                arohanam = scale(*swaras.toTypedArray()),
+                avarohanam = scale(*swaras.toTypedArray()).reversed(),
+                mela = number,
+            )
+        }
 
         /** [swaras] in the middle octave, then upper Sa. */
         private fun scale(vararg swaras: Swara): List<Note> =
@@ -312,7 +345,21 @@ object Ragas {
         Raga.MAYAMALAVAGOWLA, Raga.MALAHARI, Raga.SUDDHA_SAVERI, Raga.MOHANAM,
         Raga.BILAHARI, Raga.KHAMAS, Raga.KALYANI, Raga.ARABHI, Raga.BHAIRAVI,
         Raga.ANANDABHAIRAVI, Raga.ABHOGI, Raga.SHANKARABHARANAM, Raga.HAMSADHWANI,
+        Raga.NATABHAIRAVI, Raga.KEERAVANI, Raga.KHARAHARAPRIYA, Raga.HARIKAMBHOJI,
     )
+
+    /**
+     * The ragas the varisais and alankarams can be sung in
+     * (docs/plan-other-ragas.md): Mayamalavagowla, the usual one, first, then
+     * the others by melakarta number.
+     */
+    val melakartas: List<Raga> = listOf(
+        Raga.MAYAMALAVAGOWLA, Raga.NATABHAIRAVI, Raga.KEERAVANI, Raga.KHARAHARAPRIYA,
+        Raga.HARIKAMBHOJI, Raga.SHANKARABHARANAM, Raga.KALYANI,
+    )
+
+    /** One of [melakartas], by key. */
+    fun melakarta(key: String): Raga? = melakartas.firstOrNull { it.key == key }
 
     /** The student's own ragas, by name. Replaced whole (read from analysis threads too). */
     @Volatile
