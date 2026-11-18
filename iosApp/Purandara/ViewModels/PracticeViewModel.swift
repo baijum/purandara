@@ -191,7 +191,8 @@ final class PracticeViewModel: ObservableObject {
     @Published private(set) var findSa: FindSaProgress?
     @Published private(set) var outputChanged = false
 
-    let catalog: [Varisai] = VarisaiCatalog.shared.all
+    /// Every exercise, the varisais and alankarams in the chosen raga (docs/plan-other-ragas.md).
+    var catalog: [Varisai] { VarisaiCatalog.shared.inRaga(raga: settings.raga) }
 
     private let store: PracticeSettingsStore
     private let player: VarisaiAudioPlayer
@@ -734,7 +735,8 @@ final class PracticeViewModel: ObservableObject {
 
     private func persistRun(_ set: VarisaiSet, _ steps: [RunStep], _ nextIndex: Int) {
         let entries = steps.map { RunEntry.companion.create(varisaiId: $0.varisai.id, speed: $0.speed, repeats: $0.repeats) }
-        let plan = RunPlan.companion.create(set: set.name, nextIndex: Int32(nextIndex), entries: entries)
+        let key = steps.first.map { RunPlans.companion.keyFor(set: set, raga: $0.varisai.raga) } ?? set.name
+        let plan = RunPlan.companion.create(set: key, nextIndex: Int32(nextIndex), entries: entries)
         let plans = runPlans.with(plan: plan)
         store.saveRunPlans(plans)
         runPlans = plans
@@ -820,7 +822,7 @@ final class PracticeViewModel: ObservableObject {
         let rate = Double(renderer.sampleRate)
         let room = ShrutiSession.companion.DEFAULT_ROOM_CHECK_SECONDS
         let session = ShrutiSession(
-            saHz: settings.saHz, raga: VarisaiCatalog.shared.raga, tuning: settings.tuning.kotlin,
+            saHz: settings.saHz, raga: settings.raga, tuning: settings.tuning.kotlin,
             strictness: settings.strictness.kotlin, sampleRate: renderer.sampleRate,
             outputLevels: OutputLevels(capacity: 512), roomCheckSeconds: room)
         session.startHold(target: shruti.target, goal: shruti.goal)

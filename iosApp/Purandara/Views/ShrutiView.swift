@@ -82,7 +82,7 @@ struct ShrutiView: View {
             if !typeSize.isAccessibilitySize {
                 // Visual only, and outside the reading's element (the contrast
                 // check would otherwise measure the text against the lines).
-                FreePitchTrace(trace: shruti.trace, saHz: viewModel.settings.saHz)
+                FreePitchTrace(trace: shruti.trace, saHz: viewModel.settings.saHz, ragaKey: viewModel.settings.ragaKey)
                     .frame(height: 180)
                     .accessibilityHidden(true)
             }
@@ -184,6 +184,8 @@ private struct HoldChoices: View {
 private struct FreePitchTrace: View {
     let trace: [FreeTracePoint]
     let saHz: Double
+    /// The raga for the varisais (a plain key, read inside the Canvas closure).
+    let ragaKey: String
 
     // Pure geometry constants, read from the nonisolated Canvas closure.
     private nonisolated static let low = -800.0
@@ -191,7 +193,7 @@ private struct FreePitchTrace: View {
 
     var body: some View {
         Canvas { context, size in
-            let raga = VarisaiCatalog.shared.raga
+            let raga = Ragas.shared.melakarta(key: ragaKey) ?? VarisaiCatalog.shared.raga
             let labelWidth: CGFloat = 26
             func y(_ cents: Double) -> CGFloat { size.height * (1 - (cents - Self.low) / (Self.high - Self.low)) }
             var lines: [Note] = [SwaraLetter.p, .d, .n].map { Note(swara: raga.swara(letter: $0), octave: .mandra) }

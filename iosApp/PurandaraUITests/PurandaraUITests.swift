@@ -225,6 +225,34 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
     }
 
+    /// The raga for the varisais (docs/plan-other-ragas.md): the list reads each
+    /// scale, passes the audit, and choosing one changes Home and the set pages.
+    @MainActor func testRagaForTheVarisaisPassesAuditAndIsChosen() throws {
+        let app = launch()
+        XCTAssertTrue(app.navigationBars["Purandara"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Mayamalavagowla · Adi tala"].exists)
+        let row = app.buttons["Mayamalavagowla, Gitams, swarajatis and varnams keep their own."].firstMatch
+        scrollTo(row, in: app)
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Raga"].waitForExistence(timeout: 5))
+        let usual = app.buttons["Mayamalavagowla, The usual raga for the varisais: Sa, Ri 1, Ga 3, Ma 1, Pa, Dha 1, Ni 3, high Sa"]
+        XCTAssertTrue(usual.exists)
+        XCTAssertTrue(usual.isSelected)
+        try audit(app)
+        let kalyani = app.buttons["Kalyani, Melakarta 65: Sa, Ri 2, Ga 3, Ma 2, Pa, Dha 2, Ni 3, high Sa"]
+        scrollTo(kalyani, in: app)
+        kalyani.tap()
+        XCTAssertTrue(app.navigationBars["Purandara"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Kalyani · Adi tala"].waitForExistence(timeout: 5))
+        // The choice is saved: a new launch (without resetting) opens Sarali in Kalyani.
+        app.terminate()
+        let again = XCUIApplication()
+        again.launchArguments = ["-open", "set-SARALI"]
+        again.launch()
+        XCTAssertTrue(again.navigationBars["Sarali Varisai"].waitForExistence(timeout: 5))
+        XCTAssertTrue(again.staticTexts["In raga Kalyani"].exists)
+    }
+
     /// Leaving the Sa tab stops Shruti practice; coming back shows the Sa page, not a restarted practice.
     @MainActor func testLeavingTheSaTabClosesShrutiPractice() throws {
         let app = launch(["-open", "shruti"])

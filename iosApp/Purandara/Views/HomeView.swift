@@ -19,6 +19,7 @@ struct HomeView: View {
             LoadStatus()
             continueSection
             SaSection()
+            ragaSection
             ForEach(NavGroup.entries.filter(\.foldable), id: \.name) { group in
                 Section {
                     ForEach(group.destinations.compactMap { ($0 as? NavDestination.SetPage)?.set }, id: \.name) { set in
@@ -43,7 +44,7 @@ struct HomeView: View {
             }
         }
         .safeAreaInset(edge: .top) {
-            Text("Mayamalavagowla · Adi tala")
+            Text("\(viewModel.settings.raga.name) · Adi tala")
                 .font(.subheadline)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal)
@@ -72,6 +73,29 @@ struct HomeView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("\(set.title), \(detail)"))
         .accessibilityAddTraits(.isButton)
+    }
+
+    /// The raga the varisais and alankarams are sung in (docs/plan-other-ragas.md),
+    /// below Your Sa: kept out of the Sa section so the first screen stays short at large text.
+    private var ragaSection: some View {
+        Section {
+            NavigationLink {
+                VarisaiRagaList(ragaKey: $viewModel.settings.ragaKey)
+            } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(viewModel.settings.raga.name)
+                    Text("Gitams, swarajatis and varnams keep their own.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .accessibilityHint(Text("Choose the raga the varisais and alankarams are sung in."))
+        } header: {
+            Text("Raga for the varisais")
+                .foregroundStyle(Color.subdued)
+                .accessibilityAddTraits(.isHeader)
+        }
     }
 
     // MARK: - Continue / next up
@@ -157,6 +181,10 @@ struct SetView: View {
                         .font(.subheadline)
                         .foregroundStyle(Color.subdued)
                         .fixedSize(horizontal: false, vertical: true)
+                    if set.followsChosenRaga {
+                        Text("In raga \(viewModel.settings.raga.name)")
+                            .font(.subheadline)
+                    }
                     if practised > 0 {
                         Text("\(practised) of \(exercises.count) practised")
                             .font(.subheadline)
@@ -265,6 +293,60 @@ struct SaSection: View {
                 .foregroundStyle(Color.subdued)
                 .accessibilityAddTraits(.isHeader)
         }
+    }
+}
+
+/// The ragas the varisais and alankarams can be sung in, the current one
+/// checked; each row shows its arohanam and reads it out in full
+/// (docs/plan-other-ragas.md). Mirrors Android's `RagaPicker`.
+struct VarisaiRagaList: View {
+    @Binding var ragaKey: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            Section {
+                Text("The varisais and alankarams are sung in this raga. Gitams, swarajatis and varnams keep their own.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.subdued)
+                    .fixedSize(horizontal: false, vertical: true)
+                ForEach(VarisaiCatalog.shared.ragas, id: \.key) { raga in
+                    row(raga)
+                }
+            }
+        }
+        .navigationTitle("Raga")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func row(_ raga: Raga) -> some View {
+        let swaras = Array(raga.swaras.dropFirst())
+        let detail = raga.key == VarisaiCatalog.shared.raga.key
+            ? String(localized: "The usual raga for the varisais")
+            : String(localized: "Melakarta \(Int(truncating: raga.mela ?? 0))")
+        let line = CustomRaga.companion.line(swaras: swaras, descending: false)
+        let spoken = CustomRaga.companion.spokenLine(swaras: swaras, descending: false)
+        let selected = raga.key == ragaKey
+        return Button {
+            ragaKey = raga.key
+            dismiss()
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(raga.name).foregroundStyle(Color.primary)
+                    Text("\(detail) · \(line)")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                if selected { Image(systemName: "checkmark").accessibilityHidden(true) }
+            }
+            .contentShape(Rectangle())
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(raga.name), \(detail): \(spoken)"))
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 }
 

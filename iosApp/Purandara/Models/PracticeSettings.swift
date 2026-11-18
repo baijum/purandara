@@ -99,6 +99,11 @@ struct PracticeSettings: Equatable {
     var words: WordsChoice = .both
     /// Fine-tune of Sa in cents (`Shruti.FINE_TUNE_RANGE`).
     var saCents = 0
+    /// The raga the varisais and alankarams are sung in (a `Ragas.melakartas` key; docs/plan-other-ragas.md).
+    var ragaKey: String = VarisaiCatalog.shared.raga.key
+
+    /// The chosen raga for the varisais, Mayamalavagowla when `ragaKey` is unknown.
+    var raga: Raga { Ragas.shared.melakarta(key: ragaKey) ?? VarisaiCatalog.shared.raga }
 
     static let saRange = Int(Shruti.shared.SA_RANGE.first)...Int(Shruti.shared.SA_RANGE.last)
     static let tempoRange = Int(PerformanceSettings.companion.TEMPO_RANGE.first)...Int(PerformanceSettings.companion.TEMPO_RANGE.last)
@@ -183,6 +188,7 @@ struct PracticeSettingsStore {
         static let recoveryMode = "practice.recoveryMode"
         static let recoverySeconds = "practice.recoverySeconds"
         static let responseGuide = "practice.responseGuide"
+        static let varisaiRaga = "practice.varisaiRaga"
     }
 
     func load() -> PracticeSettings {
@@ -208,6 +214,7 @@ struct PracticeSettingsStore {
         if let raw = defaults.string(forKey: Key.recoveryMode), let v = PracticeSettings.RecoveryChoice(rawValue: raw) { s.recoveryMode = v }
         if let v = defaults.object(forKey: Key.recoverySeconds) as? Int, (1...30).contains(v) { s.recoverySeconds = v }
         if let v = defaults.object(forKey: Key.responseGuide) as? Bool { s.responseGuide = v }
+        if let v = defaults.string(forKey: Key.varisaiRaga), Ragas.shared.melakarta(key: v) != nil { s.ragaKey = v }
         return s
     }
 
@@ -249,5 +256,6 @@ struct PracticeSettingsStore {
         defaults.set(s.recoveryMode.rawValue, forKey: Key.recoveryMode)
         defaults.set(s.recoverySeconds, forKey: Key.recoverySeconds)
         defaults.set(s.responseGuide, forKey: Key.responseGuide)
+        defaults.set(s.ragaKey, forKey: Key.varisaiRaga)
     }
 }
