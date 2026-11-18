@@ -46,6 +46,19 @@ struct PracticeSettings: Equatable {
         }
     }
 
+    /// Swara numbers in the notation (shared `SwaraNumbers`; docs/plan-raga-followups.md F2).
+    enum SwaraNumbersChoice: String, CaseIterable {
+        case off, otherRagas, always
+
+        var kotlin: SwaraNumbers {
+            switch self {
+            case .off: return .off
+            case .otherRagas: return .otherRagas
+            case .always: return .always
+            }
+        }
+    }
+
     enum ModeChoice: String, CaseIterable {
         case normal, listenRepeat
 
@@ -101,6 +114,8 @@ struct PracticeSettings: Equatable {
     var saCents = 0
     /// The raga the varisais and alankarams are sung in (a `Ragas.melakartas` key; docs/plan-other-ragas.md).
     var ragaKey: String = VarisaiCatalog.shared.raga.key
+    /// Whether the notation shows swara numbers (R₂ G₂).
+    var swaraNumbers: SwaraNumbersChoice = .otherRagas
 
     /// The chosen raga for the varisais, Mayamalavagowla when `ragaKey` is unknown.
     var raga: Raga { Ragas.shared.melakarta(key: ragaKey) ?? VarisaiCatalog.shared.raga }
@@ -189,6 +204,7 @@ struct PracticeSettingsStore {
         static let recoverySeconds = "practice.recoverySeconds"
         static let responseGuide = "practice.responseGuide"
         static let varisaiRaga = "practice.varisaiRaga"
+        static let swaraNumbers = "practice.swaraNumbers"
     }
 
     func load() -> PracticeSettings {
@@ -215,6 +231,7 @@ struct PracticeSettingsStore {
         if let v = defaults.object(forKey: Key.recoverySeconds) as? Int, (1...30).contains(v) { s.recoverySeconds = v }
         if let v = defaults.object(forKey: Key.responseGuide) as? Bool { s.responseGuide = v }
         if let v = defaults.string(forKey: Key.varisaiRaga), Ragas.shared.melakarta(key: v) != nil { s.ragaKey = v }
+        if let raw = defaults.string(forKey: Key.swaraNumbers), let v = PracticeSettings.SwaraNumbersChoice(rawValue: raw) { s.swaraNumbers = v }
         return s
     }
 
@@ -257,5 +274,6 @@ struct PracticeSettingsStore {
         defaults.set(s.recoverySeconds, forKey: Key.recoverySeconds)
         defaults.set(s.responseGuide, forKey: Key.responseGuide)
         defaults.set(s.ragaKey, forKey: Key.varisaiRaga)
+        defaults.set(s.swaraNumbers.rawValue, forKey: Key.swaraNumbers)
     }
 }

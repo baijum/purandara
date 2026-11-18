@@ -185,6 +185,8 @@ final class PracticeViewModel: ObservableObject {
     @Published private(set) var runPlans: RunPlans
     /// The landing page's tanpura-only drone is sounding.
     @Published private(set) var tanpuraPlaying = false
+    /// The raga whose scale is playing in the raga list (docs/plan-raga-followups.md F1), by key.
+    @Published private(set) var previewRagaKey: String?
     @Published private(set) var shruti = ShrutiUI()
     /// Find my Sa: open, and its progress (nil until the first frame).
     @Published private(set) var findSaOpen = false
@@ -316,6 +318,7 @@ final class PracticeViewModel: ObservableObject {
             options: options)
         current = varisai
         tanpuraPlaying = false
+        previewRagaKey = nil
         self.schedule = schedule
         self.renderer = renderer
         repeatHeardFrom = nil
@@ -366,6 +369,7 @@ final class PracticeViewModel: ObservableObject {
         self.schedule = schedule
         current = varisai
         tanpuraPlaying = false
+        previewRagaKey = nil
         finalizedSegments.removeAll()
         displayedSegment = nil
         acceptingTransportOutcomes = true
@@ -536,6 +540,40 @@ final class PracticeViewModel: ObservableObject {
         if tanpuraPlaying { stop() }
     }
 
+    /// Plays `raga`'s scale for the raga list, or stops it if it is the one playing.
+    func togglePreview(_ raga: Raga) {
+        if previewRagaKey == raga.key { stop(); return }
+        player.acknowledgeOutputChange()
+        outputChanged = false
+        resumeAfterBackground = nil
+        guard let bank else { return }
+        // As for the tanpura: the new renderer replaces whatever plays.
+        stopTimer()
+        _ = engine?.stop()
+        engine = nil
+        current = nil
+        schedule = nil
+        tanpuraPlaying = false
+        let renderer = SampleRenderer(
+            bank: bank,
+            schedule: RagaPreview.shared.schedule(raga: raga, saHz: settings.saHz, tuning: settings.tuning.kotlin),
+            options: RagaPreview.shared.options(harmoniumLevel: settings.harmoniumLevel, droneLevel: settings.droneLevel))
+        self.renderer = renderer
+        do {
+            try player.play(renderer, mic: nil) { [weak self] in self?.finished(renderer) }
+        } catch {
+            print("[practice] could not start audio: \(error)")
+            finished(renderer)
+            return
+        }
+        previewRagaKey = raga.key
+    }
+
+    /// Stops a raga preview (the list closed or a raga was chosen); anything else keeps playing.
+    func stopPreview() {
+        if previewRagaKey != nil { stop() }
+    }
+
     private func playTanpura() {
         outputChanged = false
         resumeAfterBackground = nil
@@ -558,6 +596,7 @@ final class PracticeViewModel: ObservableObject {
             return
         }
         tanpuraPlaying = true
+        previewRagaKey = nil
     }
 
     // MARK: - Practice runs (docs/plan-practice-run.md)
@@ -1005,6 +1044,7 @@ final class PracticeViewModel: ObservableObject {
         current = nil
         schedule = nil
         tanpuraPlaying = false
+        previewRagaKey = nil
         player.stopImmediately()
     }
 
@@ -1174,6 +1214,7 @@ final class PracticeViewModel: ObservableObject {
         renderer = nil
         schedule = nil
         tanpuraPlaying = false
+        previewRagaKey = nil
         playback = PlaybackState(repetitions: playback.repetitions)
     }
 

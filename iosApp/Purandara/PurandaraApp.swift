@@ -55,7 +55,7 @@ struct PurandaraApp: App {
     /// `-open set-SARALI` a set page, `-open about` About), `-autoplay YES` also starts it once samples load,
     /// `-singAlong YES` turns sing-along on, `-singer <cents>` uses a synthetic singer,
     /// `-resetSettings YES` starts from default settings and no recordings (UI tests), `-sa <midi>` then picks a Sa,
-    /// `-raga <key>` the raga for the varisais (`kalyani`).
+    /// `-raga <key>` the raga for the varisais (`kalyani`), `-swaraNumbers off|otherRagas|always`.
     private func openFromLaunchArguments() {
         #if DEBUG
         let defaults = UserDefaults.standard
@@ -68,6 +68,9 @@ struct PurandaraApp: App {
         let sa = defaults.integer(forKey: "sa") // launch arguments arrive as strings
         if PracticeSettings.saRange.contains(sa) { viewModel.settings.saMidi = sa }
         if let raga = defaults.string(forKey: "raga"), Ragas.shared.melakarta(key: raga) != nil { viewModel.settings.ragaKey = raga }
+        if let raw = defaults.string(forKey: "swaraNumbers"), let v = PracticeSettings.SwaraNumbersChoice(rawValue: raw) {
+            viewModel.settings.swaraNumbers = v
+        }
         guard let id = defaults.string(forKey: "open") else { return }
         if id == "recordings" || id == "record" {
             recordings.prepare(tuning: viewModel.settings.tuning.kotlin, saMidi: viewModel.settings.saMidi, saCents: viewModel.settings.saCents,

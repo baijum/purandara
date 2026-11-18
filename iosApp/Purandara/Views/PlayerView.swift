@@ -51,6 +51,7 @@ struct PlayerView: View {
                 playback: viewModel.playback,
                 marks: viewModel.settings.singAlong ? viewModel.singAlong.marks : [:],
                 words: viewModel.settings.words.kotlin,
+                numbersIn: viewModel.settings.swaraNumbers.kotlin.ragaFor(varisai: varisai),
                 header: AnyView(VStack(spacing: 8) {
                     if runMode, let run = viewModel.run, let step = run.current {
                         RunBanner(run: run, step: step) { viewModel.skipRunStep() }
@@ -552,6 +553,18 @@ struct PracticeSettingsView: View {
                         .font(.footnote).foregroundStyle(Color.subdued)
                         .fixedSize(horizontal: false, vertical: true)
                 }.navigationTitle("Gitam notation").navigationBarTitleDisplayMode(.inline)
+            }
+            NavigationLink("Swara numbers") {
+                Form {
+                    Picker("Swara numbers", selection: $settings.swaraNumbers) {
+                        Text("Off").tag(PracticeSettings.SwaraNumbersChoice.off)
+                        Text("In other ragas").tag(PracticeSettings.SwaraNumbersChoice.otherRagas)
+                        Text("Always").tag(PracticeSettings.SwaraNumbersChoice.always)
+                    }.pickerStyle(.inline).labelsHidden()
+                    Text("Show which Ri, Ga, Ma, Dha and Ni each letter stands for (R₂ G₂): for the varisais in a raga other than Mayamalavagowla, or always.")
+                        .font(.footnote).foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                }.navigationTitle("Swara numbers").navigationBarTitleDisplayMode(.inline)
             }
         }.navigationTitle("Feedback and notation").navigationBarTitleDisplayMode(.inline)
     }

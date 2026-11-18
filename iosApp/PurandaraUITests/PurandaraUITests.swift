@@ -73,7 +73,10 @@ final class PurandaraUITests: XCTestCase {
         let raga = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Raga'")).firstMatch
         XCTAssertTrue(raga.waitForExistence(timeout: 5))
         raga.tap()
-        app.buttons["Mayamalavagowla"].tap()
+        // 17 ragas, alphabetical: Mayamalavagowla can be below the loaded rows.
+        let mayamalavagowla = app.buttons["Mayamalavagowla"]
+        scrollTo(mayamalavagowla, in: app)
+        mayamalavagowla.tap()
         let arohana = app.buttons["Arohana"]
         XCTAssertTrue(arohana.waitForExistence(timeout: 5))
         arohana.tap()
@@ -231,13 +234,18 @@ final class PurandaraUITests: XCTestCase {
         let app = launch()
         XCTAssertTrue(app.navigationBars["Purandara"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Mayamalavagowla · Adi tala"].exists)
-        let row = app.buttons["Mayamalavagowla, Gitams, swarajatis and varnams keep their own."].firstMatch
+        let row = app.buttons["Raga for the varisais: Mayamalavagowla"].firstMatch
         scrollTo(row, in: app)
         row.tap()
         XCTAssertTrue(app.navigationBars["Raga"].waitForExistence(timeout: 5))
         let usual = app.buttons["Mayamalavagowla, The usual raga for the varisais: Sa, Ri 1, Ga 3, Ma 1, Pa, Dha 1, Ni 3, high Sa"]
         XCTAssertTrue(usual.exists)
         XCTAssertTrue(usual.isSelected)
+        let play = app.buttons["Play Keeravani"]
+        XCTAssertTrue(play.exists)
+        wait(for: [expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: play)], timeout: 10)
+        play.tap()
+        XCTAssertTrue(app.buttons["Stop Keeravani"].waitForExistence(timeout: 5))
         try audit(app)
         let kalyani = app.buttons["Kalyani, Melakarta 65: Sa, Ri 2, Ga 3, Ma 2, Pa, Dha 2, Ni 3, high Sa"]
         scrollTo(kalyani, in: app)
@@ -251,6 +259,16 @@ final class PurandaraUITests: XCTestCase {
         again.launch()
         XCTAssertTrue(again.navigationBars["Sarali Varisai"].waitForExistence(timeout: 5))
         XCTAssertTrue(again.staticTexts["In raga Kalyani"].exists)
+    }
+
+    /// Swara numbers (docs/plan-raga-followups.md F2): in another raga the notation
+    /// shows and reads each swara's number, and the player passes the audit.
+    @MainActor func testSwaraNumbersInAnotherRagaAreShownReadAndPassAudit() throws {
+        let app = launch(["-raga", "kharaharapriya", "-open", "sarali-1@kharaharapriya"])
+        XCTAssertTrue(app.staticTexts["Kharaharapriya · Adi tala"].waitForExistence(timeout: 5))
+        let avarta = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Avarta 1: S R2 S R2, S R2, G2 M1'")).firstMatch
+        XCTAssertTrue(avarta.waitForExistence(timeout: 5))
+        try audit(app)
     }
 
     /// Leaving the Sa tab stops Shruti practice; coming back shows the Sa page, not a restarted practice.

@@ -82,15 +82,11 @@ struct HomeView: View {
             NavigationLink {
                 VarisaiRagaList(ragaKey: $viewModel.settings.ragaKey)
             } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(viewModel.settings.raga.name)
-                    Text("Gitams, swarajatis and varnams keep their own.")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.subdued)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                Text(viewModel.settings.raga.name)
             }
-            .accessibilityHint(Text("Choose the raga the varisais and alankarams are sung in."))
+            // Distinct from the recordings' raga list, which has a "Mayamalavagowla" button too.
+            .accessibilityLabel(Text("Raga for the varisais: \(viewModel.settings.raga.name)"))
+            .accessibilityHint(Text("Choose the raga the varisais and alankarams are sung in. Gitams, swarajatis and varnams keep their own."))
         } header: {
             Text("Raga for the varisais")
                 .foregroundStyle(Color.subdued)
@@ -189,6 +185,14 @@ struct SetView: View {
                         Text("\(practised) of \(exercises.count) practised")
                             .font(.subheadline)
                             .foregroundStyle(Color.subdued)
+                    }
+                    let others = viewModel.history.practisedInOtherRagas(set: set, current: viewModel.settings.raga)
+                    if !others.isEmpty {
+                        let each = others.map { "\($0.raga.name) \(Int($0.practised)) of \(Int($0.total))" }
+                        Text("In other ragas: \(each.joined(separator: " · "))")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.subdued)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 if set.practisesAsRun {
@@ -300,13 +304,14 @@ struct SaSection: View {
 /// checked; each row shows its arohanam and reads it out in full
 /// (docs/plan-other-ragas.md). Mirrors Android's `RagaPicker`.
 struct VarisaiRagaList: View {
+    @EnvironmentObject private var viewModel: PracticeViewModel
     @Binding var ragaKey: String
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         List {
             Section {
-                Text("The varisais and alankarams are sung in this raga. Gitams, swarajatis and varnams keep their own.")
+                Text("The varisais and alankarams are sung in this raga. Gitams, swarajatis and varnams keep their own. Tap the speaker to hear a raga first.")
                     .font(.subheadline)
                     .foregroundStyle(Color.subdued)
                     .fixedSize(horizontal: false, vertical: true)
@@ -317,8 +322,11 @@ struct VarisaiRagaList: View {
         }
         .navigationTitle("Raga")
         .navigationBarTitleDisplayMode(.inline)
+        .onDisappear { viewModel.stopPreview() }
     }
 
+    /// Choose the raga (the row), or hear its scale (the speaker): buttons sharing a
+    /// list row each need their own style.
     private func row(_ raga: Raga) -> some View {
         let swaras = Array(raga.swaras.dropFirst())
         let detail = raga.key == VarisaiCatalog.shared.raga.key
@@ -327,26 +335,43 @@ struct VarisaiRagaList: View {
         let line = CustomRaga.companion.line(swaras: swaras, descending: false)
         let spoken = CustomRaga.companion.spokenLine(swaras: swaras, descending: false)
         let selected = raga.key == ragaKey
-        return Button {
-            ragaKey = raga.key
-            dismiss()
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(raga.name).foregroundStyle(Color.primary)
-                    Text("\(detail) · \(line)")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.subdued)
-                        .fixedSize(horizontal: false, vertical: true)
+        let previewing = viewModel.previewRagaKey == raga.key
+        return HStack(spacing: 12) {
+            Button {
+                viewModel.stopPreview()
+                ragaKey = raga.key
+                dismiss()
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(raga.name).foregroundStyle(Color.primary)
+                        Text("\(detail) · \(line)")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.subdued)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 4)
+                    if selected { Image(systemName: "checkmark").accessibilityHidden(true) }
                 }
-                Spacer()
-                if selected { Image(systemName: "checkmark").accessibilityHidden(true) }
+                .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
+            .buttonStyle(.borderless)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text("\(raga.name), \(detail): \(spoken)"))
+            .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+            Button {
+                viewModel.togglePreview(raga)
+            } label: {
+                Image(systemName: previewing ? "stop.circle" : "speaker.wave.2")
+                    .font(.title3)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .disabled(!viewModel.samplesLoaded)
+            .accessibilityLabel(Text(previewing ? "Stop \(raga.name)" : "Play \(raga.name)"))
+            .accessibilityHint(Text("Plays the raga's scale up and down at your Sa"))
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("\(raga.name), \(detail): \(spoken)"))
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 }
 

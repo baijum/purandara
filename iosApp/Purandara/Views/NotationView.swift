@@ -13,6 +13,8 @@ struct NotationView: View {
     let playback: PlaybackState
     var marks: [MarkKey: NoteResult] = [:]
     var words: WordsDisplay = .both
+    /// The raga whose swara numbers the notation shows (`SwaraNumbers.ragaFor`), or nil for letters as written.
+    var numbersIn: Raga?
     /// Optional content scrolled above the rows (the sing-along panel at accessibility text sizes).
     var header: AnyView?
 
@@ -63,7 +65,8 @@ struct NotationView: View {
                                 activeCell: current == index ? activeCell : nil,
                                 activeSlot: current == index ? playback.slot : nil,
                                 marks: blockMarks,
-                                words: words)
+                                words: words,
+                                numbersIn: numbersIn)
                             .accessibilityElement(children: .ignore)
                             .accessibilityLabel(repeating
                                 ? Text("Repeating. Avarta \(index + 1): \(spoken(index, marks: blockMarks))")
@@ -98,12 +101,13 @@ extension NotationView {
     /// Cycle sentence, commas at the anga bars; after sing-along, each swara with its mark ("S in tune R high…").
     func spokenSwaras(_ block: Int, marks: [MarkKey: NoteResult]) -> String {
         let hold = String(localized: "hold")
-        guard !marks.isEmpty else { return layout.spoken(block: Int32(block), karvaiWord: hold) }
+        guard !marks.isEmpty else { return layout.spoken(block: Int32(block), karvaiWord: hold, numbersIn: numbersIn) }
         return layout.spokenWith(block: Int32(block)) { cell, akshara in
             if let swaras = (akshara as? AksharaSwaras)?.swaras {
                 return swaras.enumerated().map { slot, swara in
                     let word = SingAlongText.markWords(marks[MarkKey(avarta: Int(cell.avarta), akshara: Int(cell.akshara), slot: slot)])
-                    return word.map { "\(swara.spoken()) \($0)" } ?? swara.spoken()
+                    let name = numbersIn.map { swara.spoken(numbersIn: $0) } ?? swara.spoken()
+                    return word.map { "\(name) \($0)" } ?? name
                 }.joined(separator: " ")
             }
             if akshara is AksharaRest { return nil }
@@ -202,6 +206,7 @@ private struct CycleRows: View {
     let activeSlot: Int?
     let marks: [MarkKey: NoteResult]
     let words: WordsDisplay
+    let numbersIn: Raga?
 
     var body: some View {
         let hasWords = words.showsWords && layout.hasWords(block: block.index)
@@ -223,7 +228,8 @@ private struct CycleRows: View {
                                     .filter { $0.key.avarta == Int(cell.avarta) && $0.key.akshara == Int(cell.akshara) }
                                     .map { ($0.key.slot, $0.value) }),
                                 word: hasWords ? layout.word(cell: cell) : nil,
-                                showSwaras: showSwaras)
+                                showSwaras: showSwaras,
+                                numbersIn: numbersIn)
                         }
                     }
                     // Several swaras to a beat: a light band shows which ones share it.
@@ -246,6 +252,7 @@ private struct AksharaCell: View {
     let marks: [Int: NoteResult]
     var word: String?
     var showSwaras = true
+    var numbersIn: Raga?
 
     private var swaras: [WrittenSwara] { (akshara as? AksharaSwaras)?.swaras ?? [] }
 
@@ -322,8 +329,8 @@ private struct AksharaCell: View {
             let swara = item.element
             var piece = Text(singleMandra ? swara.letter.name : swara.baseText)
             if item.offset == activeSlot { piece = piece.bold().foregroundColor(.accentColor) }
-            // A variant digit (the 1 of D1) is written as a subscript.
-            if let digit = swara.variantDigit, !singleMandra {
+            // A variant digit (the 1 of D1), or the raga's with swara numbers on, as a subscript.
+            if let digit = swara.digitIn(numbersIn: numbersIn) {
                 piece = piece + Text(digit).font(.caption)
             }
             return result + piece
