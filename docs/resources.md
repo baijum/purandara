@@ -408,6 +408,13 @@ there too, so the next person does not repeat them.
   swara names). NIOS Book 1 (ch. 4, Sarali) and Book 2 (varisai activities) also
   suggest practising the varisais in Sankarabharanam, Kharaharapriya or
   Kalyani.
+- Eight more melakartas for the varisais (2026-11-18): 8 Todi (Hanumatodi),
+  26 Charukesi, 51 Pantuvarali (Kamavardhini), 56 Shanmukhapriya,
+  57 Simhendramadhyamam, 58 Hemavati, 63 Latangi and 64 Vachaspati, read
+  from karnatik.com's melakarta table (each row pairs mela n with n+36,
+  which shares its Ri, Ga, Dha and Ni) and from Raga Surabhi's raga pages
+  (Todi at `raga--thodi`, Latangi at `raga--lathangi`); the two agree on
+  every swara.
 - Guruguha: English translations of the lakshana texts, including the
   *Sangita Sampradaya Pradarshini*, *Chaturdandi Prakashika*,
   *Swaramelakalanidhi* and *Ragatarangini*, plus Dikshitar kritis —

@@ -40,8 +40,10 @@ class OtherRagasTest {
     fun theShortListAndTheirNumbers() {
         assertEquals(
             listOf(
-                "Mayamalavagowla" to 15, "Natabhairavi" to 20, "Keeravani" to 21, "Kharaharapriya" to 22,
-                "Harikambhoji" to 28, "Shankarabharanam" to 29, "Kalyani" to 65,
+                "Mayamalavagowla" to 15, "Todi" to 8, "Natabhairavi" to 20, "Keeravani" to 21,
+                "Kharaharapriya" to 22, "Charukesi" to 26, "Harikambhoji" to 28, "Shankarabharanam" to 29,
+                "Pantuvarali" to 51, "Shanmukhapriya" to 56, "Simhendramadhyamam" to 57, "Hemavati" to 58,
+                "Latangi" to 63, "Vachaspati" to 64, "Kalyani" to 65,
             ),
             Ragas.melakartas.map { it.name to it.mela },
         )

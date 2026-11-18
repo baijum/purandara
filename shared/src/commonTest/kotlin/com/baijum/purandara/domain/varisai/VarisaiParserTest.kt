@@ -168,7 +168,7 @@ class VarisaiParserTest {
     @Test
     fun unknownHeadersValuesAndLettersOutsideTheRagaAreErrors() {
         assertFailsWith<VarisaiParseException> { parseOne("1\ntala: dhruva\nS R G M") }
-        assertFailsWith<VarisaiParseException> { parseOne("1\nraga: todi\nS R G M | P D | N S′ || S R G M | P D | N S′") }
+        assertFailsWith<VarisaiParseException> { parseOne("1\nraga: kanakangi\nS R G M | P D | N S′ || S R G M | P D | N S′") }
         val e = assertFailsWith<VarisaiParseException> {
             parseOne("1\nraga: malahari\nS R G M | P D | N S′ || S R G M | P D | D S′")
         }

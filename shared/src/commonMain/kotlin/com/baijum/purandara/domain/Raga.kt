@@ -305,6 +305,9 @@ class Raga(
             avarohanam = scale(Swara.S, Swara.R2, Swara.G3, Swara.P, Swara.N3).reversed(),
         )
 
+        /** 8th melakarta, Hanumatodi; known in concerts as Todi. */
+        val TODI: Raga = melakarta("Todi", 8, Swara.R1, Swara.G2, Swara.M1, Swara.D1, Swara.N2)
+
         /** 20th melakarta, the parent of Bhairavi and Anandabhairavi. */
         val NATABHAIRAVI: Raga = melakarta("Natabhairavi", 20, Swara.R2, Swara.G2, Swara.M1, Swara.D1, Swara.N2)
 
@@ -314,8 +317,29 @@ class Raga(
         /** 22nd melakarta. */
         val KHARAHARAPRIYA: Raga = melakarta("Kharaharapriya", 22, Swara.R2, Swara.G2, Swara.M1, Swara.D2, Swara.N2)
 
+        /** 26th melakarta. */
+        val CHARUKESI: Raga = melakarta("Charukesi", 26, Swara.R2, Swara.G3, Swara.M1, Swara.D1, Swara.N2)
+
         /** 28th melakarta, the parent of Mohanam and Khamas. */
         val HARIKAMBHOJI: Raga = melakarta("Harikambhoji", 28, Swara.R2, Swara.G3, Swara.M1, Swara.D2, Swara.N2)
+
+        /** 51st melakarta, Kamavardhini; known in concerts as Pantuvarali. */
+        val PANTUVARALI: Raga = melakarta("Pantuvarali", 51, Swara.R1, Swara.G3, Swara.M2, Swara.D1, Swara.N3)
+
+        /** 56th melakarta. */
+        val SHANMUKHAPRIYA: Raga = melakarta("Shanmukhapriya", 56, Swara.R2, Swara.G2, Swara.M2, Swara.D1, Swara.N2)
+
+        /** 57th melakarta. */
+        val SIMHENDRAMADHYAMAM: Raga = melakarta("Simhendramadhyamam", 57, Swara.R2, Swara.G2, Swara.M2, Swara.D1, Swara.N3)
+
+        /** 58th melakarta. */
+        val HEMAVATI: Raga = melakarta("Hemavati", 58, Swara.R2, Swara.G2, Swara.M2, Swara.D2, Swara.N2)
+
+        /** 63rd melakarta. */
+        val LATANGI: Raga = melakarta("Latangi", 63, Swara.R2, Swara.G3, Swara.M2, Swara.D1, Swara.N3)
+
+        /** 64th melakarta. */
+        val VACHASPATI: Raga = melakarta("Vachaspati", 64, Swara.R2, Swara.G3, Swara.M2, Swara.D2, Swara.N2)
 
         /** A melakarta: all seven swaras, the same up and down. */
         private fun melakarta(name: String, number: Int, r: Swara, g: Swara, m: Swara, d: Swara, n: Swara): Raga {
@@ -346,6 +370,8 @@ object Ragas {
         Raga.BILAHARI, Raga.KHAMAS, Raga.KALYANI, Raga.ARABHI, Raga.BHAIRAVI,
         Raga.ANANDABHAIRAVI, Raga.ABHOGI, Raga.SHANKARABHARANAM, Raga.HAMSADHWANI,
         Raga.NATABHAIRAVI, Raga.KEERAVANI, Raga.KHARAHARAPRIYA, Raga.HARIKAMBHOJI,
+        Raga.TODI, Raga.CHARUKESI, Raga.PANTUVARALI, Raga.SHANMUKHAPRIYA, Raga.SIMHENDRAMADHYAMAM,
+        Raga.HEMAVATI, Raga.LATANGI, Raga.VACHASPATI,
     )
 
     /**
@@ -354,8 +380,10 @@ object Ragas {
      * the others by melakarta number.
      */
     val melakartas: List<Raga> = listOf(
-        Raga.MAYAMALAVAGOWLA, Raga.NATABHAIRAVI, Raga.KEERAVANI, Raga.KHARAHARAPRIYA,
-        Raga.HARIKAMBHOJI, Raga.SHANKARABHARANAM, Raga.KALYANI,
+        Raga.MAYAMALAVAGOWLA, Raga.TODI, Raga.NATABHAIRAVI, Raga.KEERAVANI, Raga.KHARAHARAPRIYA,
+        Raga.CHARUKESI, Raga.HARIKAMBHOJI, Raga.SHANKARABHARANAM, Raga.PANTUVARALI,
+        Raga.SHANMUKHAPRIYA, Raga.SIMHENDRAMADHYAMAM, Raga.HEMAVATI, Raga.LATANGI,
+        Raga.VACHASPATI, Raga.KALYANI,
     )
 
     /** One of [melakartas], by key. */

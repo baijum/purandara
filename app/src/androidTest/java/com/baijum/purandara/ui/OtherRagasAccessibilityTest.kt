@@ -84,8 +84,9 @@ class OtherRagasAccessibilityTest {
             hasClickAction() and hasContentDescription("Kalyani, Melakarta 65: Sa, Ri 2, Ga 3, Ma 2, Pa, Dha 2, Ni 3, high Sa"),
         )
         kalyani.assertIsNotSelected()
+        kalyani.performScrollTo() // fifteen ragas: Kalyani is last
         assertTouchTarget(kalyani)
-        kalyani.performScrollTo().performClick()
+        kalyani.performClick()
         compose.waitForIdle()
         compose.onNodeWithText("Kalyani · Adi tala").assertExists()
     }

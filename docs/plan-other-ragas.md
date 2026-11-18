@@ -39,6 +39,16 @@ can't do this, because every graded exercise is fixed to
    practised mark, best sing-along score and run continue point. Home's
    Continue, Next up and set progress show the current raga.
 
+## Added later: eight more (2026-11-18)
+
+At the user's request: Todi (8), Charukesi (26), Pantuvarali (51),
+Shanmukhapriya (56), Simhendramadhyamam (57), Hemavati (58), Latangi (63)
+and Vachaspati (64), none vivadi, fifteen in all. Concert names as for
+Shankarabharanam and Kalyani (the melakarta list's Hanumatodi and
+Kamavardhini are noted in the code and on the Learn page). Sources in
+`docs/resources.md`. The list keeps Mayamalavagowla first, then melakarta
+order; the recordings' raga list grows to 25.
+
 ## Behaviour
 
 - **Choosing.** On Android, Home's Your Sa card gets a **Raga for the

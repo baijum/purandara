@@ -50,7 +50,7 @@ features speculatively.
   [`docs/plan-navigation.md`](docs/plan-navigation.md) (a navigation menu: Android drawer,
   iOS tabs and iPad sidebar; built) and [`docs/plan-repeat-cycle.md`](docs/plan-repeat-cycle.md)
   (Repeat this cycle: go over one tala cycle until Continue; built) and [`docs/plan-other-ragas.md`](docs/plan-other-ragas.md)
-  (the varisais and alankarams in seven melakartas; built) and [`docs/plan-raga-followups.md`](docs/plan-raga-followups.md)
+  (the varisais and alankarams in fifteen melakartas; built) and [`docs/plan-raga-followups.md`](docs/plan-raga-followups.md)
   (hear a raga first, swara numbers, progress per raga; built) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
@@ -117,7 +117,7 @@ features speculatively.
 
 | Where | What |
 |---|---|
-| `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`: the app's ragas, which notation may name (`builtIn`), and the student's own set by `useOwn`), `Ragas.melakartas`: the seven the varisais can be sung in; `CustomRaga` + `CustomRagas` (Your own raga: the checks, `ragas.json`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
+| `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`: the app's ragas, which notation may name (`builtIn`), and the student's own set by `useOwn`), `Ragas.melakartas`: the fifteen the varisais can be sung in; `CustomRaga` + `CustomRagas` (Your own raga: the checks, `ragas.json`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
 | `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`VarisaiCatalog.inRaga`: the varisais and alankarams in a chosen melakarta, ids `sarali-3@kalyani`; `catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt`, `Swarajati.kt`, `Varnam.kt`, each with its sources and fixes in the header); `WordsDisplay`, `SwaraNumbers` (R₂ G₂ in the notation: `WrittenSwara.digitIn`, `NotationLayout.spoken(…, numbersIn)`) |
 | `shared/.../domain/varisai/NotationLayout.kt` | The notation by tala cycle at the chosen speed (`forPractice`): cycles → rows → beat groups of `CellRef`s, `locate` for the highlight, speech with commas at the angas. Both apps draw the notation and the mirrored tala strip from it (`BeatRow`; iOS `ColumnsLayout`) |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
