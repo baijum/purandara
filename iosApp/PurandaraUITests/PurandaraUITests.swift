@@ -757,7 +757,9 @@ final class PurandaraUITests: XCTestCase {
         try audit(app)
         next.tap()
         XCTAssertTrue(app.staticTexts["Count-in…"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Your turn · attempt 1"].waitForExistence(timeout: 8))
+        // 20 s like the other waits here: on a slow runner the count-in and the start
+        // of the turn can take longer than 8 s (issue #36). It returns as soon as it appears.
+        XCTAssertTrue(app.staticTexts["Your turn · attempt 1"].waitForExistence(timeout: 20))
         XCTAssertTrue(app.buttons["Play"].waitForExistence(timeout: 20), "repeat off ends after one response")
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH %@", "Pass 1:")).firstMatch.exists)
     }
