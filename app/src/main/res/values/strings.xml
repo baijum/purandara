@@ -64,6 +64,15 @@
     <string name="varisai_raga_usual">The usual raga for the varisais</string>
     <string name="raga_mela">Melakarta %1$d</string>
     <string name="set_raga">In raga %1$s</string>
+    <string name="swara_numbers">Swara numbers</string>
+    <string name="swara_numbers_off">Off</string>
+    <string name="swara_numbers_other">Other ragas</string>
+    <string name="swara_numbers_always">Always</string>
+    <string name="swara_numbers_desc">Show which Ri, Ga, Ma, Dha and Ni each letter stands for (R₂ G₂), for the varisais in a raga other than Mayamalavagowla, or always.</string>
+    <string name="raga_preview_play">Play %1$s</string>
+    <string name="raga_preview_stop">Stop %1$s</string>
+    <string name="raga_progress">%1$s %2$d of %3$d</string>
+    <string name="other_ragas_progress">In other ragas: %1$s</string>
     <string name="loading_samples">Preparing the harmonium…</string>
     <string name="load_error">The harmonium sounds could not be loaded.</string>
 

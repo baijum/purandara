@@ -17,6 +17,7 @@ import com.baijum.purandara.audio.MicSource
 import com.baijum.purandara.audio.PitchListener
 import com.baijum.purandara.audio.PracticePhase
 import com.baijum.purandara.audio.PracticePlayback
+import com.baijum.purandara.audio.RagaPreview
 import com.baijum.purandara.audio.RenderOptions
 import com.baijum.purandara.audio.NeuralPitchSupervisor
 import com.baijum.purandara.audio.SampleBank
@@ -27,6 +28,7 @@ import com.baijum.purandara.audio.VarisaiAudioPlayer
 import com.baijum.purandara.data.PracticePreferences
 import com.baijum.purandara.data.PracticeSettings
 import com.baijum.purandara.domain.Pitch
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.schedule.NotationPosition
 import com.baijum.purandara.domain.schedule.Schedule
 import com.baijum.purandara.domain.varisai.SectionSpan
@@ -101,6 +103,8 @@ data class PracticeUiState(
     val history: PracticeHistory = PracticeHistory(),
     /** The landing page's tanpura-only drone is sounding. */
     val tanpuraPlaying: Boolean = false,
+    /** The raga whose scale is playing in the raga list (docs/plan-raga-followups.md F1), by key. */
+    val previewRagaKey: String? = null,
     val shruti: ShrutiUiState = ShrutiUiState(),
     val findSa: FindSaUiState = FindSaUiState(),
     /** Transient: only an explicit start can resume after an output change. */
@@ -162,7 +166,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
     private var engine: SingAlongEngine? = null
     private val practicePlayback = PracticePlayback(
         player, { supervisor },
-        { target -> micSource(!headphonesConnected() && _state.value.settings.echoCancellation, target) },
+        { target -> micSource(!audioManager.headphonesConnected() && _state.value.settings.echoCancellation, target) },
         PracticePlayback.Callbacks(
             onProgress = { snapshot, heard, remaining ->
                 val activeSchedule = schedule
@@ -355,6 +359,32 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         _state.update { it.copy(tanpuraPlaying = true) }
     }
 
+    /**
+     * The raga list's preview: plays [raga]'s scale, or stops it if it is the
+     * one playing; null stops any preview (the list closed or a raga was
+     * chosen) and leaves other playback alone.
+     */
+    fun preview(raga: Raga?) {
+        val playing = _state.value.previewRagaKey
+        if (raga == null || playing == raga.key) {
+            if (playing != null) stop()
+            return
+        }
+        if (backgrounded) return
+        _state.update { it.copy(outputChanged = false) }
+        val bank = bank ?: return
+        stop()
+        val settings = _state.value.settings
+        val r = SampleRenderer(
+            bank,
+            RagaPreview.schedule(raga, settings.saHz, settings.tuning),
+            RagaPreview.options(settings.harmoniumLevel, settings.droneLevel),
+        )
+        renderer = r
+        player.play(r, automaticRestart = false) { mainHandler.post { if (renderer === r) stop() } }
+        _state.update { it.copy(previewRagaKey = raga.key) }
+    }
+
     // --- Shruti practice (docs/plan-shruti.md) ---
 
     fun openShruti() {
@@ -391,7 +421,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         }
         player.play(r, automaticRestart = automaticRestart) { mainHandler.post { if (renderer === r) stop() } }
         if (listening) {
-            val onSpeaker = !headphonesConnected()
+            val onSpeaker = !audioManager.headphonesConnected()
             listener = PitchListener(
                 // The debug synthetic singer sings Sa after the room check, like a student would.
                 micSource(onSpeaker && settings.echoCancellation) { nanos ->
@@ -495,7 +525,7 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         renderer = r
         this.schedule = schedule
         if (!automaticRestart) practisedThisPlay = false
-        val onSpeaker = !headphonesConnected()
+        val onSpeaker = !audioManager.headphonesConnected()
         _state.update {
             it.copy(
                 playback = PlaybackState(playing = true, repetitions = schedule.repetitions),
@@ -659,13 +689,11 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
                     canRepeatCycle = false, repeatingBlock = null, repeatTimes = 0,
                 ),
                 tanpuraPlaying = false,
+                previewRagaKey = null,
             )
         }
         onFinalPass(finalPass)
     }
-
-    private fun headphonesConnected(): Boolean =
-        audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { it.type in HEADPHONE_TYPES }
 
     override fun onCleared() {
         audioManager.unregisterAudioDeviceCallback(deviceCallback)
@@ -685,13 +713,6 @@ class PracticeViewModel(application: Application) : AndroidViewModel(application
         const val FAKE_LOW_SECONDS = 4.0
         const val LOW_DEMO_HZ = 98.0
         const val HIGH_DEMO_HZ = 392.0
-        val HEADPHONE_TYPES = setOf(
-            AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
-            AudioDeviceInfo.TYPE_WIRED_HEADSET,
-            AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
-            AudioDeviceInfo.TYPE_USB_HEADSET,
-            AudioDeviceInfo.TYPE_BLE_HEADSET,
-        )
     }
 }
 
@@ -700,3 +721,15 @@ private fun playerOptions(settings: PracticeSettings, runPlaying: Boolean): Rend
 
 private fun needsTransport(settings: PracticeSettings, singAlong: Boolean, runPlaying: Boolean): Boolean =
     !runPlaying && PracticePlayback.policy(settings, singAlong).needsTransport
+
+private val HEADPHONE_TYPES = setOf(
+    AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+    AudioDeviceInfo.TYPE_WIRED_HEADSET,
+    AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+    AudioDeviceInfo.TYPE_USB_HEADSET,
+    AudioDeviceInfo.TYPE_BLE_HEADSET,
+)
+
+/** Whether wired, USB or Bluetooth headphones are connected (otherwise the app plays through the speaker). */
+private fun AudioManager.headphonesConnected(): Boolean =
+    getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { it.type in HEADPHONE_TYPES }

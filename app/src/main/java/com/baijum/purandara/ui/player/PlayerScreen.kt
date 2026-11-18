@@ -75,6 +75,7 @@ import com.baijum.purandara.audio.PracticePhase
 import com.baijum.purandara.ui.FineTuneControl
 import com.baijum.purandara.ui.SaPicker
 import com.baijum.purandara.ui.StrictnessPicker
+import com.baijum.purandara.ui.SwaraNumbersPicker
 import com.baijum.purandara.ui.WordsPicker
 import com.baijum.purandara.ui.saLabel
 import com.baijum.purandara.data.PracticeSettings
@@ -149,6 +150,7 @@ fun PlayerScreen(
                 repeatingBlock = playback.repeatingBlock,
                 marks = if (settings.singAlong) state.singAlong.marks else emptyMap(),
                 words = settings.words,
+                numbersIn = settings.swaraNumbers.ragaFor(varisai),
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
             PlaybackStatus(playback, saLabel(settings.saMidi, settings.saCents))
@@ -525,6 +527,7 @@ private fun PracticeSettingsSheet(
         }
         StrictnessPicker(settings.strictness) { strictness -> onSettingsChange { it.copy(strictness = strictness) } }
         WordsPicker(settings.words) { words -> onSettingsChange { it.copy(words = words) } }
+        SwaraNumbersPicker(settings.swaraNumbers) { numbers -> onSettingsChange { it.copy(swaraNumbers = numbers) } }
         HarmoniumArticulationPicker(settings.articulation) { articulation -> onSettingsChange { it.copy(articulation = articulation) } }
         Text(stringResource(R.string.harmonium_guide), style = MaterialTheme.typography.titleSmall)
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {

@@ -186,6 +186,16 @@ private fun SetAbout(set: VarisaiSet, state: LibraryState, practised: Int, total
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
+        val others = state.history.practisedInOtherRagas(set, state.raga)
+        if (others.isNotEmpty()) {
+            val each = others.map { stringResource(R.string.raga_progress, it.raga.name, it.practised, it.total) }
+            Text(
+                stringResource(R.string.other_ragas_progress, each.joinToString(" · ")),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
     }
 }
 
@@ -316,7 +326,7 @@ private fun SaCard(state: LibraryState, actions: LibraryActions) {
                 modifier = Modifier.semantics { heading() },
             )
             SaPicker(state.saMidi, state.saCents, actions.onSaChange)
-            RagaPicker(state.raga, actions.onRagaChange)
+            RagaPicker(state.raga, state.previewRagaKey, actions.onRagaChange, actions.onPreviewRaga, actions.onStopPreview)
             Text(
                 stringResource(R.string.varisai_raga_hint),
                 style = MaterialTheme.typography.bodyMedium,

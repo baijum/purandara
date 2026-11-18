@@ -3,14 +3,23 @@ package com.baijum.purandara.ui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -25,10 +34,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
@@ -37,6 +50,7 @@ import com.baijum.purandara.domain.CustomRaga
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.VoiceRange
+import com.baijum.purandara.domain.varisai.SwaraNumbers
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.singalong.Strictness
@@ -85,47 +99,104 @@ fun SaPicker(saMidi: Int, saCents: Int, onSelect: (Int) -> Unit) {
 
 /**
  * The raga the varisais and alankarams are sung in (docs/plan-other-ragas.md):
- * each choice shows its arohanam, read aloud in full.
+ * a field that opens the list of ragas, each with its arohanam (read aloud in
+ * full) and a button to hear its scale first (docs/plan-raga-followups.md F1).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RagaPicker(raga: Raga, onSelect: (Raga) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-        OutlinedTextField(
-            value = raga.name,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.varisai_raga)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            VarisaiCatalog.ragas.forEach { choice ->
-                val swaras = choice.swaras.drop(1)
-                val detail = if (choice == VarisaiCatalog.raga) {
-                    stringResource(R.string.varisai_raga_usual)
-                } else {
-                    stringResource(R.string.raga_mela, choice.mela ?: 0)
+fun RagaPicker(
+    raga: Raga,
+    previewKey: String?,
+    onSelect: (Raga) -> Unit,
+    onPreview: (Raga) -> Unit,
+    onStopPreview: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    val label = stringResource(R.string.varisai_raga)
+    OutlinedCard(
+        onClick = { open = true },
+        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).semantics { contentDescription = "$label, ${raga.name}" },
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(raga.name, style = MaterialTheme.typography.bodyLarge)
+            }
+            Icon(painterResource(R.drawable.ic_chevron_right), contentDescription = null)
+        }
+    }
+    if (open) {
+        val close = {
+            open = false
+            onStopPreview()
+        }
+        AlertDialog(
+            onDismissRequest = close,
+            title = { Text(label, modifier = Modifier.semantics { heading() }) },
+            text = {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        stringResource(R.string.varisai_raga_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    VarisaiCatalog.ragas.forEach { choice ->
+                        RagaChoiceRow(
+                            choice = choice,
+                            selected = choice == raga,
+                            previewing = choice.key == previewKey,
+                            onSelect = {
+                                onSelect(choice)
+                                close()
+                            },
+                            onPreview = { onPreview(choice) },
+                        )
+                    }
                 }
-                val spoken = "${choice.name}, $detail: ${CustomRaga.spokenLine(swaras, descending = false)}"
-                DropdownMenuItem(
-                    text = {
-                        Column(Modifier.clearAndSetSemantics { contentDescription = spoken }) {
-                            Text(choice.name, style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                "$detail · ${CustomRaga.line(swaras, descending = false)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    },
-                    onClick = {
-                        expanded = false
-                        onSelect(choice)
-                    },
+            },
+            confirmButton = { TextButton(onClick = close) { Text(stringResource(R.string.close)) } },
+        )
+    }
+}
+
+/** One raga in the list: choose it (the row), or hear its scale (the button). */
+@Composable
+private fun RagaChoiceRow(choice: Raga, selected: Boolean, previewing: Boolean, onSelect: () -> Unit, onPreview: () -> Unit) {
+    val swaras = choice.swaras.drop(1)
+    val detail = if (choice == VarisaiCatalog.raga) {
+        stringResource(R.string.varisai_raga_usual)
+    } else {
+        stringResource(R.string.raga_mela, choice.mela ?: 0)
+    }
+    val spoken = "${choice.name}, $detail: ${CustomRaga.spokenLine(swaras, descending = false)}"
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 56.dp)
+                .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
+                .clearAndSetSemantics {
+                    contentDescription = spoken
+                    role = Role.RadioButton
+                    this.selected = selected
+                },
+        ) {
+            RadioButton(selected = selected, onClick = null)
+            Column(Modifier.padding(start = 8.dp, top = 4.dp, bottom = 4.dp)) {
+                Text(choice.name, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "$detail · ${CustomRaga.line(swaras, descending = false)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+        IconButton(onClick = onPreview) {
+            Icon(
+                painterResource(if (previewing) R.drawable.ic_stop else R.drawable.ic_play),
+                contentDescription = stringResource(if (previewing) R.string.raga_preview_stop else R.string.raga_preview_play, choice.name),
+            )
         }
     }
 }
@@ -197,6 +268,33 @@ fun WordsPicker(words: WordsDisplay, onChange: (WordsDisplay) -> Unit) {
         }
         Text(
             stringResource(R.string.gitam_notation_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Off / In other ragas / Always: swara numbers in the notation (docs/plan-raga-followups.md F2). */
+@Composable
+fun SwaraNumbersPicker(numbers: SwaraNumbers, onChange: (SwaraNumbers) -> Unit) {
+    Column {
+        Text(stringResource(R.string.swara_numbers), style = MaterialTheme.typography.titleSmall)
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            val choices = listOf(
+                SwaraNumbers.OFF to R.string.swara_numbers_off,
+                SwaraNumbers.OTHER_RAGAS to R.string.swara_numbers_other,
+                SwaraNumbers.ALWAYS to R.string.swara_numbers_always,
+            )
+            choices.forEachIndexed { i, (choice, label) ->
+                SegmentedButton(
+                    selected = numbers == choice,
+                    onClick = { onChange(choice) },
+                    shape = SegmentedButtonDefaults.itemShape(i, choices.size),
+                ) { Text(stringResource(label)) }
+            }
+        }
+        Text(
+            stringResource(R.string.swara_numbers_desc),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

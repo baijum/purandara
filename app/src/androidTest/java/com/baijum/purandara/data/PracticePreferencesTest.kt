@@ -11,6 +11,7 @@ import com.baijum.purandara.practice.PracticeMode
 import com.baijum.purandara.practice.RunEntry
 import com.baijum.purandara.practice.RunPlan
 import com.baijum.purandara.practice.RunPlans
+import com.baijum.purandara.domain.varisai.SwaraNumbers
 import com.baijum.purandara.domain.varisai.VarisaiSet
 import com.baijum.purandara.practice.RecoveryMode
 import org.junit.After
@@ -50,6 +51,17 @@ class PracticePreferencesTest {
             stored.edit().putString("varisai_raga", value).commit()
             assertEquals(Raga.MAYAMALAVAGOWLA, preferences.load().raga)
         }
+    }
+
+    @Test
+    fun swaraNumbersRoundTripAndDefaultToOtherRagas() {
+        assertEquals(SwaraNumbers.OTHER_RAGAS, preferences.load().swaraNumbers)
+        SwaraNumbers.entries.forEach { numbers ->
+            preferences.save(PracticeSettings(swaraNumbers = numbers))
+            assertEquals(numbers, PracticePreferences(context).load().swaraNumbers)
+        }
+        stored.edit().putString("swara_numbers", "future").commit()
+        assertEquals(SwaraNumbers.OTHER_RAGAS, preferences.load().swaraNumbers)
     }
 
     @Test

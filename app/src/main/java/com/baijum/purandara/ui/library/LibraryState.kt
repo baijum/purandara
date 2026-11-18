@@ -19,6 +19,8 @@ data class LibraryState(
     val runPlans: RunPlans = RunPlans(),
     /** The raga the varisais and alankarams are sung in. */
     val raga: Raga = VarisaiCatalog.raga,
+    /** The raga whose scale is playing in the raga list, by key. */
+    val previewRagaKey: String? = null,
 )
 
 /** What Home and the set pages can do. */
@@ -28,6 +30,9 @@ data class LibraryActions(
     val onSaChange: (Int) -> Unit = {},
     /** Home: sing the varisais and alankarams in another raga. */
     val onRagaChange: (Raga) -> Unit = {},
+    /** The raga list: hear a raga's scale, or stop it. */
+    val onPreviewRaga: (Raga) -> Unit = {},
+    val onStopPreview: () -> Unit = {},
     /** Open the practice run for a numbered varisai set. */
     val onOpenRun: (VarisaiSet) -> Unit = {},
     /** Home: open a set's page. */

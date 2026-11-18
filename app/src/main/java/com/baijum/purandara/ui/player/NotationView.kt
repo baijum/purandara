@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.baijum.purandara.R
 import com.baijum.purandara.domain.Kriya
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Tala
 import com.baijum.purandara.domain.schedule.NotationPosition
 import com.baijum.purandara.domain.varisai.Akshara
@@ -76,6 +77,8 @@ fun NotationView(
     words: WordsDisplay = WordsDisplay.BOTH,
     /** The block being repeated by Repeat this cycle, marked "Repeating". */
     repeatingBlock: Int? = null,
+    /** The raga whose swara numbers the notation shows (`SwaraNumbers.ragaFor`), or null for letters as written. */
+    numbersIn: Raga? = null,
 ) {
     val listState = rememberLazyListState()
     val reduceMotion = LocalReduceMotion.current
@@ -97,8 +100,7 @@ fun NotationView(
         itemsIndexed(layout.blocks) { index, block ->
             val cells = block.cells.map { it.avarta to it.akshara }.toSet()
             val blockMarks = marks.filterKeys { (it.avarta to it.akshara) in cells }
-            val swaras = if (blockMarks.isEmpty()) layout.spoken(index, karvaiWord) else markedSpoken(layout, index, blockMarks, karvaiWord)
-            val spoken = layout.spokenWords(index)?.let { stringResource(R.string.avarta_words, swaras, it) } ?: swaras
+            val spoken = blockSpoken(layout, index, blockMarks, karvaiWord, numbersIn)
             val repeatingLabel = stringResource(R.string.repeating)
             val repeating = index == repeatingBlock
             val plain = stringResource(R.string.avarta_description, index + 1, spoken)
@@ -126,7 +128,7 @@ fun NotationView(
                     block = block,
                     active = position.takeIf { currentBlock == index },
                     marks = blockMarks,
-                    words = words,
+                    text = CellText(words, numbersIn),
                     modifier = Modifier
                         .padding(horizontal = 12.dp)
                         .clearAndSetSemantics { contentDescription = description },
@@ -190,9 +192,11 @@ private fun CycleRows(
     block: CycleBlock,
     active: NotationPosition?,
     marks: Map<MarkKey, NoteResult>,
-    words: WordsDisplay,
+    text: CellText,
     modifier: Modifier = Modifier,
 ) {
+    val words = text.words
+    val numbersIn = text.numbersIn
     val activeCell = active?.let { CellRef(it.repetition, it.avarta, it.akshara) }
     val activeSlot = active?.slot
     val hasWords = words.showsWords && block.cells.any { layout.word(it) != null }
@@ -226,6 +230,7 @@ private fun CycleRows(
                             marks = marks.filterKeys { it.avarta == cell.avarta && it.akshara == cell.akshara }.mapKeys { it.key.slot },
                             word = layout.word(cell).takeIf { hasWords },
                             showSwaras = showSwaras,
+                            numbersIn = numbersIn,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -243,6 +248,7 @@ private fun AksharaCell(
     marks: Map<Int, NoteResult>,
     word: String? = null,
     showSwaras: Boolean = true,
+    numbersIn: Raga? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -257,7 +263,7 @@ private fun AksharaCell(
         val swaraCount = (akshara as? Akshara.Swaras)?.swaras?.size ?: 1
         val baseSize = if (swaraCount > 2) 13.sp else if (swaraCount == 2) 17.sp else 20.sp
         val textColor = if (active) colors.onPrimaryContainer else colors.onSurface
-        if (showSwaras) SwaraText(akshara, activeSlot, textColor, baseSize)
+        if (showSwaras) SwaraText(akshara, activeSlot, textColor, baseSize, numbersIn)
         if (word != null) WordText(word, underSwaras = showSwaras, textColor, if (showSwaras) WORD_SP.sp else baseSize)
         if (marks.isNotEmpty() && akshara is Akshara.Swaras) MarkGlyphs(akshara, marks)
     }
@@ -265,7 +271,7 @@ private fun AksharaCell(
 
 /** The akshara's swaras, the sounding one in bold. */
 @Composable
-private fun SwaraText(akshara: Akshara, activeSlot: Int?, color: Color, size: TextUnit) {
+private fun SwaraText(akshara: Akshara, activeSlot: Int?, color: Color, size: TextUnit, numbersIn: Raga?) {
     val accent = MaterialTheme.colorScheme.primary
     val text = buildAnnotatedString {
         when (akshara) {
@@ -274,8 +280,8 @@ private fun SwaraText(akshara: Akshara, activeSlot: Int?, color: Color, size: Te
             is Akshara.Swaras -> akshara.swaras.forEachIndexed { slot, swara ->
                 val main = if (slot == activeSlot) SpanStyle(color = accent, fontWeight = FontWeight.Bold) else SpanStyle(color = color)
                 withStyle(main) { append(swara.baseText) }
-                // A variant digit (D1, N3) is written as a subscript.
-                swara.variantDigit?.let { digit ->
+                // A variant digit (D1, N3), or the raga's with swara numbers on, as a subscript.
+                swara.digitIn(numbersIn)?.let { digit ->
                     withStyle(main.copy(fontSize = size * VARIANT_DIGIT_SCALE)) { append(digit) }
                 }
             }
@@ -325,9 +331,23 @@ private fun MarkGlyphs(akshara: Akshara.Swaras, marks: Map<Int, NoteResult>) {
     Text(glyphs, fontSize = MARK_SP.sp, maxLines = 1)
 }
 
+/** What a cell shows: a gitam's words, swaras or both, and the swara numbers' raga (null: letters as written). */
+private data class CellText(val words: WordsDisplay, val numbersIn: Raga?)
+
+/** Block [index] read aloud: its swaras (with sing-along marks if any), then its words. */
+@Composable
+private fun blockSpoken(layout: NotationLayout, index: Int, marks: Map<MarkKey, NoteResult>, karvaiWord: String, numbersIn: Raga?): String {
+    val swaras = if (marks.isEmpty()) {
+        layout.spoken(index, karvaiWord, numbersIn)
+    } else {
+        markedSpoken(layout, index, marks, karvaiWord, numbersIn)
+    }
+    return layout.spokenWords(index)?.let { stringResource(R.string.avarta_words, swaras, it) } ?: swaras
+}
+
 /** Cycle sentence with each swara's mark, e.g. "S in tune R high G in tune, …". */
 @Composable
-private fun markedSpoken(layout: NotationLayout, block: Int, marks: Map<MarkKey, NoteResult>, karvaiWord: String): String {
+private fun markedSpoken(layout: NotationLayout, block: Int, marks: Map<MarkKey, NoteResult>, karvaiWord: String, numbersIn: Raga?): String {
     val markWords = marks.mapValues { markWords(it.value) }
     return layout.spokenWith(block) { cell, akshara ->
         when (akshara) {
@@ -335,7 +355,8 @@ private fun markedSpoken(layout: NotationLayout, block: Int, marks: Map<MarkKey,
             Akshara.Rest -> null // silence: nothing to read
             is Akshara.Swaras -> akshara.swaras.mapIndexed { slot, swara ->
                 val mark = markWords[MarkKey(cell.avarta, cell.akshara, slot)]
-                if (mark == null) swara.spoken() else "${swara.spoken()} $mark"
+                val name = if (numbersIn == null) swara.spoken() else swara.spoken(numbersIn)
+                if (mark == null) name else "$name $mark"
             }.joinToString(" ")
         }
     }

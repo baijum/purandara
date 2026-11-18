@@ -8,6 +8,7 @@ import com.baijum.purandara.domain.Ragas
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.Tuning
 import com.baijum.purandara.domain.schedule.PerformanceSettings
+import com.baijum.purandara.domain.varisai.SwaraNumbers
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.domain.varisai.WordsDisplay
 import com.baijum.purandara.practice.PracticeHistory
@@ -49,6 +50,8 @@ data class PracticeSettings(
     val responseGuide: Boolean = false,
     /** The raga the varisais and alankarams are sung in ([Ragas.melakartas] key; docs/plan-other-ragas.md). */
     val ragaKey: String = VarisaiCatalog.raga.key,
+    /** Whether the notation shows swara numbers (R₂ G₂; docs/plan-raga-followups.md F2). */
+    val swaraNumbers: SwaraNumbers = SwaraNumbers.OTHER_RAGAS,
 ) {
     val saHz: Double get() = Shruti.saHz(saMidi, saCents)
 
@@ -99,8 +102,13 @@ class PracticePreferences(context: Context) {
             recoverySeconds = prefs.getInt(RECOVERY_SECONDS, d.recoverySeconds).takeIf { it in RECOVERY_RANGE } ?: d.recoverySeconds,
             responseGuide = prefs.getBoolean(RESPONSE_GUIDE, d.responseGuide),
             ragaKey = loadRagaKey(d.ragaKey),
+            swaraNumbers = loadEnum(SWARA_NUMBERS, d.swaraNumbers),
         )
     }
+
+    /** A saved enum choice by name, or [default] when missing or unknown. */
+    private inline fun <reified E : Enum<E>> loadEnum(key: String, default: E): E =
+        enumValues<E>().firstOrNull { it.name == prefs.getString(key, null) } ?: default
 
     /** The saved raga for the varisais, if it's still one of [Ragas.melakartas]. */
     private fun loadRagaKey(default: String): String =
@@ -142,6 +150,7 @@ class PracticePreferences(context: Context) {
             .putInt(RECOVERY_SECONDS, s.recoverySeconds)
             .putBoolean(RESPONSE_GUIDE, s.responseGuide)
             .putString(RAGA, s.ragaKey)
+            .putString(SWARA_NUMBERS, s.swaraNumbers.name)
             .apply()
     }
 
@@ -171,5 +180,6 @@ class PracticePreferences(context: Context) {
         const val RECOVERY_SECONDS = "recovery_seconds"
         const val RESPONSE_GUIDE = "response_guide"
         const val RAGA = "varisai_raga"
+        const val SWARA_NUMBERS = "swara_numbers"
     }
 }
