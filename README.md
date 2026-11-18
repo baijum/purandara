@@ -34,6 +34,10 @@ still start with today: *sarali varisai*, *janta varisai*, *alankarams* and *git
 - **Repeat this cycle:** go over one tala cycle again and again, with the
   tanpura and tala running on, then Continue into the rest of the exercise.
   With sing-along on, the cycle's marks are judged afresh each time round.
+- **The varisais in another raga:** sing the varisais and alankarams in one
+  of seven melakartas (Mayamalavagowla, Natabhairavi, Keeravani,
+  Kharaharapriya, Harikambhoji, Shankarabharanam, Kalyani), chosen on Home,
+  with progress kept per raga.
 - **Recovery and listen–repeat:** keep the tanpura sounding between attempts,
   with a timed break or Continue when ready. Listen to a harmonium model,
   then sing the same unit, with optional pitch feedback and response guide.
@@ -121,6 +125,7 @@ See [ATTRIBUTION.md](ATTRIBUTION.md) for every recording's credit, and
 | [docs/plan-speed-layout.md](docs/plan-speed-layout.md) | Notation laid out by tala cycle at every speed: strip and notation share columns (done) |
 | [docs/plan-speed-clarification.md](docs/plan-speed-clarification.md) | Written-pace multipliers, paired Janta speeds and the player’s About speed help |
 | [docs/plan-repeat-cycle.md](docs/plan-repeat-cycle.md) | Repeat this cycle: go over one tala cycle until Continue, without stopping (built) |
+| [docs/plan-other-ragas.md](docs/plan-other-ragas.md) | The varisais and alankarams in seven melakartas, chosen on Home (built) |
 | [docs/plan-practice-run.md](docs/plan-practice-run.md) | Practising a whole varisai set in one run: per-varisai speed climb and repeats (built) |
 | [docs/plan-recordings.md](docs/plan-recordings.md) | Recordings with approximate swaras: record, analyse, play back (built) |
 | [docs/plan-site-search.md](docs/plan-site-search.md) | Website: full-text search (done) |
