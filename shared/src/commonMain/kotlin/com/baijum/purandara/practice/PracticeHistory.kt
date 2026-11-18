@@ -1,6 +1,8 @@
 package com.baijum.purandara.practice
 
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.varisai.Varisai
+import com.baijum.purandara.domain.varisai.VarisaiCatalog
 import com.baijum.purandara.domain.varisai.VarisaiSet
 import com.baijum.purandara.singalong.PassResult
 import kotlinx.serialization.Serializable
@@ -19,6 +21,9 @@ data class PracticeRecord(
 ) {
     val hasBest: Boolean get() = bestJudged > 0
 }
+
+/** [practised] of [total] exercises of a set practised in [raga]. */
+data class RagaProgress(val raga: Raga, val practised: Int, val total: Int)
 
 /**
  * Practice history for the landing page (docs/plan-landing.md): what was
@@ -73,6 +78,21 @@ class PracticeHistory(records: Collection<PracticeRecord> = emptyList()) {
 
     fun practisedCount(set: VarisaiSet, catalog: List<Varisai>): Int =
         catalog.count { it.set == set && (byId[it.id]?.timesPracticed ?: 0) > 0 }
+
+    /**
+     * How much of [set] has been practised in each raga other than [current]
+     * (docs/plan-raga-followups.md F3): only ragas with some practice, in
+     * the order of `VarisaiCatalog.ragas`. Empty for sets that keep their own
+     * raga.
+     */
+    fun practisedInOtherRagas(set: VarisaiSet, current: Raga): List<RagaProgress> {
+        if (!set.followsChosenRaga) return emptyList()
+        return VarisaiCatalog.ragas.filter { it != current }.mapNotNull { raga ->
+            val catalog = VarisaiCatalog.inSet(set, raga)
+            val practised = practisedCount(set, catalog)
+            if (practised > 0) RagaProgress(raga, practised, catalog.size) else null
+        }
+    }
 
     fun encode(): String = json.encodeToString(byId.values.sortedBy { it.varisaiId })
 

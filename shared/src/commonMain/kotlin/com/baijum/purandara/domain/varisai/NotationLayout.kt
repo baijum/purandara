@@ -1,5 +1,6 @@
 package com.baijum.purandara.domain.varisai
 
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Tala
 import com.baijum.purandara.domain.TalaCount
 import com.baijum.purandara.domain.schedule.NotationPosition
@@ -120,11 +121,14 @@ class NotationLayout private constructor(
      * Block [block] for screen readers: angas separated by commas, a karvai
      * spoken as [karvaiWord] (localised by the caller), e.g. "S R G M, P hold, S R".
      */
-    fun spoken(block: Int, karvaiWord: String): String = spokenWith(block) { cell, akshara ->
+    fun spoken(block: Int, karvaiWord: String): String = spoken(block, karvaiWord, null)
+
+    /** [spoken] with swara numbers from [numbersIn] (`SwaraNumbers.ragaFor`; null: as written). */
+    fun spoken(block: Int, karvaiWord: String, numbersIn: Raga?): String = spokenWith(block) { cell, akshara ->
         when (akshara) {
             Akshara.Karvai -> if (heldInsideBeat(cell)) null else karvaiWord
             Akshara.Rest -> null
-            is Akshara.Swaras -> akshara.spoken()
+            is Akshara.Swaras -> akshara.spoken(numbersIn)
         }
     }
 

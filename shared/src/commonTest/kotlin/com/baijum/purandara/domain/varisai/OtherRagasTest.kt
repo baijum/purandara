@@ -1,5 +1,6 @@
 package com.baijum.purandara.domain.varisai
 
+import com.baijum.purandara.domain.Octave
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Ragas
 import com.baijum.purandara.domain.Shruti
@@ -107,6 +108,72 @@ class OtherRagasTest {
         assertEquals(1, history.practisedCount(VarisaiSet.SARALI, kalyani))
         assertEquals(1, history.practisedCount(VarisaiSet.SARALI, VarisaiCatalog.all))
         assertNull(history.continueWith(VarisaiCatalog.inRaga(Raga.KEERAVANI)))
+    }
+
+    @Test
+    fun aSetPageCountsThePracticeInOtherRagas() {
+        val history = PracticeHistory()
+            .practised("sarali-1", nowMillis = 1)
+            .practised("sarali-2", nowMillis = 2)
+            .practised("sarali-3@kalyani", nowMillis = 3)
+            .practised("gitam-1", nowMillis = 4)
+        assertEquals(
+            listOf(com.baijum.purandara.practice.RagaProgress(Raga.KALYANI, 1, 16)),
+            history.practisedInOtherRagas(VarisaiSet.SARALI, Raga.MAYAMALAVAGOWLA),
+        )
+        assertEquals(
+            listOf(com.baijum.purandara.practice.RagaProgress(Raga.MAYAMALAVAGOWLA, 2, 16)),
+            history.practisedInOtherRagas(VarisaiSet.SARALI, Raga.KALYANI),
+        )
+        assertEquals(
+            listOf(Raga.MAYAMALAVAGOWLA, Raga.KALYANI),
+            history.practisedInOtherRagas(VarisaiSet.SARALI, Raga.KEERAVANI).map { it.raga },
+        )
+        assertTrue(history.practisedInOtherRagas(VarisaiSet.JANTA, Raga.KALYANI).isEmpty())
+        assertTrue(history.practisedInOtherRagas(VarisaiSet.GITAM, Raga.KALYANI).isEmpty(), "gitams keep their own raga")
+    }
+
+    @Test
+    fun aRagaPreviewIsItsPlainScaleUpAndDownOnce() {
+        val schedule = com.baijum.purandara.audio.RagaPreview.schedule(Raga.KHARAHARAPRIYA, saHz = 130.81, tuning = com.baijum.purandara.domain.Tuning.JUST)
+        assertEquals(
+            listOf(Swara.S, Swara.R2, Swara.G2, Swara.M1, Swara.P, Swara.D2, Swara.N2, Swara.S) +
+                listOf(Swara.S, Swara.N2, Swara.D2, Swara.P, Swara.M1, Swara.G2, Swara.R2, Swara.S),
+            schedule.notes.map { it.note.swara },
+        )
+        val seconds = schedule.notes.last().let { it.startSeconds + it.durationSeconds }
+        assertTrue(seconds in 10.0..11.0, "about 11 seconds, was $seconds")
+        val options = com.baijum.purandara.audio.RagaPreview.options(harmoniumLevel = 0.75f, droneLevel = 0.5f)
+        assertTrue(options.drone && !options.click && !options.loop && !options.countIn)
+    }
+
+    @Test
+    fun swaraNumbersShowTheRagasSwaraWhereWanted() {
+        val sarali = VarisaiCatalog.byId("sarali-1")!!
+        val inKharaharapriya = sarali.inRaga(Raga.KHARAHARAPRIYA)
+        val gitam = VarisaiCatalog.inSet(VarisaiSet.GITAM).first()
+        assertNull(SwaraNumbers.OTHER_RAGAS.ragaFor(sarali), "Mayamalavagowla reads as written")
+        assertSame(Raga.KHARAHARAPRIYA, SwaraNumbers.OTHER_RAGAS.ragaFor(inKharaharapriya))
+        assertNull(SwaraNumbers.OTHER_RAGAS.ragaFor(gitam), "a gitam's own raga is not an 'other' raga")
+        assertSame(gitam.raga, SwaraNumbers.ALWAYS.ragaFor(gitam))
+        assertSame(Raga.MAYAMALAVAGOWLA, SwaraNumbers.ALWAYS.ragaFor(sarali))
+        assertNull(SwaraNumbers.OFF.ragaFor(inKharaharapriya))
+
+        val g = WrittenSwara(SwaraLetter.G)
+        assertEquals("2", g.digitIn(Raga.KHARAHARAPRIYA))
+        assertEquals("3", g.digitIn(Raga.MAYAMALAVAGOWLA))
+        assertNull(g.digitIn(null))
+        assertNull(WrittenSwara(SwaraLetter.S).digitIn(Raga.KALYANI), "S has no number")
+        assertNull(WrittenSwara(SwaraLetter.P).digitIn(Raga.KALYANI), "P has no number")
+        assertEquals("1", WrittenSwara(SwaraLetter.D, variant = Swara.D1).digitIn(null), "a written variant always shows")
+        assertEquals("1", WrittenSwara(SwaraLetter.D, variant = Swara.D1).digitIn(Raga.KALYANI), "the written variant wins")
+        assertEquals("low N2", WrittenSwara(SwaraLetter.N, Octave.MANDRA).spoken(Raga.KHARAHARAPRIYA))
+        assertEquals("S′", WrittenSwara(SwaraLetter.S, Octave.TARA).spoken(Raga.KHARAHARAPRIYA))
+
+        val layout = NotationLayout.of(inKharaharapriya, 1)
+        assertEquals(layout.spoken(0, "hold"), layout.spoken(0, "hold", null))
+        assertEquals("S R2 S R2, S R2, G2 M1", layout.spoken(0, "hold", Raga.KHARAHARAPRIYA))
+        assertEquals("S R S R, S R, G M", layout.spoken(0, "hold"))
     }
 
     @Test

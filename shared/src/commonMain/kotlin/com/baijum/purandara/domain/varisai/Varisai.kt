@@ -40,6 +40,25 @@ data class WrittenSwara(
     /** For screen readers: a dot below is not read aloud, so mandra is "low D". */
     fun spoken(): String = if (octave == Octave.MANDRA) "low ${letter.symbol}" else toString()
 
+    /**
+     * The digit shown after the letter: the written [variantDigit], or, with
+     * [numbersIn] a raga (swara numbers on, docs/plan-raga-followups.md F2),
+     * the number of the swara the raga gives the letter ("2" of G2). Null for
+     * S and P, which have none.
+     */
+    fun digitIn(numbersIn: Raga?): String? =
+        variantDigit ?: numbersIn?.let { swaraIn(it).name.removePrefix(letter.name).ifEmpty { null } }
+
+    /** [spoken] with [digitIn]'s digit: "G2", "low N2". */
+    fun spoken(numbersIn: Raga?): String {
+        val digit = digitIn(numbersIn).orEmpty()
+        return when (octave) {
+            Octave.MANDRA -> "low ${letter.symbol}$digit"
+            Octave.TARA -> "${letter.symbol}$digit′"
+            Octave.MADHYA -> "${letter.symbol}$digit"
+        }
+    }
+
     /** The pitch class this written swara sounds: its [variant], or the raga's default for the letter. */
     fun swaraIn(raga: Raga): Swara = variant ?: raga.swara(letter)
 }
@@ -57,6 +76,14 @@ sealed interface Akshara {
         /** For screen readers; spaced out when a mandra swara is spoken as "low D". */
         fun spoken(): String =
             swaras.joinToString(if (swaras.any { it.octave == Octave.MANDRA }) " " else "") { it.spoken() }
+
+        /** [spoken] with swara numbers from [numbersIn] (null: as written). */
+        fun spoken(numbersIn: Raga?): String = if (numbersIn == null) {
+            spoken()
+        } else {
+            // With numbers every swara reads apart ("G2 M1"), not run together.
+            swaras.joinToString(" ") { it.spoken(numbersIn) }
+        }
     }
 
     /** Karvai (`,`): the previous swara continues through this akshara. */
@@ -127,6 +154,27 @@ enum class WordsDisplay {
 
     val showsSwaras: Boolean get() = this != WORDS
     val showsWords: Boolean get() = this != SWARAS
+}
+
+/**
+ * Whether the notation shows each swara's number (`R₂ G₂`) as well as the
+ * letter (docs/plan-raga-followups.md F2). A number written in the notation
+ * (`D1` in a gitam) always shows.
+ */
+enum class SwaraNumbers {
+    OFF,
+
+    /** For the varisais and alankarams when they are sung in a raga other than Mayamalavagowla. */
+    OTHER_RAGAS,
+    ALWAYS,
+    ;
+
+    /** The raga whose numbers [varisai]'s notation shows, or null for letters as written. */
+    fun ragaFor(varisai: Varisai): Raga? = when (this) {
+        OFF -> null
+        ALWAYS -> varisai.raga
+        OTHER_RAGAS -> varisai.raga.takeIf { varisai.set.followsChosenRaga && it != Raga.MAYAMALAVAGOWLA }
+    }
 }
 
 /** One section of a piece: its heading and its first and last avarta (inclusive). */
