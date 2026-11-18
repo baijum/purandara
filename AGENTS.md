@@ -51,7 +51,8 @@ features speculatively.
   iOS tabs and iPad sidebar; built) and [`docs/plan-repeat-cycle.md`](docs/plan-repeat-cycle.md)
   (Repeat this cycle: go over one tala cycle until Continue; built) and [`docs/plan-other-ragas.md`](docs/plan-other-ragas.md)
   (the varisais and alankarams in fifteen melakartas; built) and [`docs/plan-raga-followups.md`](docs/plan-raga-followups.md)
-  (hear a raga first, swara numbers, progress per raga; built) (and, for the website,
+  (hear a raga first, swara numbers, progress per raga; built) and [`docs/plan-own-raga-varisais.md`](docs/plan-own-raga-varisais.md)
+  (the varisais in your own seven-swara raga, named as a melakarta; built) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
@@ -117,7 +118,7 @@ features speculatively.
 
 | Where | What |
 |---|---|
-| `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`: the app's ragas, which notation may name (`builtIn`), and the student's own set by `useOwn`), `Ragas.melakartas`: the fifteen the varisais can be sung in; `CustomRaga` + `CustomRagas` (Your own raga: the checks, `ragas.json`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
+| `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`: the app's ragas, which notation may name (`builtIn`), and the student's own set by `useOwn`), `Ragas.melakartas`: the fifteen the varisais can be sung in, `Ragas.forVarisais` (those or an own raga with all seven swaras), `Melakartas` (the 72: names, number from swaras); `CustomRaga` + `CustomRagas` (Your own raga: the checks, `ragas.json`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
 | `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`VarisaiCatalog.inRaga`: the varisais and alankarams in a chosen melakarta, ids `sarali-3@kalyani`; `catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt`, `Swarajati.kt`, `Varnam.kt`, each with its sources and fixes in the header); `WordsDisplay`, `SwaraNumbers` (R₂ G₂ in the notation: `WrittenSwara.digitIn`, `NotationLayout.spoken(…, numbersIn)`) |
 | `shared/.../domain/varisai/NotationLayout.kt` | The notation by tala cycle at the chosen speed (`forPractice`): cycles → rows → beat groups of `CellRef`s, `locate` for the highlight, speech with commas at the angas. Both apps draw the notation and the mirrored tala strip from it (`BeatRow`; iOS `ColumnsLayout`) |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
@@ -228,7 +229,7 @@ off screen fail the Dynamic Type check (and a half-visible row at the bottom edg
 contrast), so keep a screen's first view to a few tall rows; buttons sharing a list row
 need their own button style, and navigation links in one row all open the first, so push
 through the path instead; at accessibility text sizes move secondary panels into the scrolling
-content; list section headers cap Dynamic Type like footers (put a heading in the section, or a row in the iPad sidebar). The audit helper ignores four things: contrast findings (the check is
+content; list section headers cap Dynamic Type like footers (put a heading in the section, or a row in the iPad sidebar). The audit helper ignores five things: contrast findings (the check is
 environment noise: it flags pairs that pass WCAG AA by wide margins and reports
 different sets per device and runtime under one Xcode build, so contrast is
 logged, not fatal — real contrast checking happens on the tuned local toolchain,
@@ -236,7 +237,9 @@ issue #8), Dynamic Type warnings on notation
 cells (swaras, pairs, karvai: they shrink to fit their column by design), and,
 for exercises taller than the screen (`longNotation`), issues on rows outside
 the visible notation area (the lazy list keeps them loaded behind the
-controls), and, with `sidebar` (the iPad layout), Dynamic Type warnings on the
+controls), and, with `longList` (a list taller than the screen, such as the varisais' raga
+list once there is an own raga), Dynamic Type and clipped-text issues with no
+element (rows loaded off screen; they move with the scroll position), and, with `sidebar` (the iPad layout), Dynamic Type warnings on the
 sidebar's rows (the menu is taller than the screen, so whichever rows sit at its
 edges are flagged; they scale, checked by screenshot). Top-bar titles don't scale, so long ones are cut off: use
 `Varisai.shortTitle` there. UI tests
