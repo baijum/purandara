@@ -415,6 +415,13 @@ there too, so the next person does not repeat them.
   which shares its Ri, Ga, Dha and Ni) and from Raga Surabhi's raga pages
   (Todi at `raga--thodi`, Latangi at `raga--lathangi`); the two agree on
   every swara.
+- The names of all 72 melakartas (`Melakartas.NAMES`,
+  docs/plan-own-raga-varisais.md): karnatik.com's melakarta table and
+  Wikipedia's Melakarta table (after Sambamoorthy) agree on every name,
+  apart from transliteration; the app writes them in its simple Latin
+  (karnatik's kanakaangi, Wikipedia's Kanakāngi: Kanakangi). Their swaras
+  follow from the number (`Melakartas.swarasOf`, tested against
+  `numberOf`).
 - Guruguha: English translations of the lakshana texts, including the
   *Sangita Sampradaya Pradarshini*, *Chaturdandi Prakashika*,
   *Swaramelakalanidhi* and *Ragatarangini*, plus Dikshitar kritis —
