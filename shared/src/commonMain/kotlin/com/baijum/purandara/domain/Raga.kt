@@ -62,6 +62,16 @@ class Raga(
 
     fun uses(letter: SwaraLetter): Boolean = letter in swaraMap
 
+    /**
+     * Whether the raga has all seven swaras going up and coming down, so the
+     * varisais (written with all seven letters) can be sung in it
+     * (docs/plan-own-raga-varisais.md). Every melakarta is; Bilahari, whose
+     * arohanam leaves out Ma and Ni, is not.
+     */
+    val isSampurna: Boolean
+        get() = letters.size == SwaraLetter.entries.size &&
+            arohanam.size == SwaraLetter.entries.size + 1 && avarohanam.size == SwaraLetter.entries.size + 1
+
     /** The swara [letter] stands for; [letter] must be one the raga [uses]. */
     fun swara(letter: SwaraLetter): Swara =
         swaraMap[letter] ?: throw IllegalArgumentException("$name has no ${letter.symbol}")
@@ -388,6 +398,13 @@ object Ragas {
 
     /** One of [melakartas], by key. */
     fun melakarta(key: String): Raga? = melakartas.firstOrNull { it.key == key }
+
+    /**
+     * A raga the varisais can be sung in, by key: one of [melakartas], or one
+     * of the student's [own] with all seven swaras both ways
+     * (docs/plan-own-raga-varisais.md). Null otherwise.
+     */
+    fun forVarisais(key: String): Raga? = melakarta(key) ?: own.firstOrNull { it.key == key && it.isSampurna }
 
     /** The student's own ragas, by name. Replaced whole (read from analysis threads too). */
     @Volatile

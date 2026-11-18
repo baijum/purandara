@@ -31,7 +31,25 @@ data class CustomRaga(
         )
     }
 
+    /** Whether every letter is used both ways, so the varisais can be sung in it (docs/plan-own-raga-varisais.md). */
+    val isSampurna: Boolean get() = arohana.size == LETTERS.size && avarohana.size == LETTERS.size
+
+    /** The melakarta this raga is, when it is sampurna and passes the checks; null otherwise. */
+    val melakarta: Int?
+        get() = if (isSampurna && problem(name.ifBlank { "-" }, arohana, avarohana) == null) {
+            Melakartas.numberOf(arohana[0], arohana[1], arohana[2], arohana[4], arohana[5])
+        } else {
+            null
+        }
+
     companion object {
+        /**
+         * The melakarta [arohana] and [avarohana] make (the editor's
+         * suggestion), when both have every letter and pass the checks.
+         */
+        fun melakartaOf(arohana: List<Swara>, avarohana: List<Swara>): Int? =
+            CustomRaga("", "-", arohana, avarohana).melakarta
+
         /** The letters chosen in the editor, in order (Sa is always there). */
         val LETTERS: List<SwaraLetter> = SwaraLetter.entries.drop(1)
 

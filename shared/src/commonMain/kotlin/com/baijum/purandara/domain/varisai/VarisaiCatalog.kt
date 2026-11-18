@@ -24,8 +24,11 @@ object VarisaiCatalog {
     /** The raga the varisais and alankarams are written in, and the default choice. */
     val raga: Raga = Raga.MAYAMALAVAGOWLA
 
-    /** The ragas the varisais and alankarams can be sung in. */
+    /** The app's ragas the varisais and alankarams can be sung in. */
     val ragas: List<Raga> get() = Ragas.melakartas
+
+    /** [ragas], then the student's own that the varisais can be sung in (all seven swaras both ways). */
+    val allRagas: List<Raga> get() = ragas + Ragas.own.filter { it.isSampurna }
 
     /** The plain ascent and descent (the workbook's Card G), one swara per akshara. */
     private const val PLAIN_SCALE_NOTATION = """
@@ -54,8 +57,22 @@ S′ N D P M G R S
         ragas.associate { raga -> raga.key to all.map { it.inRaga(raga) } }
     }
 
-    /** All exercises, with the varisais and alankarams in [raga] (one of [ragas]; others give [all]). */
-    fun inRaga(raga: Raga): List<Varisai> = byRaga[raga.key] ?: all
+    /** The student's own ragas' catalogs, by key, with the raga they were made for (rebuilt when it changes). */
+    private var byOwnRaga: Map<String, Pair<Raga, List<Varisai>>> = emptyMap()
+
+    /**
+     * All exercises, with the varisais and alankarams in [raga]: one of
+     * [ragas], or a sampurna raga of the student's own
+     * (docs/plan-own-raga-varisais.md). Any other raga gives [all].
+     */
+    fun inRaga(raga: Raga): List<Varisai> {
+        byRaga[raga.key]?.let { return it }
+        if (!raga.isSampurna) return all
+        byOwnRaga[raga.key]?.takeIf { it.first === raga }?.let { return it.second }
+        val catalog = all.map { it.inRaga(raga) }
+        byOwnRaga = byOwnRaga + (raga.key to (raga to catalog))
+        return catalog
+    }
 
     fun inSet(set: VarisaiSet): List<Varisai> = all.filter { it.set == set }
 
@@ -68,7 +85,7 @@ S′ N D P M G R S
      */
     fun byId(id: String): Varisai? {
         val ragaKey = id.substringAfter(Varisai.RAGA_SEPARATOR, "")
-        val chosen = if (ragaKey.isEmpty()) raga else Ragas.melakarta(ragaKey) ?: return null
+        val chosen = if (ragaKey.isEmpty()) raga else Ragas.forVarisais(ragaKey) ?: return null
         return inRaga(chosen).firstOrNull { it.id == id }
     }
 }

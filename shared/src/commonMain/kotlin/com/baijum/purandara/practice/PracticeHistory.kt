@@ -82,12 +82,12 @@ class PracticeHistory(records: Collection<PracticeRecord> = emptyList()) {
     /**
      * How much of [set] has been practised in each raga other than [current]
      * (docs/plan-raga-followups.md F3): only ragas with some practice, in
-     * the order of `VarisaiCatalog.ragas`. Empty for sets that keep their own
-     * raga.
+     * the order of `VarisaiCatalog.allRagas` (the student's own after the
+     * app's). Empty for sets that keep their own raga.
      */
     fun practisedInOtherRagas(set: VarisaiSet, current: Raga): List<RagaProgress> {
         if (!set.followsChosenRaga) return emptyList()
-        return VarisaiCatalog.ragas.filter { it != current }.mapNotNull { raga ->
+        return VarisaiCatalog.allRagas.filter { it.key != current.key }.mapNotNull { raga ->
             val catalog = VarisaiCatalog.inSet(set, raga)
             val practised = practisedCount(set, catalog)
             if (practised > 0) RagaProgress(raga, practised, catalog.size) else null
