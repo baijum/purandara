@@ -82,11 +82,16 @@ struct HomeView: View {
             NavigationLink {
                 VarisaiRagaList(ragaKey: $viewModel.settings.ragaKey)
             } label: {
-                Text(viewModel.settings.raga.name)
+                // No label override: the iOS audit on CI flags visible text that an overridden label hides.
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(viewModel.settings.raga.name)
+                    Text("Gitams, swarajatis and varnams keep their own.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.subdued)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            // Distinct from the recordings' raga list, which has a "Mayamalavagowla" button too.
-            .accessibilityLabel(Text("Raga for the varisais: \(viewModel.settings.raga.name)"))
-            .accessibilityHint(Text("Choose the raga the varisais and alankarams are sung in. Gitams, swarajatis and varnams keep their own."))
+            .accessibilityHint(Text("Choose the raga the varisais and alankarams are sung in."))
         } header: {
             Text("Raga for the varisais")
                 .foregroundStyle(Color.subdued)

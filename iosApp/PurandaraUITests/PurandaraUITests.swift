@@ -73,7 +73,7 @@ final class PurandaraUITests: XCTestCase {
         let raga = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Raga'")).firstMatch
         XCTAssertTrue(raga.waitForExistence(timeout: 5))
         raga.tap()
-        // 17 ragas, alphabetical: Mayamalavagowla can be below the loaded rows.
+        // 25 ragas, alphabetical: Mayamalavagowla can be below the loaded rows.
         let mayamalavagowla = app.buttons["Mayamalavagowla"]
         scrollTo(mayamalavagowla, in: app)
         mayamalavagowla.tap()
@@ -234,7 +234,7 @@ final class PurandaraUITests: XCTestCase {
         let app = launch()
         XCTAssertTrue(app.navigationBars["Purandara"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Mayamalavagowla · Adi tala"].exists)
-        let row = app.buttons["Raga for the varisais: Mayamalavagowla"].firstMatch
+        let row = app.buttons["Mayamalavagowla, Gitams, swarajatis and varnams keep their own."].firstMatch
         scrollTo(row, in: app)
         row.tap()
         XCTAssertTrue(app.navigationBars["Raga"].waitForExistence(timeout: 5))

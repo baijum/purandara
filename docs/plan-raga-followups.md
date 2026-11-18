@@ -6,10 +6,11 @@ Android picker became a dialog; F3 lists only the other ragas, since the
 page already shows the current one; with swara numbers on, each swara reads
 apart ("S R2 G2 M1"); on iOS a lone lower-octave swara now shows its number
 too (it was hidden before, unlike Android), with the dot under the letter
-and number together. After the first iOS CI run, the iOS Home raga row became
-one line (the explanation moved to its hint) to keep Home's first screen
-short at large text, and the recordings test scrolls to Mayamalavagowla in
-the longer raga list.
+and number together. On iOS CI, a one-line Home raga row with an overridden
+accessibility label failed the audit twice ("Potentially inaccessible
+text"), so the row keeps its two lines and no override (that version passed
+the audit on CI); the recordings test scrolls to Mayamalavagowla in the
+longer raga list.
 Follows `docs/plan-other-ragas.md` (built). Seven ideas, in the order
 suggested for building; each lands on both apps, with the guide kept in step.
 
