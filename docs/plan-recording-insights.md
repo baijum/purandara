@@ -40,7 +40,7 @@ app didn't know Ma was meant.
 
 | Question | Decided |
 |---|---|
-| What can be chosen | **What are you singing?** *Free singing* (the default), or a **raga's arohana, avarohana or both**. Later steps: a **piece from the app** (varisai, alankaram, gitam), then **typed swaras**. |
+| What can be chosen | **What are you singing?** *Free singing* (the default), or a **raga's arohana, avarohana or both**. Later steps: a **piece from the app** (varisai, alankaram, gitam), then **typed swaras**. A varisai or alankaram chosen there is the one in the raga chosen for the varisais, saved by its id (`sarali-3@kalyani`), so "How it went" compares the right swaras (docs/plan-raga-followups.md F7). |
 | When | **Before** recording (remembered like the tanpura switch) **or after** (changed on the recording's screen, at once: no re-analysis). |
 | Ragas | **The app's 13 ragas**, with the **recent ones on top**, plus **Your own raga** (a name, an arohana and an avarohana from the swara positions), saved on the device. No search for now; no melakarta catalogue. |
 | While recording | The swaras to sing **stay on screen** as a reference (no live feedback). |

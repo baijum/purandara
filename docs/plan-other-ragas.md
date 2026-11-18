@@ -87,7 +87,10 @@ The scales follow AGENTS.md's two-source rule. Each raga's swaras are
 checked against karnatik.com's melakarta list
 (<https://www.karnatik.com/melas.shtml>) and a second source, Wikipedia's
 Melakarta table (after Sambamoorthy), and recorded in `docs/resources.md`.
-Both agreed for all seven (2026-11-18). A test also works out each raga's mela number from its
+Both agreed for all seven (2026-11-18). The follow-up check
+(`docs/plan-raga-followups.md` F4) found independent second sources for all
+seven: the NIOS books for five, Raga Surabhi for Natabhairavi and Keeravani;
+details in `docs/resources.md`. A test also works out each raga's mela number from its
 swaras (M2 adds 36, plus 6 × the R/G pair index plus the D/N pair index plus
 1) and compares it with the table, which catches a mistyped swara.
 

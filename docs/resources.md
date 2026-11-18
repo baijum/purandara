@@ -397,7 +397,17 @@ there too, so the next person does not repeat them.
   (2026-11-18) against karnatik.com's list
   (<https://www.karnatik.com/melas.shtml>) and Wikipedia's Melakarta table;
   the two agree on every swara. `OtherRagasTest` also works out each mela
-  number from its swaras.
+  number from its swaras. Independent second sources (2026-11-18): the NIOS
+  books (Book 1 ch. 4: Mayamalavagowla; Book 2 ragalakshanas:
+  Sankarabharanam in full, and Kharaharapriya, Harikambhoji and
+  Mechakalyani through janyas that use all five of their parent's varying
+  swaras: Kanada, Sahana, Mohana Kalyani). Book 2 numbers two variants per
+  swara (antara gandhara G2, kakali nishada N2), so its `G2`/`N2` are the
+  app's G3/N3. NIOS has neither Natabhairavi nor Keeravani; Raga Surabhi's
+  raga pages give both (20: R2 G2 M1 D1 N2; 21: R2 G2 M1 D1 N3, with the
+  swara names). NIOS Book 1 (ch. 4, Sarali) and Book 2 (varisai activities) also
+  suggest practising the varisais in Sankarabharanam, Kharaharapriya or
+  Kalyani.
 - Guruguha: English translations of the lakshana texts, including the
   *Sangita Sampradaya Pradarshini*, *Chaturdandi Prakashika*,
   *Swaramelakalanidhi* and *Ragatarangini*, plus Dikshitar kritis —
