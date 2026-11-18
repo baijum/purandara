@@ -47,7 +47,9 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.baijum.purandara.R
 import com.baijum.purandara.domain.CustomRaga
+import com.baijum.purandara.domain.Melakartas
 import com.baijum.purandara.domain.Raga
+import com.baijum.purandara.domain.Ragas
 import com.baijum.purandara.domain.Shruti
 import com.baijum.purandara.domain.VoiceRange
 import com.baijum.purandara.domain.varisai.SwaraNumbers
@@ -109,6 +111,9 @@ fun RagaPicker(
     onSelect: (Raga) -> Unit,
     onPreview: (Raga) -> Unit,
     onStopPreview: () -> Unit,
+    /** The student's own ragas (docs/plan-own-raga-varisais.md), and opening the editor (null: a new one). */
+    ownRagas: List<CustomRaga> = emptyList(),
+    onEditOwn: (String?) -> Unit = {},
 ) {
     var open by remember { mutableStateOf(false) }
     val label = stringResource(R.string.varisai_raga)
@@ -129,44 +134,112 @@ fun RagaPicker(
             open = false
             onStopPreview()
         }
-        AlertDialog(
-            onDismissRequest = close,
-            title = { Text(label, modifier = Modifier.semantics { heading() }) },
-            text = {
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    Text(
-                        stringResource(R.string.varisai_raga_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    )
-                    VarisaiCatalog.ragas.forEach { choice ->
-                        RagaChoiceRow(
-                            choice = choice,
-                            selected = choice == raga,
-                            previewing = choice.key == previewKey,
-                            onSelect = {
-                                onSelect(choice)
-                                close()
-                            },
-                            onPreview = { onPreview(choice) },
-                        )
-                    }
-                }
+        val actions = RagaListActions(
+            select = { choice ->
+                onSelect(choice)
+                close()
             },
-            confirmButton = { TextButton(onClick = close) { Text(stringResource(R.string.close)) } },
+            preview = onPreview,
+            edit = { key ->
+                close()
+                onEditOwn(key)
+            },
         )
+        RagaListDialog(raga, previewKey, ownRagas, actions, close)
     }
 }
 
-/** One raga in the list: choose it (the row), or hear its scale (the button). */
+/** What the raga list can do: choose a raga (and close), hear one, edit an own raga (null: a new one). */
+private class RagaListActions(val select: (Raga) -> Unit, val preview: (Raga) -> Unit, val edit: (String?) -> Unit)
+
+/** The app's ragas for the varisais, then the student's own. */
 @Composable
-private fun RagaChoiceRow(choice: Raga, selected: Boolean, previewing: Boolean, onSelect: () -> Unit, onPreview: () -> Unit) {
+private fun RagaListDialog(
+    current: Raga,
+    previewKey: String?,
+    ownRagas: List<CustomRaga>,
+    actions: RagaListActions,
+    onClose: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(stringResource(R.string.varisai_raga), modifier = Modifier.semantics { heading() }) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    stringResource(R.string.varisai_raga_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+                VarisaiCatalog.ragas.forEach { choice ->
+                    RagaChoiceRow(choice, choice.key == current.key, choice.key == previewKey, { actions.select(choice) }, { actions.preview(choice) })
+                }
+                OwnRagaRows(ownRagas, current, previewKey, actions)
+            }
+        },
+        confirmButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.close)) } },
+    )
+}
+
+/**
+ * "Your own ragas": the seven-swara ones to choose (with play and Edit), the
+ * others shown with why they can't be, and Add your own raga….
+ */
+@Composable
+private fun OwnRagaRows(ownRagas: List<CustomRaga>, current: Raga, previewKey: String?, actions: RagaListActions) {
+    val onEdit = actions.edit
+    Text(
+        stringResource(R.string.own_ragas),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp).semantics { heading() },
+    )
+    ownRagas.forEach { own ->
+        val raga = Ragas.forVarisais(own.key)
+        val editLabel = stringResource(R.string.raga_edit_named, own.name)
+        val edit = @Composable {
+            TextButton(onClick = { onEdit(own.key) }, modifier = Modifier.semantics { contentDescription = editLabel }) {
+                Text(stringResource(R.string.raga_edit))
+            }
+        }
+        if (raga != null) {
+            RagaChoiceRow(raga, raga.key == current.key, raga.key == previewKey, { actions.select(raga) }, { actions.preview(raga) }, edit)
+        } else {
+            val reason = stringResource(R.string.own_raga_needs_seven)
+            val line = CustomRaga.line(own.arohana, descending = false)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    Modifier.weight(1f).heightIn(min = 56.dp).padding(start = 48.dp, top = 4.dp, bottom = 4.dp)
+                        .clearAndSetSemantics { contentDescription = "${own.name}: $reason" },
+                ) {
+                    Text(own.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("$reason · $line", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                edit()
+            }
+        }
+    }
+    TextButton(onClick = { onEdit(null) }, modifier = Modifier.heightIn(min = 48.dp)) {
+        Text(stringResource(R.string.raga_add))
+    }
+}
+
+/** One raga in the list: choose it (the row), hear its scale (the button), and [trailing] (Edit, for the student's own). */
+@Composable
+private fun RagaChoiceRow(
+    choice: Raga,
+    selected: Boolean,
+    previewing: Boolean,
+    onSelect: () -> Unit,
+    onPreview: () -> Unit,
+    trailing: (@Composable () -> Unit)? = null,
+) {
     val swaras = choice.swaras.drop(1)
     val detail = if (choice == VarisaiCatalog.raga) {
         stringResource(R.string.varisai_raga_usual)
     } else {
-        stringResource(R.string.raga_mela, choice.mela ?: 0)
+        stringResource(R.string.raga_mela, choice.mela ?: Melakartas.numberOf(choice) ?: 0)
     }
     val spoken = "${choice.name}, $detail: ${CustomRaga.spokenLine(swaras, descending = false)}"
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -198,6 +271,7 @@ private fun RagaChoiceRow(choice: Raga, selected: Boolean, previewing: Boolean, 
                 contentDescription = stringResource(if (previewing) R.string.raga_preview_stop else R.string.raga_preview_play, choice.name),
             )
         }
+        trailing?.invoke()
     }
 }
 

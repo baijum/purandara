@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.dp
 import com.baijum.purandara.R
 import com.baijum.purandara.domain.CustomRaga
 import com.baijum.purandara.domain.CustomRagas
+import com.baijum.purandara.domain.Melakartas
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Swara
 
 /**
@@ -64,6 +66,8 @@ fun RagaEditorScreen(
     onSave: (String, List<Swara>, List<Swara>) -> Unit,
     onDelete: () -> Unit,
     onClose: () -> Unit,
+    /** Opened from the varisais' raga list: offers one of the app's ragas when the scale is one. */
+    onChooseBuiltIn: ((Raga) -> Unit)? = null,
 ) {
     var name by rememberSaveable { mutableStateOf(editing?.name.orEmpty()) }
     var up by rememberSaveable { mutableStateOf(editing?.arohana.orEmpty().map { it.name }) }
@@ -98,6 +102,7 @@ fun RagaEditorScreen(
             }
             ReadBack(R.string.raga_read_up, CustomRaga.line(arohana, descending = false), CustomRaga.spokenLine(arohana, descending = false))
             ReadBack(R.string.raga_read_down, CustomRaga.line(avarohana, descending = true), CustomRaga.spokenLine(avarohana, descending = true))
+            MelakartaSuggestion(CustomRaga.melakartaOf(arohana, avarohana), arohana.isNotEmpty(), onUseName = { name = it }, onChooseBuiltIn)
             if (problem != null) {
                 Text(
                     problem,
@@ -117,6 +122,49 @@ fun RagaEditorScreen(
         DeleteRagaDialog(editing.name, onDismiss = { deleting = false }) {
             deleting = false
             onDelete()
+        }
+    }
+}
+
+/**
+ * With all seven swaras the scale is a melakarta (docs/plan-own-raga-varisais.md):
+ * "This is melakarta 16, Chakravakam" and Use this name; when it is one of
+ * the app's ragas, that is said too, with a way to choose it. Fewer swaras:
+ * a note that the varisais need all seven.
+ */
+@Composable
+private fun MelakartaSuggestion(mela: Int?, anySwaras: Boolean, onUseName: (String) -> Unit, onChooseBuiltIn: ((Raga) -> Unit)?) {
+    if (mela == null) {
+        if (anySwaras) {
+            Text(
+                stringResource(R.string.raga_needs_seven),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+    val builtIn = Melakartas.builtIn(mela)
+    val suggested = builtIn?.name ?: Melakartas.nameOf(mela)
+    Column {
+        // Announced when the swaras first make a melakarta (or a different one).
+        Text(
+            stringResource(R.string.raga_is_melakarta, mela, suggested),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
+        if (builtIn != null) {
+            Text(
+                stringResource(R.string.raga_already_in_list, builtIn.name),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = { onUseName(suggested) }) { Text(stringResource(R.string.raga_use_name)) }
+            if (builtIn != null && onChooseBuiltIn != null) {
+                TextButton(onClick = { onChooseBuiltIn(builtIn) }) { Text(stringResource(R.string.raga_choose_built_in, builtIn.name)) }
+            }
         }
     }
 }

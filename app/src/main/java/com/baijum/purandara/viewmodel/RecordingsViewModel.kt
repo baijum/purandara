@@ -107,7 +107,8 @@ data class RecordingsUiState(
 )
 
 /** The raga editor: a new raga ([key] null) or one of the student's. */
-data class RagaEditor(val key: String?)
+/** The raga editor, for [key] (null: a new raga); [forVarisais] when opened from the varisais' raga list. */
+data class RagaEditor(val key: String?, val forVarisais: Boolean = false)
 
 /**
  * Recordings with approximate swaras (docs/plan-recordings.md): record,
@@ -172,6 +173,9 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
         _state.update { it.copy(recentRagas = recent) }
     }
 
+    /** A new raga saved from the varisais' raga list: the app makes it the varisais' raga (set by the activity). */
+    var onNewVarisaiRaga: (String) -> Unit = {}
+
     /** "Your own raga": the editor, over whichever screen opened it. */
     val ragas = RagaEditing(
         store, _state,
@@ -188,6 +192,7 @@ class RecordingsViewModel(application: Application) : AndroidViewModel(applicati
                 RecordingsScreen.LIST -> Unit
             }
         },
+        chooseForVarisais = { key -> onNewVarisaiRaga(key) },
         forget = { key ->
             updateLibrary { it.forgetRaga(key) }
             if (store.intentRaga == key) {

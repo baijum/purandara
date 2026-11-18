@@ -326,7 +326,10 @@ private fun SaCard(state: LibraryState, actions: LibraryActions) {
                 modifier = Modifier.semantics { heading() },
             )
             SaPicker(state.saMidi, state.saCents, actions.onSaChange)
-            RagaPicker(state.raga, state.previewRagaKey, actions.onRagaChange, actions.onPreviewRaga, actions.onStopPreview)
+            RagaPicker(
+                state.raga, state.previewRagaKey, actions.onRagaChange, actions.onPreviewRaga, actions.onStopPreview,
+                ownRagas = state.ownRagas, onEditOwn = actions.onEditOwnRaga,
+            )
             Text(
                 stringResource(R.string.varisai_raga_hint),
                 style = MaterialTheme.typography.bodyMedium,

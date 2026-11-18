@@ -12,6 +12,7 @@ import com.baijum.purandara.ui.rememberReduceMotion
 import com.baijum.purandara.ui.theme.PurandaraTheme
 import com.baijum.purandara.viewmodel.PracticeViewModel
 import com.baijum.purandara.viewmodel.RecordingsViewModel
+import com.baijum.purandara.domain.Ragas
 
 /**
  * Single-activity entry point.
@@ -27,6 +28,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Recordings first: it loads the student's own ragas, and the raga chosen for the
+        // varisais may be one of them (docs/plan-own-raga-varisais.md).
+        recordingsViewModel.onNewVarisaiRaga = { key ->
+            if (Ragas.forVarisais(key) != null) practiceViewModel.updateSettings { it.copy(ragaKey = key) }
+        }
         // Debug builds: `adb shell am start -n com.baijum.purandara/.MainActivity --ef singer 0`
         // replaces the microphone with a synthetic singer (cents off target).
         if (BuildConfig.DEBUG && intent.hasExtra(EXTRA_SINGER)) {

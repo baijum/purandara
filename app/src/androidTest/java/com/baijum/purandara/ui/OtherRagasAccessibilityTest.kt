@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -18,7 +19,12 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.baijum.purandara.domain.CustomRaga
+import com.baijum.purandara.domain.CustomRagas
+import com.baijum.purandara.domain.Melakartas
 import com.baijum.purandara.domain.Raga
+import com.baijum.purandara.domain.Ragas
+import com.baijum.purandara.domain.Swara
 import com.baijum.purandara.domain.varisai.NotationLayout
 import com.baijum.purandara.domain.varisai.SwaraNumbers
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
@@ -29,6 +35,7 @@ import com.baijum.purandara.ui.library.LibraryActions
 import com.baijum.purandara.ui.library.LibraryState
 import com.baijum.purandara.ui.library.SetScreen
 import com.baijum.purandara.ui.player.NotationView
+import com.baijum.purandara.ui.recordings.RagaEditorScreen
 import com.baijum.purandara.ui.theme.PurandaraTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -149,6 +156,69 @@ class OtherRagasAccessibilityTest {
             }
         }
         compose.onNode(hasContentDescription("S R2 S R2, S R2, G2 M1", substring = true)).assertExists()
+    }
+
+    @Test
+    fun ownRagasCanBeChosenWhenTheyHaveAllSevenSwaras() {
+        val chakravakam = CustomRaga("own-1", "My Chakravakam", Melakartas.swarasOf(16).drop(1), Melakartas.swarasOf(16).drop(1))
+        val mohanam = CustomRaga(
+            "own-2", "My Mohanam",
+            listOf(Swara.R2, Swara.G3, Swara.P, Swara.D2), listOf(Swara.R2, Swara.G3, Swara.P, Swara.D2),
+        )
+        val own = CustomRagas(listOf(chakravakam, mohanam))
+        Ragas.useOwn(own)
+        var edited: String? = "none"
+        try {
+            compose.setContent {
+                PurandaraTheme {
+                    HomeScreen(
+                        VarisaiCatalog.inRaga(raga),
+                        LibraryState(saMidi = 48, samplesLoaded = true, raga = raga, ownRagas = own.ragas),
+                        LibraryActions(onSelect = {}, onRagaChange = { raga = it }, onEditOwnRaga = { edited = it }),
+                    )
+                }
+            }
+            openList()
+            compose.onNode(hasText("Your own ragas") and isHeading()).performScrollTo().assertExists()
+            compose.onNodeWithContentDescription("My Mohanam: Needs all seven swaras for the varisais").performScrollTo().assertExists()
+            val mine = compose.onNode(
+                hasClickAction() and hasContentDescription("My Chakravakam, Melakarta 16: Sa, Ri 1, Ga 3, Ma 1, Pa, Dha 2, Ni 2, high Sa"),
+            )
+            mine.performScrollTo()
+            assertTouchTarget(mine)
+            compose.onNodeWithContentDescription("Edit My Mohanam").performScrollTo().assertHasClickAction()
+            compose.onNodeWithText("Add your own raga…").performScrollTo().performClick()
+            compose.waitForIdle()
+            assertEquals(null, edited)
+            openList()
+            mine.performScrollTo().performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText("My Chakravakam · Adi tala").assertExists()
+        } finally {
+            Ragas.useOwn(CustomRagas())
+        }
+    }
+
+    @Test
+    fun theEditorNamesTheMelakartaAndOffersTheAppsOwn() {
+        var chosen: Raga? = null
+        var editing by mutableStateOf(CustomRaga("own-1", "Mine", Melakartas.swarasOf(16).drop(1), Melakartas.swarasOf(16).drop(1)))
+        compose.setContent {
+            PurandaraTheme {
+                androidx.compose.runtime.key(editing) {
+                    RagaEditorScreen(editing, CustomRagas(), onSave = { _, _, _ -> }, onDelete = {}, onClose = {}, onChooseBuiltIn = { chosen = it })
+                }
+            }
+        }
+        compose.onNodeWithText("This is melakarta 16, Chakravakam.").performScrollTo().assertExists()
+        compose.onNodeWithText("Use this name").performScrollTo().performClick()
+        compose.onNode(hasText("Chakravakam") and hasSetTextAction()).assertExists()
+        editing = CustomRaga("own-2", "Mine", Melakartas.swarasOf(65).drop(1), Melakartas.swarasOf(65).drop(1))
+        compose.waitForIdle()
+        compose.onNodeWithText("This is melakarta 65, Kalyani.").performScrollTo().assertExists()
+        compose.onNodeWithText("Kalyani is already in the list of ragas for the varisais.").assertExists()
+        compose.onNodeWithText("Choose Kalyani instead").performScrollTo().performClick()
+        assertEquals(Raga.KALYANI, chosen)
     }
 
     private fun assertTouchTarget(node: SemanticsNodeInteraction) {

@@ -3,6 +3,7 @@ package com.baijum.purandara.data
 import android.content.Context
 import com.baijum.purandara.audio.HarmoniumArticulation
 import com.baijum.purandara.audio.RenderOptions
+import com.baijum.purandara.domain.CustomRaga
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.Ragas
 import com.baijum.purandara.domain.Shruti
@@ -55,8 +56,12 @@ data class PracticeSettings(
 ) {
     val saHz: Double get() = Shruti.saHz(saMidi, saCents)
 
-    /** The chosen raga for the varisais, Mayamalavagowla when [ragaKey] is unknown. */
-    val raga: Raga get() = Ragas.melakarta(ragaKey) ?: VarisaiCatalog.raga
+    /**
+     * The chosen raga for the varisais: one of the app's, or the student's own
+     * with all seven swaras; Mayamalavagowla when [ragaKey] is unknown, deleted
+     * or no longer has seven swaras.
+     */
+    val raga: Raga get() = Ragas.forVarisais(ragaKey) ?: VarisaiCatalog.raga
 
     fun performance(): PerformanceSettings =
         PerformanceSettings(saHz = saHz, tempo = tempo, kala = kala, tuning = tuning)
@@ -110,9 +115,12 @@ class PracticePreferences(context: Context) {
     private inline fun <reified E : Enum<E>> loadEnum(key: String, default: E): E =
         enumValues<E>().firstOrNull { it.name == prefs.getString(key, null) } ?: default
 
-    /** The saved raga for the varisais, if it's still one of [Ragas.melakartas]. */
+    /**
+     * The saved raga for the varisais: one of [Ragas.melakartas], or an own
+     * raga's key (resolved later, once the own ragas are loaded).
+     */
     private fun loadRagaKey(default: String): String =
-        prefs.getString(RAGA, null)?.takeIf { Ragas.melakarta(it) != null } ?: default
+        prefs.getString(RAGA, null)?.takeIf { Ragas.melakarta(it) != null || CustomRaga.isOwn(it) } ?: default
 
     fun loadHistory(): PracticeHistory = PracticeHistory.decode(prefs.getString(HISTORY, null))
 

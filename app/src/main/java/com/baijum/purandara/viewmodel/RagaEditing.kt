@@ -20,11 +20,12 @@ class RagaEditing(
     private val state: MutableStateFlow<RecordingsUiState>,
     private val reread: () -> Unit,
     private val choose: (String) -> Unit,
+    private val chooseForVarisais: (String) -> Unit,
     private val forget: (String) -> Unit,
 ) {
-    /** Opens the editor for [key], or for a new raga with null. */
-    fun edit(key: String?) {
-        state.update { it.copy(ragaEditor = RagaEditor(key?.takeIf { k -> it.customRagas[k] != null })) }
+    /** Opens the editor for [key], or for a new raga with null; [forVarisais] from the varisais' raga list. */
+    fun edit(key: String?, forVarisais: Boolean = false) {
+        state.update { it.copy(ragaEditor = RagaEditor(key?.takeIf { k -> it.customRagas[k] != null }, forVarisais)) }
     }
 
     fun close() = state.update { it.copy(ragaEditor = null) }
@@ -36,7 +37,9 @@ class RagaEditing(
         if (ragas.problem(editor.key, name, arohana, avarohana) != null) return
         val key = editor.key ?: CustomRaga.keyAt(System.currentTimeMillis())
         use(ragas.save(key, name, arohana, avarohana))
-        if (editor.key == null) choose(key)
+        if (editor.key == null) {
+            if (editor.forVarisais) chooseForVarisais(key) else choose(key)
+        }
     }
 
     /** Deletes the editor's raga; what used it goes back to default names and singing freely. */

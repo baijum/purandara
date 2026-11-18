@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import com.baijum.purandara.BuildConfig
 import com.baijum.purandara.R
+import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.navigation.NavDestination
 import com.baijum.purandara.ui.about.AboutScreen
 import com.baijum.purandara.ui.navigation.MenuScaffold
@@ -89,7 +90,11 @@ fun PurandaraApp(viewModel: PracticeViewModel, recordings: RecordingsViewModel) 
 
     when {
         recordingsState.open && recordingsState.screen != RecordingsScreen.LIST || recordingsState.ragaEditor != null ->
-            RecordingsRoute(recordings, recordingsState, micForRecording(state, recordings), allowRecordingMic)
+            RecordingsRoute(recordings, recordingsState, micForRecording(state, recordings), allowRecordingMic) { raga ->
+                // "Choose Kalyani instead", from an editor opened on the varisais' raga list.
+                recordings.ragas.close()
+                viewModel.updateSettings { it.copy(ragaKey = raga.key) }
+            }
         state.run?.phase == RunPhase.PLAYING -> PlayerRoute(viewModel, state, micDenied, runMode = true) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
         state.run != null -> RunRoute(viewModel, state)
         state.selected != null -> PlayerRoute(viewModel, state, micDenied) { requestMic.launch(Manifest.permission.RECORD_AUDIO) }
@@ -162,8 +167,12 @@ private fun MenuRoutes(navigator: AppNavigator, allowMic: () -> Unit, allowRecor
         NavDestination.ShrutiPractice -> ShrutiRoute(viewModel, state, allowMic)
         NavDestination.FindSa -> FindSaRoute(viewModel, state, allowMic)
         NavDestination.About -> AboutScreen(BuildConfig.VERSION_NAME, onBack = goHome)
-        is NavDestination.SetPage -> SetScreen(current.set, viewModel.catalog, libraryState(state), libraryActions(viewModel, navigator::openPage))
-        NavDestination.Home -> HomeScreen(viewModel.catalog, libraryState(state), libraryActions(viewModel, navigator::openPage))
+        is NavDestination.SetPage -> SetScreen(
+            current.set, viewModel.catalog, libraryState(state, navigator.recordingsState), libraryActions(viewModel, recordings, navigator::openPage),
+        )
+        NavDestination.Home -> HomeScreen(
+            viewModel.catalog, libraryState(state, navigator.recordingsState), libraryActions(viewModel, recordings, navigator::openPage),
+        )
     }
 }
 
@@ -211,7 +220,7 @@ private fun FindSaRoute(viewModel: PracticeViewModel, state: PracticeUiState, al
     )
 }
 
-private fun libraryState(state: PracticeUiState) = LibraryState(
+private fun libraryState(state: PracticeUiState, recordings: RecordingsUiState) = LibraryState(
     history = state.history,
     saMidi = state.settings.saMidi,
     saCents = state.settings.saCents,
@@ -221,15 +230,17 @@ private fun libraryState(state: PracticeUiState) = LibraryState(
     runPlans = state.runPlans,
     raga = state.settings.raga,
     previewRagaKey = state.previewRagaKey,
+    ownRagas = recordings.customRagas.ragas,
 )
 
-private fun libraryActions(viewModel: PracticeViewModel, openPage: (NavDestination) -> Unit) = LibraryActions(
+private fun libraryActions(viewModel: PracticeViewModel, recordings: RecordingsViewModel, openPage: (NavDestination) -> Unit) = LibraryActions(
     onSelect = { varisai -> viewModel.select(varisai) },
     onToggleTanpura = viewModel::toggleTanpura,
     onSaChange = { midi -> viewModel.updateSettings { it.copy(saMidi = midi) } },
     onRagaChange = { raga -> viewModel.updateSettings { it.copy(ragaKey = raga.key) } },
     onPreviewRaga = { raga -> viewModel.preview(raga) },
     onStopPreview = { viewModel.preview(null) },
+    onEditOwnRaga = { key -> recordings.ragas.edit(key, forVarisais = true) },
     onOpenRun = viewModel.runs::open,
     onOpenSet = { set -> openPage(NavDestination.SetPage(set)) },
     onBack = { openPage(NavDestination.Home) },
@@ -237,7 +248,13 @@ private fun libraryActions(viewModel: PracticeViewModel, openPage: (NavDestinati
 
 @SuppressLint("MissingPermission") // startRecording is only offered once the mic is allowed
 @Composable
-private fun RecordingsRoute(recordings: RecordingsViewModel, state: RecordingsUiState, micAllowed: Boolean, allowMic: () -> Unit) {
+private fun RecordingsRoute(
+    recordings: RecordingsViewModel,
+    state: RecordingsUiState,
+    micAllowed: Boolean,
+    allowMic: () -> Unit,
+    onChooseVarisaiRaga: ((Raga) -> Unit)? = null,
+) {
     BackHandler { recordings.back() }
     val actions = RecordingsActions(
         onBack = recordings::back,
@@ -269,6 +286,7 @@ private fun RecordingsRoute(recordings: RecordingsViewModel, state: RecordingsUi
                 onSave = recordings.ragas::save,
                 onDelete = recordings.ragas::delete,
                 onClose = recordings.ragas::close,
+                onChooseBuiltIn = onChooseVarisaiRaga.takeIf { editor.forVarisais },
             )
         }
         state.screen == RecordingsScreen.RECORD -> RecordScreen(state.recorder, micAllowed, actions, state.recentRagas, state.customRagas)

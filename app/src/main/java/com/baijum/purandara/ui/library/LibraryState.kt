@@ -1,5 +1,6 @@
 package com.baijum.purandara.ui.library
 
+import com.baijum.purandara.domain.CustomRaga
 import com.baijum.purandara.domain.Raga
 import com.baijum.purandara.domain.varisai.Varisai
 import com.baijum.purandara.domain.varisai.VarisaiCatalog
@@ -21,6 +22,8 @@ data class LibraryState(
     val raga: Raga = VarisaiCatalog.raga,
     /** The raga whose scale is playing in the raga list, by key. */
     val previewRagaKey: String? = null,
+    /** The student's own ragas, for the raga list (docs/plan-own-raga-varisais.md). */
+    val ownRagas: List<CustomRaga> = emptyList(),
 )
 
 /** What Home and the set pages can do. */
@@ -33,6 +36,8 @@ data class LibraryActions(
     /** The raga list: hear a raga's scale, or stop it. */
     val onPreviewRaga: (Raga) -> Unit = {},
     val onStopPreview: () -> Unit = {},
+    /** Opens the raga editor for an own raga (null: a new one), from the varisais' raga list. */
+    val onEditOwnRaga: (String?) -> Unit = {},
     /** Open the practice run for a numbered varisai set. */
     val onOpenRun: (VarisaiSet) -> Unit = {},
     /** Home: open a set's page. */

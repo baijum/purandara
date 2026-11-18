@@ -64,6 +64,13 @@
     <string name="varisai_raga_usual">The usual raga for the varisais</string>
     <string name="raga_mela">Melakarta %1$d</string>
     <string name="set_raga">In raga %1$s</string>
+    <string name="raga_is_melakarta">This is melakarta %1$d, %2$s.</string>
+    <string name="raga_already_in_list">%1$s is already in the list of ragas for the varisais.</string>
+    <string name="raga_use_name">Use this name</string>
+    <string name="raga_choose_built_in">Choose %1$s instead</string>
+    <string name="raga_needs_seven">The varisais need all seven swaras, going up and coming down. With fewer, this raga is for Recordings only.</string>
+    <string name="own_ragas">Your own ragas</string>
+    <string name="own_raga_needs_seven">Needs all seven swaras for the varisais</string>
     <string name="swara_numbers">Swara numbers</string>
     <string name="swara_numbers_off">Off</string>
     <string name="swara_numbers_other">Other ragas</string>
