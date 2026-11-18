@@ -38,6 +38,7 @@ LEARN = [
     ("shruti.html", "Shruti and Sa"),
     ("swaras.html", "The seven swaras"),
     ("mayamalavagowla.html", "Mayamalavagowla"),
+    ("other-ragas.html", "Other ragas"),
     ("tala.html", "Adi tala"),
     ("speeds.html", "The speeds"),
     ("singing-in-tune.html", "Singing in tune"),

@@ -50,7 +50,8 @@ features speculatively.
   [`docs/plan-navigation.md`](docs/plan-navigation.md) (a navigation menu: Android drawer,
   iOS tabs and iPad sidebar; built) and [`docs/plan-repeat-cycle.md`](docs/plan-repeat-cycle.md)
   (Repeat this cycle: go over one tala cycle until Continue; built) and [`docs/plan-other-ragas.md`](docs/plan-other-ragas.md)
-  (the varisais and alankarams in seven melakartas; built) (and, for the website,
+  (the varisais and alankarams in seven melakartas; built) and [`docs/plan-raga-followups.md`](docs/plan-raga-followups.md)
+  (hear a raga first, swara numbers, progress per raga; built) (and, for the website,
   [`docs/plan-site-search.md`](docs/plan-site-search.md)).
 - [`docs/tuning.md`](docs/tuning.md) — Just (tanpura) vs Equal (keyboard):
   exact ratios, cents, frequencies and the implementation. The musicians'
@@ -117,7 +118,7 @@ features speculatively.
 | Where | What |
 |---|---|
 | `shared/.../domain/` | `Swara`, `Raga` (+ `Ragas`: the app's ragas, which notation may name (`builtIn`), and the student's own set by `useOwn`), `Ragas.melakartas`: the seven the varisais can be sung in; `CustomRaga` + `CustomRagas` (Your own raga: the checks, `ragas.json`), `Tala` (+ `Talas`: suladi talas from angas and jati, after ThaaLam), `Tuning`, `Shruti` (Sa choices, fine-tune, `VoiceRange`), `HarmoniumBank`, `TanpuraBank` |
-| `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`VarisaiCatalog.inRaga`: the varisais and alankarams in a chosen melakarta, ids `sarali-3@kalyani`; `catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt`, `Swarajati.kt`, `Varnam.kt`, each with its sources and fixes in the header); `WordsDisplay` |
+| `shared/.../domain/varisai/` | `Varisai.playableSaMidis` (the Sa choices at which a piece fits the harmonium samples; the players offer the nearest when not); notation parser (headers, sections, repeats, words: grammar in `docs/plan.md` 3.2) and the catalog (`VarisaiCatalog.inRaga`: the varisais and alankarams in a chosen melakarta, ids `sarali-3@kalyani`; `catalog/` holds the notation text: varisais, `Alankaram.kt`, `Gitam.kt`, `Swarajati.kt`, `Varnam.kt`, each with its sources and fixes in the header); `WordsDisplay`, `SwaraNumbers` (R₂ G₂ in the notation: `WrittenSwara.digitIn`, `NotationLayout.spoken(…, numbersIn)`) |
 | `shared/.../domain/varisai/NotationLayout.kt` | The notation by tala cycle at the chosen speed (`forPractice`): cycles → rows → beat groups of `CellRef`s, `locate` for the highlight, speech with commas at the angas. Both apps draw the notation and the mirrored tala strip from it (`BeatRow`; iOS `ColumnsLayout`) |
 | `shared/.../domain/varisai/Contour.kt` | Melodic shape of an exercise (the small line in the exercise list) |
 | `shared/.../shruti/` | Shruti practice: `ShrutiSession` (room check, readings, hold), `HoldTracker`, `NoteCatcher` + `SaFinder` + `FindSaGuide` (Find my Sa) |
@@ -125,7 +126,7 @@ features speculatively.
 | `shared/.../recording/` | Recordings (docs/plan-recordings.md): `RecordingAnalyzer` (decoded audio → `PitchTrack`, SwiftF0 on every window), `PitchTrack` (the saved `.pitch` format), `SwaraTranscriber` (steady stretches → `HeardNote`s in phrases, approximate by design), `RecordingLibrary` + `Recording` (index JSON, auto title); `TanpuraProfile` (the student's own tanpura, learnt from the first 3 s: level, Sa, the drone-aware voice gate); `RecordingInsights` ("How it went": what was meant to be sung (`Scale`) aligned to what was heard, the Sa it fits, cents and words by Strictness, steadiness; docs/plan-recording-insights.md); iOS `ByteBridge` for `.pitch` bytes |
 | `shared/.../navigation/` | `NavDestination` (the top-level destinations: Home, a set page, Shruti practice, Find my Sa, Recordings, About; stable `id`s, where Back goes) and `NavGroup` (the menu's groups and their items), shared by the Android drawer and the iOS tabs and sidebar (docs/plan-navigation.md) |
 | `shared/.../domain/schedule/` | `Schedule`: timed note/beat/cursor events, `cursorAt`/`beatAt`; `ofSection` plays one section (`Varisai.sections`) with the piece's avarta numbers |
-| `shared/.../audio/` | `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output; its output is spans, and `repeatCycle` / `continueAfterRepeat` on the render worker go back to a tala cycle: docs/plan-repeat-cycle.md), `CycleRepeats` (the jumps, readable from any thread: heard frame → performance) |
+| `shared/.../audio/` | `RagaPreview` (a raga's scale for the raga list), `SampleBank`, `SampleRenderer` (all mixing; platforms only decode and output; its output is spans, and `repeatCycle` / `continueAfterRepeat` on the render worker go back to a tala cycle: docs/plan-repeat-cycle.md), `CycleRepeats` (the jumps, readable from any thread: heard frame → performance) |
 | `shared/.../pitch/` | `PitchDetector` (YIN), `AudioResampler`, `NeuralArbitrator`: ported from ukulele-companion with the interpolation sign fix; `SwiftF0.kt` (the v0.3 model's contract: range, silence gate, `StreamResampler`, `SwiftF0Chunker` for recordings, `SwiftF0Live` for live listening; docs/plan-swiftf0-upgrade.md) |
 | `shared/.../singalong/` | `LivePitch` (live listening: YIN + SwiftF0 v0.3 on a rolling buffer, octave correction only), `PitchPipeline`, `SwaraMapper` (+ `Zone`, `Strictness`), `SingAlongClock`, `BleedModel` (room noise + leakage), `NoteScorer`, `SingAlongSession`: sing-along scoring |
 | `app/.../audio/` | FLAC decode (`HarmoniumSamples`), `VarisaiAudioPlayer` (`AudioTrack` on a worker thread) |
@@ -159,7 +160,7 @@ Closures that a background queue calls must not be created inside `@MainActor` c
 traps on the isolation check): build them in a `nonisolated` helper, and pass Kotlin values
 to the main actor in a `Handoff`. Debug launch arguments `-open <varisai-id> -autoplay YES` open
 (and play) an exercise for screenshots (`-open shruti` / `-open find-sa` open the Sa
-screens, `-open set-SARALI` a set page, `-open about` About, `-raga kalyani` (iOS) the raga for the varisais); add `-singAlong YES -singer <cents>` for a synthetic singer on iOS, and
+screens, `-open set-SARALI` a set page, `-open about` About, `-raga kalyani` (iOS) the raga for the varisais, with `-open sarali-3@kalyani` for an exercise in it, `-swaraNumbers always`); add `-singAlong YES -singer <cents>` for a synthetic singer on iOS, and
 `-resetSettings YES` to start from default settings, an empty history and no recordings (then `-sa <midi>` to pick a Sa). On Android (debug builds),
 `adb shell am start -n com.baijum.purandara/.MainActivity --ef singer 0` replaces
 the microphone with a synthetic singer (the value is cents off target), so
